@@ -1,22 +1,29 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { PanelData, BubbleData, SfxData, ElementPosition, ElementSize } from '../types';
+import { PanelData, TextElementData, BubbleData } from '../types';
 import Transformable from './Draggable';
 import RefreshIcon from './icons/RefreshIcon';
-import WandIcon from './icons/WandIcon';
+import NewComicIcon from './icons/NewComicIcon';
+import SparklesIcon from './icons/SparklesIcon';
 import Tooltip from './Tooltip';
+import EditableText from './EditableText';
+import Bubble from './Bubble';
 
 interface PanelProps {
   panelData: PanelData;
   panelIndex: number;
   onUpdatePanel: (panelIndex: number, updatedData: Partial<PanelData>) => void;
   onRegenerateImage: (panelIndex: number) => void;
+  onRefineImage: (panelIndex: number) => void;
   isLoading: boolean;
 }
 
-const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onRegenerateImage, isLoading }) => {
+const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onRegenerateImage, onRefineImage, isLoading }) => {
   const [userTags, setUserTags] = useState(panelData.user_consistency_tags || '');
   const boundaryRef = useRef<HTMLDivElement>(null);
+  const [isEditingText, setIsEditingText] = useState(false);
   
+  const { layoutProps } = panelData;
+
   const handleUserTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserTags(e.target.value);
   };
@@ -26,34 +33,94 @@ const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onR
   };
   
   const handleRegenerateClick = () => {
-    // Ensure the latest tags are saved before regenerating
     onUpdatePanel(panelIndex, { user_consistency_tags: userTags });
     onRegenerateImage(panelIndex);
   };
 
-  const updateBubble = useCallback((id: string, newPos: ElementPosition, newSize: ElementSize) => {
-    const updatedBubbles = panelData.bubbles.map(b => 
-        b.id === id ? { ...b, position: newPos, size: newSize } : b
-    );
-    onUpdatePanel(panelIndex, { bubbles: updatedBubbles });
-  }, [panelData.bubbles, panelIndex, onUpdatePanel]);
-
-  const updateSfx = useCallback((id: string, newPos: ElementPosition, newSize: ElementSize) => {
-    const updatedSfx = panelData.sfx.map(s => 
-        s.id === id ? { ...s, position: newPos, size: newSize } : s
-    );
-    onUpdatePanel(panelIndex, { sfx: updatedSfx });
-  }, [panelData.sfx, panelIndex, onUpdatePanel]);
-
-  const panelLayoutClasses = {
-    'standard': 'aspect-square',
-    'large': 'aspect-[4/3]',
-    'double-width': 'aspect-[2/1] col-span-2',
+  const handleRefineClick = () => {
+    onUpdatePanel(panelIndex, { user_consistency_tags: userTags });
+    onRefineImage(panelIndex);
   };
 
+  const handleUpdateTextElement = useCallback((elementId: string, updatedData: Partial<TextElementData>) => {
+      const updatedElements = panelData.text_elements.map(el => 
+          el.id === elementId ? { ...el, ...updatedData } : el
+      );
+      onUpdatePanel(panelIndex, { text_elements: updatedElements });
+  }, [panelData.text_elements, onUpdatePanel, panelIndex]);
+
+
+  const aspectRatioToClass = (aspectRatio: string) => {
+    switch(aspectRatio) {
+        case '1:1': return 'aspect-square';
+        case '4:3': return 'aspect-[4/3]';
+        case '3:4': return 'aspect-[3/4]';
+        case '16:9': return 'aspect-[16/9]';
+        case '9:16': return 'aspect-[9/16]';
+        default: return 'aspect-square';
+    }
+  }
+  
+  const renderTextElement = (element: TextElementData) => {
+    if (element.role === 'caption') {
+      // Captions are rendered outside the draggable area.
+      return null;
+    }
+
+    const transformableContent = () => {
+        if (element.role === 'speech' || element.role === 'thought') {
+            return (
+                <Bubble
+                    bubbleData={element as BubbleData} // Cast for compatibility
+                    onUpdate={(updatedData) => handleUpdateTextElement(element.id, updatedData)}
+                >
+                    <EditableText
+                        initialText={element.text}
+                        onSave={(newText) => handleUpdateTextElement(element.id, { text: newText })}
+                        onEditingChange={setIsEditingText}
+                        className="font-special-elite text-center"
+                        textareaClassName="font-special-elite text-center"
+                    />
+                </Bubble>
+            );
+        }
+        if (element.role === 'sfx') {
+            return (
+                 <div className="sfx-text w-full h-full flex items-center justify-center text-center">
+                    <EditableText
+                      initialText={element.text}
+                      onSave={(newText) => handleUpdateTextElement(element.id, { text: newText })}
+                      onEditingChange={setIsEditingText}
+                      className="font-bangers text-4xl text-yellow-400 text-center"
+                      textareaClassName="font-bangers text-4xl text-yellow-400 text-center"
+                      style={{ WebkitTextStroke: '2px black' }}
+                    />
+                </div>
+            );
+        }
+        return null;
+    };
+
+    return (
+      <Transformable
+        key={element.id}
+        initialPosition={element.position}
+        initialSize={element.size}
+        onPositionChange={(pos) => handleUpdateTextElement(element.id, { position: pos })}
+        onSizeChange={(size) => handleUpdateTextElement(element.id, { size: size })}
+        boundaryRef={boundaryRef}
+        disableDrag={isEditingText}
+      >
+        {transformableContent()}
+      </Transformable>
+    );
+  };
+
+  const caption = panelData.text_elements.find(el => el.role === 'caption');
+
   return (
-    <div className={`panel-container bg-white border-2 border-black p-3 flex flex-col gap-2 ${panelData.layout === 'double-width' ? 'col-span-2' : ''}`}>
-       <div ref={boundaryRef} className={`relative overflow-hidden border-2 border-black ${panelLayoutClasses[panelData.layout]}`}>
+    <div className={`panel-container bg-white border-2 border-black flex flex-col col-span-6 md:col-span-${layoutProps.gridCols}`}>
+       <div ref={boundaryRef} className={`relative overflow-hidden border-b-2 border-black ${aspectRatioToClass(layoutProps.aspectRatio)}`}>
         {isLoading && (
           <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
             <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black"></div>
@@ -64,58 +131,46 @@ const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onR
           alt={panelData.visual_prompt}
           className="w-full h-full object-cover"
         />
-
-        {panelData.bubbles.map((bubble) => (
-          <Transformable
-            key={bubble.id}
-            initialPosition={bubble.position}
-            initialSize={bubble.size}
-            onPositionChange={(pos) => updateBubble(bubble.id, pos, bubble.size)}
-            onSizeChange={(size) => updateBubble(bubble.id, bubble.position, size)}
-            boundaryRef={boundaryRef}
-          >
-            <div className="speech-bubble w-full h-full bg-white border-2 border-black rounded-lg p-2 flex items-center justify-center text-center">
-              <p className="text-sm font-special-elite">{bubble.text}</p>
-            </div>
-          </Transformable>
-        ))}
-
-        {panelData.sfx.map((sfx) => (
-           <Transformable
-            key={sfx.id}
-            initialPosition={sfx.position}
-            initialSize={sfx.size}
-            onPositionChange={(pos) => updateSfx(sfx.id, pos, sfx.size)}
-            onSizeChange={(size) => updateSfx(sfx.id, sfx.position, size)}
-            boundaryRef={boundaryRef}
-          >
-            <div className="sfx-text w-full h-full flex items-center justify-center text-center">
-                <p className="font-bangers text-4xl text-yellow-400" style={{ WebkitTextStroke: '2px black' }}>{sfx.text}</p>
-            </div>
-          </Transformable>
-        ))}
+        {panelData.text_elements.map(renderTextElement)}
       </div>
 
-       {panelData.caption.text && (
-          <p className="caption text-center italic px-2 text-sm">{panelData.caption.text}</p>
-       )}
+       <div className="caption text-center italic px-2 py-2 text-sm min-h-14 flex items-center justify-center">
+         {caption && (
+           <EditableText
+             initialText={caption.text}
+             onSave={(newText) => handleUpdateTextElement(caption.id, { text: newText })}
+             onEditingChange={setIsEditingText}
+             textareaClassName="text-center italic text-sm w-full"
+           />
+         )}
+       </div>
       
-      <div className="flex items-center gap-2 mt-auto pt-2 border-t border-gray-200">
+      <div className="flex items-center gap-2 mt-auto p-2 border-t border-gray-200 no-export">
         <Tooltip text="Add keywords to refine this image (e.g., 'wearing a blue hat', 'sad expression').">
-          <WandIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
+          <NewComicIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
         </Tooltip>
         <input
           type="text"
           value={userTags}
           onChange={handleUserTagsChange}
           onBlur={handleUserTagsBlur}
-          placeholder="Add consistency tags..."
+          placeholder="Add refinement details..."
           className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:outline-none"
         />
-        <Tooltip text="Regenerate this panel's image">
+        <Tooltip text="Refine the image using the original as a base plus your new tags. Good for small changes.">
+          <button
+            onClick={handleRefineClick}
+            disabled={isLoading || isEditingText}
+            className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Refine panel image"
+          >
+            <SparklesIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </Tooltip>
+        <Tooltip text="Generate a completely new image from the original prompt plus your new tags. Good for major changes.">
           <button 
             onClick={handleRegenerateClick}
-            disabled={isLoading}
+            disabled={isLoading || isEditingText}
             className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Regenerate panel image"
           >

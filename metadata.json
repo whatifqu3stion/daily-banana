@@ -1,5 +1,5 @@
 {
   "name": "The Daily Banana",
-  "description": "Generate a short, newspaper-style comic strip about a political figure or news event for 'The Daily Banana'. This app uses Gemini for story planning and image generation to create a printable/exportable comic strip with editable text balloons in a retro black-and-white halftone style.",
+  "description": "Generate a newspaper-style comic strip about a political figure or news event, This app uses Gemini for story planning and image generation to create a exportable comic strip with editable text balloons.",
   "requestFramePermissions": []
 }
