@@ -1,6 +1,7 @@
+
 // services/geminiService.ts
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { FormData, ComicPlan, ProcessedReferenceImage, Tone } from '../types';
+import { ComicFormData, ComicPlan, ProcessedReferenceImage, Tone } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
@@ -114,7 +115,7 @@ Core Rules:
 6.  **Hyper-Specific Tags:** For each character or key prop, create a single, highly detailed consistency tag that includes their name (if any) and physical description. For example: "Senator Higgins (bald man, thick glasses, double chin, pinstripe suit)". Use this EXACT same tag in every panel the character appears in.`;
 
 
-const generateComicPlan = async (formData: FormData, referenceImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
+const generateComicPlan = async (formData: ComicFormData, referenceImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
   return withRetry(async () => {
     const selectedStyle = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === formData.illustrationStyle) || ILLUSTRATION_STYLE_OPTIONS[0];
     let userPrompt = `TOPIC: ${formData.topic}\nPOV or MESSAGE: ${formData.pov}\nTONE: ${formData.tone}`;

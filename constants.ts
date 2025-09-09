@@ -1,10 +1,11 @@
+
 import { POV, Tone } from './types';
 
 export const POV_OPTIONS: { value: POV; label: string }[] = [
-  { value: 'Pro', label: 'Pro' },
-  { value: 'Critical', label: 'Critical' },
-  { value: 'Neutral', label: 'Neutral' },
-  { value: 'Satirical', label: 'Satirical' },
+  { value: 'pro', label: 'Pro' },
+  { value: 'critical', label: 'Critical' },
+  { value: 'neutral', label: 'Neutral' },
+  { value: 'satirical', label: 'Satirical' },
 ];
 
 export const TONE_OPTIONS: { value: Tone; label: string }[] = [

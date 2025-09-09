@@ -1,7 +1,7 @@
 // types.ts
 
-// Defines the custom Point of View string type.
-export type POV = 'Pro' | 'Critical' | 'Neutral' | 'Satirical' | string;
+// Defines the custom Point of View string type (keeps autocomplete but allows any string).
+export type POV = 'pro' | 'critical' | 'neutral' | 'satirical' | (string & {});
 
 // Defines the allowed Tone types for the comic.
 export type Tone = 'satirical' | 'neutral' | 'ironic' | 'deadpan';
@@ -20,7 +20,7 @@ export interface ProcessedReferenceImage {
 }
 
 // Interface for the comic generation form data.
-export interface FormData {
+export interface ComicFormData {
   topic: string;
   pov: POV;
   tone: Tone;
@@ -53,8 +53,11 @@ export interface TextElementData {
   // Color inversion state for bubbles.
   invertedColors?: boolean;
 }
-// For backwards compatibility in Bubble component
-export type BubbleData = TextElementData & { type: 'speech' | 'thought' };
+// The Bubble component receives data for 'speech' and 'thought' roles.
+// This type enforces that only those roles can be passed to the Bubble component.
+export type BubbleData = Omit<TextElementData, 'role'> & {
+    role: 'speech' | 'thought';
+};
 
 
 // Data for a single generated panel from the AI plan.
@@ -87,7 +90,7 @@ export interface PanelData {
   visual_prompt: string;
   text_elements: TextElementData[];
   consistency_tags: string[];
-  user_consistency_tags: string; // User-added tags for refinement
+  user_consistency_tags: string[]; // User-added tags for refinement (now an array)
   // The final, calculated layout properties are stored here.
   layoutProps: {
       gridCols: number;

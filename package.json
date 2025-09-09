@@ -1,5 +1,5 @@
 {
-  "name": "the-daily-banana",
+  "name": "the-daily-banana---comic-generator",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^19.1.1",
-    "react": "^19.1.1",
+    "react": "^18.2.0",
     "@google/genai": "^1.17.0",
-    "html-to-image": "^1.11.13"
+    "html-to-image": "^1.11.13",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,5 +1,6 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { FormData, POV, Tone, ReferenceImage, NewsStory } from '../types';
+import { ComicFormData, POV, Tone, ReferenceImage, NewsStory } from '../types';
 import { POV_OPTIONS, TONE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 import { getTopStories } from '../services/newsService';
 import SparklesIcon from './icons/SparklesIcon';
@@ -8,7 +9,7 @@ import NewsSelector from './NewsSelector';
 import Tooltip from './Tooltip';
 
 interface ComicFormProps {
-  onSubmit: (formData: FormData) => void;
+  onSubmit: (formData: ComicFormData) => void;
   isLoading: boolean;
 }
 
@@ -18,9 +19,9 @@ interface ReferenceImageState extends ReferenceImage {
 }
 
 const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<ComicFormData>({
     topic: '',
-    pov: 'Satirical',
+    pov: 'satirical',
     tone: 'satirical',
     illustrationStyle: 'sunday-funnies',
     referenceImages: [],

@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
-import { ComicStripData, FormData, PanelData, ComicPlan, PlanPanel, TextElementData, ProcessedReferenceImage } from './types';
+import { ComicStripData, ComicFormData, PanelData, ComicPlan, PlanPanel, TextElementData, ProcessedReferenceImage } from './types';
 import { geminiService } from './services/geminiService';
 import { toBase64 } from './utils/fileUtils';
 import ComicForm from './components/ComicForm';
@@ -46,7 +47,7 @@ function App() {
   const [refiningPanel, setRefiningPanel] = useState<number | null>(null);
   const [loadingProgress, setLoadingProgress] = useState<{ current: number; total: number } | null>(null);
   
-  const [formDataCache, setFormDataCache] = useState<FormData | null>(null);
+  const [formDataCache, setFormDataCache] = useState<ComicFormData | null>(null);
   const [cachedReferenceImages, setCachedReferenceImages] = useState<ProcessedReferenceImage[]>([]);
 
   const todaysDate = new Date().toLocaleDateString('en-US', {
@@ -74,12 +75,12 @@ function App() {
       visual_prompt: panel.visual_prompt,
       text_elements: textElements,
       consistency_tags: panel.consistency_tags || [],
-      user_consistency_tags: '',
+      user_consistency_tags: [],
       layoutProps,
     };
   };
 
-  const handleFormSubmit = useCallback(async (formData: FormData) => {
+  const handleFormSubmit = useCallback(async (formData: ComicFormData) => {
     setIsLoading(true);
     setError(null);
     setLoadingProgress(null);
@@ -178,14 +179,13 @@ function App() {
     
     try {
       const panel = comicStrip.panels[panelIndex];
-      const userTags = panel.user_consistency_tags.split(',').map(t => t.trim()).filter(Boolean);
       const illustrationStyle = formDataCache?.illustrationStyle;
       const tone = formDataCache?.tone;
       
       const image = await geminiService.generatePanelImage(
         panel.visual_prompt,
         panel.layoutProps.aspectRatio,
-        [...panel.consistency_tags, ...userTags],
+        [...panel.consistency_tags, ...panel.user_consistency_tags],
         illustrationStyle,
         tone
       );
@@ -208,7 +208,7 @@ function App() {
 
     try {
       const panel = comicStrip.panels[panelIndex];
-      if (!panel.user_consistency_tags) {
+      if (panel.user_consistency_tags.length === 0) {
         setError("Please add refinement details to describe the change you want to make.");
         setRefiningPanel(null);
         return;
@@ -216,7 +216,8 @@ function App() {
       
       const illustrationStyle = formDataCache?.illustrationStyle;
       const tone = formDataCache?.tone;
-      const image = await geminiService.refinePanelImage(panel.image, panel.user_consistency_tags, illustrationStyle, tone, cachedReferenceImages);
+      const refinementPrompt = panel.user_consistency_tags.join(', ');
+      const image = await geminiService.refinePanelImage(panel.image, refinementPrompt, illustrationStyle, tone, cachedReferenceImages);
       handleUpdatePanel(panelIndex, { image });
 
     } catch (err) {
@@ -250,7 +251,7 @@ function App() {
     <div className="min-h-screen font-special-elite text-black">
       <header className="py-8">
         <div className={`container mx-auto px-4 ${headerContainerClass}`}>
-          <div className="border-y-4 border-black py-4 text-center">
+          <div className="border-y-4 border-black py-4 text-center relative">
               <h1 className="font-special-elite text-5xl font-bold tracking-widest uppercase flex justify-center items-center gap-2">
                   <BananaIcon className="-mt-1" />
                   <span>The Daily Banana</span>
@@ -265,37 +266,38 @@ function App() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {!comicStrip && !isLoading && !error && (
-          <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} />
-        )}
-
-        {error && (
-           <div className="text-center my-8 p-4 max-w-2xl mx-auto">
-            <p className="text-red-800 font-bold text-lg">{error}</p>
-          </div>
-        )}
-        
-        {error && !isLoading && !comicStrip && (
-          <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} />
-        )}
-
-
-        {isLoading && <LoadingState message={loadingMessage} progress={loadingProgress} />}
-
-        {comicStrip && !isLoading && (
-          <ComicStrip
-            comicData={comicStrip}
-            onUpdatePanel={handleUpdatePanel}
-            onRegeneratePanelImage={handleRegeneratePanelImage}
-            onRefinePanelImage={handleRefinePanelImage}
-            onStartNew={handleStartNew}
-            onRegenerateComic={handleRegenerateComic}
-            isPanelLoading={(panelIndex) => regeneratingPanel === panelIndex || refiningPanel === panelIndex}
-            footerCredit="Powered by Gemini. Made with 💛 by "
-            footerLinkText="@SummitSatoshi"
-            footerLinkHref="https://x.com/SummitSatoshi"
-            footerDisclaimer="content is AI-generated & subject to Google TOS • not the creators’ views • not political advice."
-          />
+        {isLoading ? (
+          <LoadingState message={loadingMessage} progress={loadingProgress} />
+        ) : comicStrip ? (
+          <>
+            {error && (
+              <div className="text-center my-8 p-4 max-w-2xl mx-auto">
+                <p className="text-red-800 font-bold text-lg">{error}</p>
+              </div>
+            )}
+            <ComicStrip
+              comicData={comicStrip}
+              onUpdatePanel={handleUpdatePanel}
+              onRegeneratePanelImage={handleRegeneratePanelImage}
+              onRefinePanelImage={handleRefinePanelImage}
+              onStartNew={handleStartNew}
+              onRegenerateComic={handleRegenerateComic}
+              isPanelLoading={(panelIndex) => regeneratingPanel === panelIndex || refiningPanel === panelIndex}
+              footerCredit="Powered by Gemini. Made with 💛 by "
+              footerLinkText="@SummitSatoshi"
+              footerLinkHref="https://x.com/SummitSatoshi"
+              footerDisclaimer="content is AI-generated & subject to Google TOS • not the creators’ views • not political advice."
+            />
+          </>
+        ) : (
+          <>
+            <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} />
+            {error && (
+              <div className="text-center my-8 p-4 max-w-2xl mx-auto">
+                <p className="text-red-800 font-bold text-lg">{error}</p>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,7 +29,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Lora:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     <style>
       html {
         background-color: #F3EAD3; /* Paper texture color */
@@ -42,19 +40,18 @@
       }
       body::before {
         content: '';
-        position: absolute;
+        position: fixed; /* Changed to fixed for viewport-relative masking */
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         z-index: -1;
-        /* The halftone pattern is now the background of the pseudo-element */
-        background-image: radial-gradient(#E0D5BE 1.5px, transparent 1.5px), radial-gradient(#E0D5BE 1.5px, transparent 1.5px);
+        background-image: radial-gradient(#D5CBB2 1.5px, transparent 1.5px), radial-gradient(#D5CBB2 1.5px, transparent 1.5px);
         background-size: 16px 16px;
         background-position: 0 0, 8px 8px;
-        /* A mask fades the pattern from 0% at the 50% mark to 100% at the bottom */
-        mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 100%);
-        -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 100%);
+        /* A mask fades the pattern in from the middle of the screen */
+        mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 75%);
+        -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 75%);
       }
       .font-lora {
         font-family: 'Lora', serif;
@@ -125,11 +122,12 @@
 <script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react": "https://aistudiocdn.com/react@^18.2.0",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^18.2.0/client",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0",
-    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.13"
+    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.13",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^18.2.0/",
+    "react/": "https://aistudiocdn.com/react@^18.2.0/"
   }
 }
 </script>

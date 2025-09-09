@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
 import Transformable from './Draggable';
@@ -18,27 +19,28 @@ interface PanelProps {
 }
 
 const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onRegenerateImage, onRefineImage, isLoading }) => {
-  const [userTags, setUserTags] = useState(panelData.user_consistency_tags || '');
+  const [userTags, setUserTags] = useState(panelData.user_consistency_tags.join(', ') || '');
   const boundaryRef = useRef<HTMLDivElement>(null);
   const [isEditingText, setIsEditingText] = useState(false);
   
   const { layoutProps } = panelData;
+  const userTagsAsArray = userTags.split(',').map(t => t.trim()).filter(Boolean);
 
   const handleUserTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserTags(e.target.value);
   };
   
   const handleUserTagsBlur = () => {
-    onUpdatePanel(panelIndex, { user_consistency_tags: userTags });
+    onUpdatePanel(panelIndex, { user_consistency_tags: userTagsAsArray });
   };
   
   const handleRegenerateClick = () => {
-    onUpdatePanel(panelIndex, { user_consistency_tags: userTags });
+    onUpdatePanel(panelIndex, { user_consistency_tags: userTagsAsArray });
     onRegenerateImage(panelIndex);
   };
 
   const handleRefineClick = () => {
-    onUpdatePanel(panelIndex, { user_consistency_tags: userTags });
+    onUpdatePanel(panelIndex, { user_consistency_tags: userTagsAsArray });
     onRefineImage(panelIndex);
   };
 
@@ -71,7 +73,9 @@ const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onR
         if (element.role === 'speech' || element.role === 'thought') {
             return (
                 <Bubble
-                    bubbleData={element as BubbleData} // Cast for compatibility
+                    // FIX: Assert type to BubbleData. The `if` check makes this safe as TypeScript 
+                    // was failing to narrow the type of `element` inside this closure.
+                    bubbleData={element as BubbleData}
                     onUpdate={(updatedData) => handleUpdateTextElement(element.id, updatedData)}
                 >
                     <EditableText
