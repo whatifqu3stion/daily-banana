@@ -11,12 +11,11 @@ let ai: GoogleGenAI;
  */
 const getAi = (): GoogleGenAI => {
     if (!ai) {
-        // FIX: The API key must be obtained from process.env.API_KEY per coding guidelines. This also resolves the TypeScript error.
+        // FIX: Per coding guidelines, API key must be retrieved from `process.env.API_KEY`. This also resolves the TypeScript error on 'import.meta.env'.
         const apiKey = process.env.API_KEY;
         if (!apiKey) {
             // This error will be caught by the UI and displayed to the user.
-            // FIX: Updated error message to be more generic and not instruct user on setup.
-            throw new Error("The API_KEY environment variable is not set.");
+            throw new Error("The API_KEY environment variable is not set. Please follow the setup instructions.");
         }
         ai = new GoogleGenAI({ apiKey });
     }
