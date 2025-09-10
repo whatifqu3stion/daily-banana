@@ -1,10 +1,26 @@
-
 // services/geminiService.ts
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, Tone } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+let ai: GoogleGenAI;
+
+/**
+ * Lazily initializes and returns the GoogleGenAI instance.
+ * This prevents the app from crashing on load if the API key is not immediately available.
+ */
+const getAi = (): GoogleGenAI => {
+    if (!ai) {
+        const apiKey = process.env.API_KEY;
+        if (!apiKey) {
+            // This error will be caught by the UI and displayed to the user.
+            throw new Error("Your API key is missing. Please ensure it is configured correctly.");
+        }
+        ai = new GoogleGenAI({ apiKey });
+    }
+    return ai;
+};
+
 
 const comicPlanSchema = {
     type: Type.OBJECT,
@@ -117,6 +133,7 @@ Core Rules:
 
 const generateComicPlan = async (formData: ComicFormData, referenceImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
   return withRetry(async () => {
+    const ai = getAi();
     const selectedStyle = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === formData.illustrationStyle) || ILLUSTRATION_STYLE_OPTIONS[0];
     let userPrompt = `TOPIC: ${formData.topic}\nPOV or MESSAGE: ${formData.pov}\nTONE: ${formData.tone}`;
     userPrompt += `\nILLUSTRATION STYLE: ${selectedStyle.description}`;
@@ -160,6 +177,7 @@ const generatePanelImage = async (
   tone?: Tone
 ): Promise<string> => {
   return withRetry(async () => {
+    const ai = getAi();
     const selectedStyle = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === styleValue) || ILLUSTRATION_STYLE_OPTIONS[0];
     const tonePrefix = tone ? `A ${tone} cartoon. ` : 'A cartoon. ';
     
@@ -191,6 +209,7 @@ const generatePanelImageWithReferences = async (
   referenceImages: ProcessedReferenceImage[]
 ): Promise<string> => {
   return withRetry(async () => {
+    const ai = getAi();
     const parts: any[] = [];
 
     // 1. Add all user-provided reference images.
@@ -257,6 +276,7 @@ const refinePanelImage = async (
   referenceImages: ProcessedReferenceImage[] = []
 ): Promise<string> => {
   return withRetry(async () => {
+    const ai = getAi();
     const parts: any[] = [];
     
     // 1. Add the main image to be edited as the first part.

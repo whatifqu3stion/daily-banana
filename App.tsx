@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ComicStripData, ComicFormData, PanelData, ComicPlan, PlanPanel, TextElementData, ProcessedReferenceImage } from './types';
 import { geminiService } from './services/geminiService';
 import { toBase64 } from './utils/fileUtils';

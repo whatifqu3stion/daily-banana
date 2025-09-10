@@ -1,6 +1,6 @@
-// FIX: Wrapped the SVG in a React functional component definition.
 import React from 'react';
 
+// A standard refresh/redo icon.
 const RefreshIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

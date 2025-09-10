@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "@google/genai": "^1.17.0",
-    "html-to-image": "^1.11.13",
-    "react-dom": "^18.2.0"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "@google/genai": "^1.19.0",
+    "html-to-image": "^1.11.13"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
