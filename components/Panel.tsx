@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useCallback } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
 import Transformable from './Draggable';
@@ -17,6 +16,20 @@ interface PanelProps {
   onRefineImage: (panelIndex: number) => void;
   isLoading: boolean;
 }
+
+const getGridSpanClass = (cols: number): string => {
+  switch (cols) {
+    case 6:
+      return 'md:col-span-6';
+    case 3:
+      return 'md:col-span-3';
+    case 2:
+      return 'md:col-span-2';
+    default:
+      return 'md:col-span-2'; // Default to smallest size
+  }
+};
+
 
 const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onRegenerateImage, onRefineImage, isLoading }) => {
   const [userTags, setUserTags] = useState(panelData.user_consistency_tags.join(', ') || '');
@@ -53,14 +66,10 @@ const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onR
 
 
   const aspectRatioToClass = (aspectRatio: string) => {
-    switch(aspectRatio) {
-        case '1:1': return 'aspect-square';
-        case '4:3': return 'aspect-[4/3]';
-        case '3:4': return 'aspect-[3/4]';
-        case '16:9': return 'aspect-[16/9]';
-        case '9:16': return 'aspect-[9/16]';
-        default: return 'aspect-square';
-    }
+    // Since the app now exclusively generates 1:1 panels,
+    // this function is simplified but kept for structural integrity.
+    // It will always return 'aspect-square'.
+    return 'aspect-square';
   }
   
   const renderTextElement = (element: TextElementData) => {
@@ -123,7 +132,7 @@ const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onR
   const caption = panelData.text_elements.find(el => el.role === 'caption');
 
   return (
-    <div className={`panel-container bg-white border-2 border-black flex flex-col col-span-6 md:col-span-${layoutProps.gridCols}`}>
+    <div className={`panel-container bg-white border-2 border-black flex flex-col col-span-6 ${getGridSpanClass(layoutProps.gridCols)}`}>
        <div ref={boundaryRef} className={`relative overflow-hidden border-b-2 border-black ${aspectRatioToClass(layoutProps.aspectRatio)}`}>
         {isLoading && (
           <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">

@@ -26,7 +26,6 @@ export interface ComicFormData {
   tone: Tone;
   illustrationStyle?: string;
   referenceImages?: ReferenceImage[];
-  useImageReferencesForInitialGeneration?: boolean;
 }
 
 // Interface for element positioning.
@@ -74,7 +73,7 @@ export interface PlanPanel {
     consistency_tags: string[];
     // Direct layout hints from the AI.
     size: 'small' | 'medium' | 'large';
-    aspect_ratio: '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
+    aspect_ratio: '1:1';
 }
 
 // Data for the entire comic plan from the AI.
@@ -85,7 +84,7 @@ export interface ComicPlan {
 
 // Enriched data for a panel within the application state.
 export interface PanelData {
-  id: number;
+  id: string;
   image: string; // base64 encoded image
   visual_prompt: string;
   text_elements: TextElementData[];

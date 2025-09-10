@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { ComicStripData, ComicFormData, PanelData, ComicPlan, PlanPanel, TextElementData, ProcessedReferenceImage } from './types';
 import { geminiService } from './services/geminiService';
@@ -12,8 +11,6 @@ import BananaIcon from './components/icons/BananaIcon';
 const getFriendlyErrorMessage = (error: unknown): string => {
     let message = 'An unexpected error occurred. Please check the console.';
     if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') {
-        message = error.message;
-    } else if (error instanceof Error) {
         message = error.message;
     }
 
@@ -60,7 +57,7 @@ function App() {
   const generateInitialPositions = (panel: PlanPanel, layoutProps: LayoutProps): Omit<PanelData, 'image'> => {
     const textElements: TextElementData[] = (panel.text_elements || []).map(te => {
         return {
-            id: Math.random().toString(),
+            id: crypto.randomUUID(),
             text: te.text,
             role: te.role,
             position: te.position, // Directly from AI plan
@@ -71,7 +68,7 @@ function App() {
     });
 
     return {
-      id: Math.random(),
+      id: crypto.randomUUID(),
       visual_prompt: panel.visual_prompt,
       text_elements: textElements,
       consistency_tags: panel.consistency_tags || [],
@@ -101,15 +98,9 @@ function App() {
       
       setLoadingMessage('Generating comic plan from your brilliant idea...');
       const plan: ComicPlan = await geminiService.generateComicPlan(formData, referenceImagesWithTags);
-
-      let panelsForLayout = plan.panels;
-      if (formData.useImageReferencesForInitialGeneration && referenceImagesWithTags.length > 0) {
-        // If using image references for generation, force all panels to be 1:1 aspect ratio.
-        panelsForLayout = plan.panels.map(p => ({ ...p, aspect_ratio: '1:1' }));
-        setLoadingMessage("Using references for generation... all panels will be square.");
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Give user time to read message
-      }
       
+      // Force all panels to be 1:1 for consistency with the image generation model.
+      const panelsForLayout = plan.panels.map(p => ({ ...p, aspect_ratio: '1:1' as const }));
       const panelLayouts = layoutAdapter(panelsForLayout);
       const panelStructs = panelsForLayout.map((p, i) => generateInitialPositions(p, panelLayouts[i]));
       
@@ -121,25 +112,13 @@ function App() {
         const panelPlan = plan.panels[i]; // Original plan for prompts
         const panelScaffold = panelStructs[i];
         
-        let image: string;
-
-        if (formData.useImageReferencesForInitialGeneration && referenceImagesWithTags.length > 0) {
-            image = await geminiService.generatePanelImageWithReferences(
-                panelPlan.visual_prompt,
-                panelPlan.consistency_tags,
-                formData.illustrationStyle,
-                formData.tone,
-                referenceImagesWithTags
-            );
-        } else {
-            image = await geminiService.generatePanelImage(
-              panelPlan.visual_prompt,
-              panelScaffold.layoutProps.aspectRatio, // Use aspect ratio from scaffold
-              panelPlan.consistency_tags,
-              formData.illustrationStyle,
-              formData.tone
-            );
-        }
+        const image = await geminiService.generatePanelImageWithReferences(
+            panelPlan.visual_prompt,
+            panelPlan.consistency_tags,
+            formData.illustrationStyle,
+            formData.tone,
+            referenceImagesWithTags
+        );
 
         finalPanels.push({ ...panelScaffold, image });
         setLoadingProgress({ current: i + 1, total: plan.panels.length });
@@ -182,12 +161,12 @@ function App() {
       const illustrationStyle = formDataCache?.illustrationStyle;
       const tone = formDataCache?.tone;
       
-      const image = await geminiService.generatePanelImage(
+      const image = await geminiService.generatePanelImageWithReferences(
         panel.visual_prompt,
-        panel.layoutProps.aspectRatio,
         [...panel.consistency_tags, ...panel.user_consistency_tags],
         illustrationStyle,
-        tone
+        tone,
+        cachedReferenceImages
       );
       
       handleUpdatePanel(panelIndex, { image });
@@ -198,7 +177,7 @@ function App() {
     } finally {
       setRegeneratingPanel(null);
     }
-  }, [comicStrip, formDataCache, handleUpdatePanel]);
+  }, [comicStrip, formDataCache, handleUpdatePanel, cachedReferenceImages]);
 
   const handleRefinePanelImage = useCallback(async (panelIndex: number) => {
     if (!comicStrip || !formDataCache) return;

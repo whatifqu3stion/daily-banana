@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ComicFormData, POV, Tone, ReferenceImage, NewsStory } from '../types';
 import { POV_OPTIONS, TONE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS } from '../constants';
@@ -25,7 +24,6 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     tone: 'satirical',
     illustrationStyle: 'sunday-funnies',
     referenceImages: [],
-    useImageReferencesForInitialGeneration: false,
   });
   const [showFreeTextPov, setShowFreeTextPov] = useState(false);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageState[]>([]);
@@ -297,35 +295,6 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               </div>
               <input id="file-upload" ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" multiple />
           </label>
-        </div>
-
-        <div>
-          <label className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
-            Generation Method
-          </label>
-          <div className="flex items-center gap-4 p-3 bg-stone-50 border-2 border-gray-300">
-            <label htmlFor="useImageReferencesForInitialGeneration" className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                id="useImageReferencesForInitialGeneration"
-                name="useImageReferencesForInitialGeneration"
-                checked={!!formData.useImageReferencesForInitialGeneration}
-                onChange={(e) => setFormData(prev => ({ ...prev, useImageReferencesForInitialGeneration: e.target.checked }))}
-                className="sr-only peer"
-                disabled={referenceImages.length === 0}
-              />
-              <div className="w-11 h-6 bg-gray-300 rounded-full peer peer-focus:ring-2 peer-focus:ring-black peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black peer-disabled:opacity-50"></div>
-            </label>
-            <div className="flex items-center gap-2">
-               <span className={`font-special-elite text-base ${referenceImages.length === 0 ? 'text-gray-500' : ''}`}>
-                Use references for initial generation
-              </span>
-              <Tooltip text="ON: Uses references with the 🍌 Nano Banana (gemini-2.5-flash-image-preview) model for higher consistency, but all panels will be square (1:1). OFF (Default): Creates a dynamic layout; use Refine (✨) to apply references later.">
-                  <span className="cursor-help inline-block bg-gray-300 rounded-full w-5 h-5 flex items-center justify-center font-bold text-gray-700">?</span>
-              </Tooltip>
-            </div>
-          </div>
-          {referenceImages.length === 0 && <p className="text-xs text-gray-600 mt-1">Add a reference image to enable this option.</p>}
         </div>
 
         <div className="text-center pt-4">
