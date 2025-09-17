@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ComicFormData, POV, Tone, ReferenceImage, NewsStory } from '../types';
-import { POV_OPTIONS, TONE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS } from '../constants';
+import { ComicFormData, Stance, ComedicStyle, ReferenceImage, NewsStory } from '../types';
+import { STANCE_OPTIONS, COMEDIC_STYLE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 import { getTopStories } from '../services/newsService';
 import SparklesIcon from './icons/SparklesIcon';
 import NewspaperIcon from './icons/NewspaperIcon';
@@ -20,12 +20,14 @@ interface ReferenceImageState extends ReferenceImage {
 const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [formData, setFormData] = useState<ComicFormData>({
     topic: '',
-    pov: 'satirical',
-    tone: 'satirical',
-    illustrationStyle: 'sunday-funnies',
+    stance: 'critical',
+    comedicStyle: 'satirical',
+    illustrationStyle: 'default-color',
     referenceImages: [],
+    brainstormMode: false,
   });
-  const [showFreeTextPov, setShowFreeTextPov] = useState(false);
+  const [showFreeTextStance, setShowFreeTextStance] = useState(false);
+  const [showFreeTextIllustrationStyle, setShowFreeTextIllustrationStyle] = useState(false);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -79,21 +81,39 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     updateFormData(updatedImages.map(({file, tag}) => ({file, tag})));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handlePovChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
-    if (value === 'custom') {
-      setShowFreeTextPov(true);
-      setFormData((prev) => ({ ...prev, pov: '' }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    
+    if (type === 'checkbox') {
+        const { checked } = e.target as HTMLInputElement;
+        setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
-      setShowFreeTextPov(false);
-      setFormData((prev) => ({ ...prev, pov: value as POV }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
+
+  const handleStanceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    if (value === 'custom') {
+      setShowFreeTextStance(true);
+      setFormData((prev) => ({ ...prev, stance: '' }));
+    } else {
+      setShowFreeTextStance(false);
+      setFormData((prev) => ({ ...prev, stance: value as Stance }));
+    }
+  };
+  
+  const handleIllustrationStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    if (value === 'custom') {
+      setShowFreeTextIllustrationStyle(true);
+      setFormData((prev) => ({ ...prev, illustrationStyle: '' }));
+    } else {
+      setShowFreeTextIllustrationStyle(false);
+      setFormData((prev) => ({ ...prev, illustrationStyle: value }));
+    }
+  };
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,34 +190,34 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <Tooltip text="Choose the perspective or message for the comic.">
-              <label htmlFor="pov" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
-                Point of View
+            <Tooltip text="Choose the comic's message about the topic.">
+              <label htmlFor="stance" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+                Stance
               </label>
             </Tooltip>
             <select
-              id="pov"
-              name="pov-select"
-              value={showFreeTextPov ? 'custom' : formData.pov}
-              onChange={handlePovChange}
+              id="stance"
+              name="stance-select"
+              value={showFreeTextStance ? 'custom' : formData.stance}
+              onChange={handleStanceChange}
               className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
             >
-              {POV_OPTIONS.map((opt) => (
+              {STANCE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
               <option value="custom">Write my own...</option>
             </select>
-            {showFreeTextPov && (
+            {showFreeTextStance && (
               <input
                 type="text"
-                id="pov-custom"
-                name="pov"
-                value={typeof formData.pov === 'string' ? formData.pov : ''}
+                id="stance-custom"
+                name="stance"
+                value={typeof formData.stance === 'string' ? formData.stance : ''}
                 onChange={handleChange}
                 className="w-full p-3 mt-2 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
-                placeholder="Your custom point of view..."
+                placeholder="Your custom stance..."
                 maxLength={160}
                 autoFocus
               />
@@ -205,19 +225,19 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           </div>
           
           <div>
-            <Tooltip text="Select the overall tone of the comic's humor and narrative.">
-              <label htmlFor="tone" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
-                Tone
+            <Tooltip text="Select the method for the comic's humor.">
+              <label htmlFor="comedicStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+                Comedic Style
               </label>
             </Tooltip>
             <select
-              id="tone"
-              name="tone"
-              value={formData.tone}
+              id="comedicStyle"
+              name="comedicStyle"
+              value={formData.comedicStyle}
               onChange={handleChange}
               className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
             >
-              {TONE_OPTIONS.map((opt) => (
+              {COMEDIC_STYLE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -227,16 +247,16 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         </div>
 
         <div>
-          <Tooltip text="Select an emblematic style to guide the visual tone.">
+          <Tooltip text="Select an emblematic style or describe your own to guide the visual tone.">
             <label htmlFor="illustrationStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
               Illustration Style
             </label>
           </Tooltip>
           <select
             id="illustrationStyle"
-            name="illustrationStyle"
-            value={formData.illustrationStyle}
-            onChange={handleChange}
+            name="illustrationStyle-select"
+            value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
+            onChange={handleIllustrationStyleChange}
             className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
           >
             {ILLUSTRATION_STYLE_OPTIONS.map((opt) => (
@@ -244,13 +264,26 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 {opt.label}
               </option>
             ))}
+            <option value="custom">Write my own...</option>
           </select>
+          {showFreeTextIllustrationStyle && (
+              <textarea
+                id="illustrationStyle-custom"
+                name="illustrationStyle"
+                value={formData.illustrationStyle || ''}
+                onChange={handleChange}
+                className="w-full p-3 mt-2 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors h-24"
+                placeholder="e.g., A minimalist style with thick outlines and a muted, pastel color palette..."
+                maxLength={250}
+                autoFocus
+              />
+            )}
         </div>
 
         <div>
           <Tooltip text="Upload images of characters, objects, or settings. The AI uses these as a strong visual guide to maintain consistency across panels.">
             <label className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
-              Reference Images (Highly suggested)
+              Reference Images (Encouraged for specific characters, comic style or settings)
             </label>
           </Tooltip>
           {referenceImages.length > 0 && (
@@ -297,15 +330,32 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           </label>
         </div>
 
-        <div className="text-center pt-4">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="generate-button inline-flex items-center justify-center gap-3 px-12 py-4 bg-black text-white font-bangers text-2xl tracking-wider border-2 border-black disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors rounded-none"
-          >
-            <SparklesIcon className="w-6 h-6" />
-            Generate Comic
-          </button>
+        <div className="pt-4 space-y-4">
+            <div className="flex justify-center">
+                <Tooltip text="Generate multiple distinct story ideas to choose from. This takes longer but offers more creative options.">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            name="brainstormMode"
+                            checked={formData.brainstormMode}
+                            onChange={handleChange}
+                            className="h-5 w-5 rounded border-gray-300 text-black focus:ring-black"
+                        />
+                        <span className="text-lg font-special-elite">Brainstorm Multiple Story Ideas</span>
+                    </label>
+                </Tooltip>
+            </div>
+
+            <div className="text-center">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="generate-button inline-flex items-center justify-center gap-3 px-12 py-4 bg-black text-white font-bangers text-2xl tracking-wider border-2 border-black disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors rounded-none"
+              >
+                <SparklesIcon className="w-6 h-6" />
+                Generate Comic
+              </button>
+            </div>
         </div>
       </form>
     </>

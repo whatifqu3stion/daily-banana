@@ -1,4 +1,5 @@
 
+
 import React, { useRef } from 'react';
 import * as htmlToImage from 'html-to-image';
 import { ComicStripData, PanelData } from '../types';
@@ -147,7 +148,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           ))}
         </div>
         <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite">
-          <p className="text-sm">
+          <p className="text-base">
             {footerCredit}
             <a
               href={footerLinkHref}
@@ -158,7 +159,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
               {footerLinkText}
             </a>
           </p>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             {footerDisclaimer}
           </p>
         </footer>

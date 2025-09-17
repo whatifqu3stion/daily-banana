@@ -1,10 +1,13 @@
 // types.ts
 
-// Defines the custom Point of View string type (keeps autocomplete but allows any string).
-export type POV = 'pro' | 'critical' | 'neutral' | 'satirical' | (string & {});
+// Defines the comic's message or argument about the topic.
+export type Stance = 'supportive' | 'critical' | 'neutral' | (string & {});
 
-// Defines the allowed Tone types for the comic.
-export type Tone = 'satirical' | 'neutral' | 'ironic' | 'deadpan';
+// Defines the method or style of humor for the comic.
+export type ComedicStyle = 'satirical' | 'ironic' | 'deadpan' | 'absurdist' | 'slapstick';
+
+// Defines the stages of the application's UI flow.
+export type AppStage = 'form' | 'story-swipe' | 'review' | 'strip';
 
 // Interface for a single, tagged reference image (file-based).
 export interface ReferenceImage {
@@ -22,10 +25,11 @@ export interface ProcessedReferenceImage {
 // Interface for the comic generation form data.
 export interface ComicFormData {
   topic: string;
-  pov: POV;
-  tone: Tone;
+  stance: Stance;
+  comedicStyle: ComedicStyle;
   illustrationStyle?: string;
   referenceImages?: ReferenceImage[];
+  brainstormMode: boolean;
 }
 
 // Interface for element positioning.
@@ -79,6 +83,7 @@ export interface PlanPanel {
 // Data for the entire comic plan from the AI.
 export interface ComicPlan {
     title: string;
+    summary: string; // A new field for a quick, digestible summary.
     panels: PlanPanel[];
 }
 

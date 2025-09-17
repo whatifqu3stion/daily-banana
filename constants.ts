@@ -1,21 +1,25 @@
+import { Stance, ComedicStyle } from './types';
 
-import { POV, Tone } from './types';
-
-export const POV_OPTIONS: { value: POV; label: string }[] = [
-  { value: 'pro', label: 'Pro' },
+export const STANCE_OPTIONS: { value: Stance; label: string }[] = [
+  { value: 'supportive', label: 'Supportive (Pro)' },
   { value: 'critical', label: 'Critical' },
-  { value: 'neutral', label: 'Neutral' },
-  { value: 'satirical', label: 'Satirical' },
+  { value: 'neutral', label: 'Neutral / Observational' },
 ];
 
-export const TONE_OPTIONS: { value: Tone; label: string }[] = [
+export const COMEDIC_STYLE_OPTIONS: { value: ComedicStyle; label: string }[] = [
   { value: 'satirical', label: 'Satirical' },
-  { value: 'neutral', label: 'Neutral' },
   { value: 'ironic', label: 'Ironic' },
   { value: 'deadpan', label: 'Deadpan' },
+  { value: 'absurdist', label: 'Absurdist / Surreal' },
+  { value: 'slapstick', label: 'Slapstick / Exaggerated' },
 ];
 
 export const ILLUSTRATION_STYLE_OPTIONS: { value: string; label: string; description: string }[] = [
+  { 
+    value: 'default-color', 
+    label: 'Default Color Style',
+    description: 'A standard full-color retro newspaper comic panel style with vibrant colors and clean lines.'
+  },
   { 
     value: 'sunday-funnies', 
     label: 'Sunday Funnies',
@@ -32,6 +36,11 @@ export const ILLUSTRATION_STYLE_OPTIONS: { value: string; label: string; descrip
     description: 'A "clear line" European comic style. Use crisp, precise, unvarying line weights for all objects and characters. Employ flat, block colors with minimal shading.'
   },
   { 
+    value: 'magazine-gag', 
+    label: 'Magazine Gag Cartoon',
+    description: 'A witty, single-panel gag cartoon in the style of a classic magazine like The New Yorker. The final output will be a single large panel. Use a black and white aesthetic with a grayscale ink wash. The image should depict a single, static scene. The primary humor should come from a clever, dry, or satirical caption placed below the panel.'
+  },
+  { 
     value: 'modern-manga', 
     label: 'Modern Color Manga',
     description: 'A vibrant, modern manga style. Use dynamic, cinematic angles, expressive faces with large eyes, and a rich color palette with gradients and cell shading.'
@@ -40,10 +49,5 @@ export const ILLUSTRATION_STYLE_OPTIONS: { value: string; label: string; descrip
     value: 'underground-comix', 
     label: 'Underground Comix',
     description: 'An exaggerated, psychedelic style inspired by 1960s underground comix. Use a wild, high-saturation color palette, distorted and rubbery character anatomy, and dense, intricate background details.'
-  },
-  { 
-    value: 'default-color', 
-    label: 'Default Color Style',
-    description: 'A standard full-color retro newspaper comic panel style with vibrant colors and clean lines.'
   },
 ];

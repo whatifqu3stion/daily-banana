@@ -1,33 +1,40 @@
 import React, { useState, useEffect } from 'react';
 
 interface LoadingStateProps {
-  message: string;
+  messages: string[];
   progress?: { current: number; total: number } | null;
 }
 
-const LoadingState: React.FC<LoadingStateProps> = ({ message, progress }) => {
+const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
 
   useEffect(() => {
+    if (messages.length === 0) return;
+
     let timeoutId: ReturnType<typeof setTimeout>;
+    let charIndex = 0;
     
-    // Immediately set a placeholder to establish height
-    setDisplayedText('...'); 
-    
-    const type = (currentIndex = 0) => {
-      if (currentIndex <= message.length) {
-        setDisplayedText(message.substring(0, currentIndex));
-        timeoutId = setTimeout(() => type(currentIndex + 1), 70);
+    const type = () => {
+      const currentMessage = messages[currentMessageIndex];
+      if (charIndex < currentMessage.length) {
+        setDisplayedText(currentMessage.substring(0, charIndex + 1));
+        charIndex++;
+        timeoutId = setTimeout(type, 50); // Typing speed
       } else {
-        // Pause at the end, then restart
-        timeoutId = setTimeout(() => type(0), 1500);
+        // Pause at the end of the message, then move to the next
+        timeoutId = setTimeout(() => {
+          charIndex = 0;
+          setCurrentMessageIndex((prevIndex) => (prevIndex + 1) % messages.length);
+        }, 2000); // Pause duration
       }
     };
 
-    timeoutId = setTimeout(() => type(0), 100); // Initial delay
+    // Start typing the new message
+    type();
 
     return () => clearTimeout(timeoutId);
-  }, [message]);
+  }, [currentMessageIndex, messages]);
 
   return (
     <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-white/70 backdrop-blur-sm my-8 border-2 border-black min-h-[144px]">

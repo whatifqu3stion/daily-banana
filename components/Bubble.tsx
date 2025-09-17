@@ -1,12 +1,18 @@
+// components/Bubble.tsx
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BubbleData } from '../types';
 import InvertColorsIcon from './icons/InvertColorsIcon';
+import TextScaler from './TextScaler'; // Import the new component
 
 interface BubbleProps {
   bubbleData: BubbleData;
   onUpdate: (updatedData: Partial<BubbleData>) => void;
-  children: React.ReactNode;
+  // FIX: Make children prop type more specific to satisfy TextScaler's requirements.
+  children: React.ReactElement<{
+    initialText: string;
+    style?: React.CSSProperties;
+  }>;
 }
 
 const resolveValue = (value: number | string, max: number): number => {
@@ -39,7 +45,6 @@ const DraggableHandle: React.FC<{
             let newX = initialX + dx;
             let newY = initialY + dy;
             
-            // Allow tail to be dragged outside the bubble bounds for better flexibility
             newX = Math.max(-boundary.width * 0.5, Math.min(newX, boundary.width * 1.5));
             newY = Math.max(-boundary.height * 0.5, Math.min(newY, boundary.height * 1.5));
             
@@ -69,10 +74,6 @@ const DraggableHandle: React.FC<{
     );
 };
 
-/**
- * Calculates the two points for the base of the speech bubble tail,
- * dynamically attaching it to the closest edge of the bubble.
- */
 const getTailAttachment = (
     size: { width: number; height: number },
     tailPos: { x: number; y: number },
@@ -90,8 +91,7 @@ const getTailAttachment = (
     const tailWidth = Math.min(width * 0.2, 20);
     let p1: { x: number, y: number }, p2: { x: number, y: number };
 
-    // Determine edge by comparing normalized distances from center
-    if (Math.abs(dx / width) > Math.abs(dy / height)) { // Left or Right edge
+    if (Math.abs(dx / width) > Math.abs(dy / height)) {
         if (dx > 0) { // Right edge
             const y = Math.max(cornerRadius, Math.min(tailY, height - cornerRadius));
             p1 = { x: width - padding, y: y - tailWidth / 2 };
@@ -101,7 +101,7 @@ const getTailAttachment = (
             p1 = { x: padding, y: y + tailWidth / 2 };
             p2 = { x: padding, y: y - tailWidth / 2 };
         }
-    } else { // Top or Bottom edge
+    } else {
         if (dy > 0) { // Bottom edge
             const x = Math.max(cornerRadius, Math.min(tailX, width - cornerRadius));
             p1 = { x: x - tailWidth / 2, y: height - padding };
@@ -115,10 +115,6 @@ const getTailAttachment = (
     return { p1, p2 };
 };
 
-/**
- * Generates the `d` attribute for a single, continuous SVG path that forms
- * a rounded rectangle with a seamlessly integrated speech tail.
- */
 const generateBubblePath = (
     size: { width: number, height: number },
     tailPos: { x: number, y: number },
@@ -132,10 +128,9 @@ const generateBubblePath = (
 
     const w = width - padding * 2;
     const h = height - padding * 2;
-    const r = Math.max(0, cornerRadius - padding); // Adjust radius for padding
+    const r = Math.max(0, cornerRadius - padding);
     const p = padding;
 
-    // Determine which edge the tail is on
     const cx = width / 2;
     const cy = height / 2;
     const dx = tailX - cx;
@@ -148,42 +143,38 @@ const generateBubblePath = (
     }
     
     const parts: string[] = [];
-    parts.push(`M ${p + r},${p}`); // Start at top-left after corner
+    parts.push(`M ${p + r},${p}`);
 
-    // Top edge
     if (edge === 'top') {
         parts.push(`L ${p2.x},${p2.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p1.x},${p1.y}`);
     }
     parts.push(`L ${p + w - r},${p}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p + w},${p + r}`); // Top-right corner
+    parts.push(`A ${r},${r} 0 0 1 ${p + w},${p + r}`);
 
-    // Right edge
     if (edge === 'right') {
         parts.push(`L ${p1.x},${p1.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p2.x},${p2.y}`);
     }
     parts.push(`L ${p + w},${p + h - r}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p + w - r},${p + h}`); // Bottom-right corner
+    parts.push(`A ${r},${r} 0 0 1 ${p + w - r},${p + h}`);
 
-    // Bottom edge
     if (edge === 'bottom') {
         parts.push(`L ${p2.x},${p2.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p1.x},${p1.y}`);
     }
     parts.push(`L ${p + r},${p + h}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p},${p + h - r}`); // Bottom-left corner
+    parts.push(`A ${r},${r} 0 0 1 ${p},${p + h - r}`);
 
-    // Left edge
     if (edge === 'left') {
         parts.push(`L ${p1.x},${p1.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p2.x},${p2.y}`);
     }
     parts.push(`L ${p},${p + r}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p + r},${p}`); // Top-left corner
+    parts.push(`A ${r},${r} 0 0 1 ${p + r},${p}`);
 
     parts.push('Z');
     
     return parts.join(' ');
 };
 
-const SpeechBubble: React.FC<{ children: React.ReactNode; size: { width: number, height: number }, tailPos: {x: number, y: number}, inverted: boolean }> = ({ children, size, tailPos, inverted }) => {
+const SpeechBubble: React.FC<{ children: BubbleProps['children']; size: { width: number, height: number }, tailPos: {x: number, y: number}, inverted: boolean }> = ({ children, size, tailPos, inverted }) => {
     const { width, height } = size;
     if (width === 0 || height === 0) return null;
 
@@ -206,10 +197,9 @@ const SpeechBubble: React.FC<{ children: React.ReactNode; size: { width: number,
                 strokeLinejoin="round"
             />
             <foreignObject x="0" y="0" width="100%" height="100%">
-                 <div className={`w-full h-full flex items-center justify-center p-4 box-border text-base ${textColor}`}
-                      style={{ lineHeight: '1.2' }}
-                 >
-                    {children}
+                 <div className={`w-full h-full p-4 box-border ${textColor}`}>
+                    {/* FIX: The children prop type is now correctly constrained, satisfying TextScaler. */}
+                    <TextScaler>{children}</TextScaler>
                 </div>
             </foreignObject>
         </svg>
@@ -217,7 +207,7 @@ const SpeechBubble: React.FC<{ children: React.ReactNode; size: { width: number,
 };
 
 
-const ThoughtBubble: React.FC<{ children: React.ReactNode; size: { width: number, height: number }, inverted: boolean }> = ({ children, size, inverted }) => {
+const ThoughtBubble: React.FC<{ children: BubbleProps['children']; size: { width: number, height: number }, inverted: boolean }> = ({ children, size, inverted }) => {
     if (size.width === 0 || size.height === 0) return null;
 
     const fill = inverted ? 'black' : 'white';
@@ -236,10 +226,10 @@ const ThoughtBubble: React.FC<{ children: React.ReactNode; size: { width: number
             </svg>
             
             <div 
-                className={`absolute inset-[15%] flex items-center justify-center text-center text-base ${textColor}`}
-                style={{ lineHeight: '1.2' }}
+                className={`absolute inset-[15%] text-center ${textColor}`}
             >
-                {children}
+                {/* FIX: The children prop type is now correctly constrained, satisfying TextScaler. */}
+                <TextScaler>{children}</TextScaler>
             </div>
         </div>
     );
@@ -258,7 +248,7 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     if (!container || !tailPosition) return;
 
     const observer = new ResizeObserver(entries => {
-      if (isDraggingTailRef.current) return; // Prevent observer firing during drag
+      if (isDraggingTailRef.current) return;
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
         if (width > 0 && height > 0) {
@@ -273,7 +263,6 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
 
     observer.observe(container);
 
-    // Initial check for size in case ResizeObserver is slow to fire
     const rect = container.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
         setResolvedSize({ width: rect.width, height: rect.height });
@@ -282,7 +271,6 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
             y: resolveValue(tailPosition.y, rect.height),
         });
     }
-
 
     return () => {
       observer.disconnect();
@@ -293,7 +281,6 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     isDraggingTailRef.current = true;
     setResolvedTailPos(newPos);
     onUpdate({ tailPosition: newPos });
-    // Use a timeout to signal that dragging has ended
     setTimeout(() => { isDraggingTailRef.current = false; }, 50);
   }, [onUpdate]);
 
@@ -302,9 +289,7 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     onUpdate({ invertedColors: !invertedColors });
   };
 
-
   if (!tailPosition && role !== 'thought') {
-    // Safeguard for elements that might not have a tail
     return <div className="w-full h-full">{children}</div>;
   }
 
