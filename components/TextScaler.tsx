@@ -29,6 +29,8 @@ const TextScaler: React.FC<TextScalerProps> = ({ children }) => {
 
     if (!container || !content) return;
 
+    let animationFrameId: number;
+
     const observer = new ResizeObserver(() => {
       // Don't scale if the element is not visible
       if (container.offsetParent === null) return;
@@ -50,7 +52,12 @@ const TextScaler: React.FC<TextScalerProps> = ({ children }) => {
           low = mid;
         }
       }
-      setFontSize(low);
+      
+      // FIX: Wrap the state update in requestAnimationFrame to prevent ResizeObserver loop error.
+      // This decouples the state update from the resize event handler, breaking the synchronous loop.
+      animationFrameId = requestAnimationFrame(() => {
+        setFontSize(low);
+      });
     });
 
     observer.observe(container);
@@ -59,6 +66,9 @@ const TextScaler: React.FC<TextScalerProps> = ({ children }) => {
 
     return () => {
       observer.disconnect();
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
   }, [children.props.initialText]); // Rerun when the text content changes
 

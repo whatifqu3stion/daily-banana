@@ -3,11 +3,12 @@ import React from 'react';
 interface TooltipProps {
   text: string;
   children: React.ReactNode;
+  wrapperClassName?: string;
 }
 
-const Tooltip: React.FC<TooltipProps> = ({ text, children }) => {
+const Tooltip: React.FC<TooltipProps> = ({ text, children, wrapperClassName }) => {
   return (
-    <div className="relative flex items-center group w-fit">
+    <div className={`relative flex items-center group w-fit ${wrapperClassName || ''}`}>
       {children}
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-3 py-1.5 bg-black text-white text-sm rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-30">
         {text}

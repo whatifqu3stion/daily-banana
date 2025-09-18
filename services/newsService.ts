@@ -2,8 +2,9 @@
 import { NewsStory } from '../types';
 
 const RSS_FEED_URL = 'https://feeds.npr.org/1001/rss.xml';
-// Using corsproxy.io as a more reliable CORS proxy.
-const PROXY_URL = `https://corsproxy.io/?${encodeURIComponent(RSS_FEED_URL)}`;
+// FIX: Switched from the unreliable corsproxy.io to a different proxy
+// to resolve the "Failed to fetch" error.
+const PROXY_URL = `https://thingproxy.freeboard.io/fetch/${RSS_FEED_URL}`;
 
 /**
  * A client-side utility to strip HTML tags and then decode any leftover HTML entities.

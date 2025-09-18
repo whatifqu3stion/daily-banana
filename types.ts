@@ -68,11 +68,10 @@ export interface PlanPanel {
     slug: string;
     visual_prompt: string;
     // A single, unified array for all text elements.
+    // FIX: Removed position and size from the AI's responsibility to improve reliability.
     text_elements: {
         text: string;
         role: 'speech' | 'thought' | 'sfx' | 'caption';
-        position: ElementPosition;
-        size: ElementSize;
     }[];
     consistency_tags: string[];
     // Direct layout hints from the AI.
@@ -87,6 +86,13 @@ export interface ComicPlan {
     panels: PlanPanel[];
 }
 
+// FIX: Define LayoutProps here as the single source of truth for panel layout data.
+// This resolves import errors and improves type consistency.
+export interface LayoutProps {
+  gridCols: number;
+  aspectRatio: PlanPanel['aspect_ratio'];
+}
+
 // Enriched data for a panel within the application state.
 export interface PanelData {
   id: string;
@@ -96,10 +102,8 @@ export interface PanelData {
   consistency_tags: string[];
   user_consistency_tags: string[]; // User-added tags for refinement (now an array)
   // The final, calculated layout properties are stored here.
-  layoutProps: {
-      gridCols: number;
-      aspectRatio: PlanPanel['aspect_ratio'];
-  };
+  // FIX: Use the centralized LayoutProps type.
+  layoutProps: LayoutProps;
 }
 
 // Interface for the complete comic strip data used in the app.

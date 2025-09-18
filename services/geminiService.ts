@@ -1,92 +1,54 @@
+// FIX: The original file started with an invalid line of text that caused parsing errors. It has been removed.
 // services/geminiService.ts
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, ComedicStyle } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
-let ai: GoogleGenAI;
+// According to guidelines, API key must be from process.env.API_KEY
+// The user has been instructed that this will be available.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-/**
- * Lazily initializes and returns the GoogleGenAI instance.
- * This prevents the app from crashing on load if the API key is not immediately available.
- */
-const getAi = (): GoogleGenAI => {
-    if (!ai) {
-        // FIX: Use process.env.API_KEY as per the guidelines, which resolves the 'env' property error.
-        const apiKey = process.env.API_KEY;
-        if (!apiKey) {
-            // This error will be caught by the UI and displayed to the user.
-            throw new Error("The API_KEY environment variable is not set. Please follow the setup instructions.");
-        }
-        ai = new GoogleGenAI({ apiKey });
-    }
-    return ai;
-};
-
-
+// Schemas for comic plan generation
 const comicPlanSchema = {
     type: Type.OBJECT,
     properties: {
-        title: { type: Type.STRING, description: "A witty, short title for the comic strip (max 8 words)." },
-        summary: { type: Type.STRING, description: "A very short, one-sentence summary of the story's concept and punchline. Max 20 words." },
+        title: { type: Type.STRING, description: 'A catchy, newspaper-style title for the comic strip.' },
+        summary: { type: Type.STRING, description: 'A one-sentence summary of the comic\'s story or joke.' },
         panels: {
             type: Type.ARRAY,
-            description: "An array of 1 to 6 panels for the comic strip.",
+            description: 'An array of panel objects, representing the sequence of the comic strip. Usually 3-4 panels.',
             items: {
                 type: Type.OBJECT,
                 properties: {
-                    slug: { type: Type.STRING, description: "A short, descriptive slug for the panel's content (e.g., 'Senator confused by AI')." },
-                    visual_prompt: { 
-                        type: Type.STRING, 
-                        description: "A detailed, specific visual prompt for an image generation model. Describe the scene, characters, actions, emotions, and composition. For characters from reference images, use their tags (e.g., '[SENATOR_X]')." 
+                    slug: { type: Type.STRING, description: 'A short, URL-friendly identifier for the panel, e.g., "senator-confused".' },
+                    visual_prompt: {
+                        type: Type.STRING,
+                        description: 'A detailed description for an image generation model, outlining the scene, characters, actions, and emotions. This should NOT contain any text, speech bubbles, or captions.'
                     },
                     text_elements: {
                         type: Type.ARRAY,
-                        description: "All text elements within the panel (speech, captions, etc.). Can be empty.",
+                        description: 'All text content for the panel, including speech, thoughts, sound effects, and captions.',
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                text: { type: Type.STRING, description: "The text content." },
-                                role: { 
-                                    type: Type.STRING, 
-                                    enum: ['speech', 'thought', 'sfx', 'caption'],
-                                    description: "The role of the text element."
-                                },
-                                position: {
-                                    type: Type.OBJECT,
-                                    description: "Position of the element's top-left corner as percentages of the panel's dimensions (e.g., {x: '10%', y: '15%'}).",
-                                    properties: {
-                                        x: { type: Type.STRING, description: "X-coordinate (e.g., '10%')." },
-                                        y: { type: Type.STRING, description: "Y-coordinate (e.g., '15%')." }
-                                    },
-                                    required: ['x', 'y']
-                                },
-                                size: {
-                                    type: Type.OBJECT,
-                                    description: "Size of the element as percentages of the panel's dimensions (e.g., {width: '30%', height: '20%'}).",
-                                    properties: {
-                                        width: { type: Type.STRING, description: "Width (e.g., '30%')." },
-                                        height: { type: Type.STRING, description: "Height (e.g., '20%')." }
-                                    },
-                                    required: ['width', 'height']
-                                }
+                                text: { type: Type.STRING, description: 'The text content.' },
+                                role: { type: Type.STRING, description: 'The role of the text: "speech", "thought", "sfx", or "caption".' },
                             },
-                            required: ['text', 'role', 'position', 'size']
-                        }
+                            required: ['text', 'role'],
+                        },
                     },
                     consistency_tags: {
                         type: Type.ARRAY,
-                        description: "An array of keywords or tags to ensure visual consistency for this panel, especially for characters or settings. For characters from reference images, use their tags (e.g., '[SENATOR_X]').",
+                        description: 'An array of descriptive tags for maintaining visual consistency of characters and settings across panels (e.g., "Senator Higgins with red tie", "oak desk").',
                         items: { type: Type.STRING }
                     },
                     size: {
                         type: Type.STRING,
-                        enum: ['small', 'medium', 'large'],
-                        description: "The intended layout size of the panel. 'small' is 1/3 width, 'medium' is 1/2, 'large' is full width."
+                        description: 'A layout hint for the panel\'s relative size: "small", "medium", or "large".'
                     },
                     aspect_ratio: {
                         type: Type.STRING,
-                        enum: ['1:1'],
-                        description: "The aspect ratio of the panel. MUST be '1:1'."
+                        description: 'The aspect ratio of the panel, which must be "1:1".'
                     }
                 },
                 required: ['slug', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
@@ -96,208 +58,253 @@ const comicPlanSchema = {
     required: ['title', 'summary', 'panels']
 };
 
-const createBasePrompt = (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]) => {
-    const { topic, stance, comedicStyle, illustrationStyle } = formData;
-    
-    // Find the style option; if it exists, use its description.
-    // Otherwise, use the illustrationStyle string directly (as it's a custom user input).
-    const styleOption = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === illustrationStyle);
-    const styleDetails = styleOption ? styleOption.description : illustrationStyle || 'A standard comic style.';
+const multipleComicPlansSchema = {
+    type: Type.ARRAY,
+    description: "An array of 2 to 3 distinct comic plan objects.",
+    items: comicPlanSchema
+};
 
-    const referenceImageTags = userProvidedImages.map(img => img.tag).filter(Boolean);
-    const referenceImagePrompt = referenceImageTags.length > 0
-        ? `Key reference characters/objects are tagged as: ${referenceImageTags.join(', ')}. Use these tags like [TAG_NAME] in visual prompts.`
-        : 'No reference images were provided.';
-    
-    const isSinglePanelGag = illustrationStyle === 'magazine-gag';
-    const panelInstructions = isSinglePanelGag
-        ? "Create a single panel. It MUST be 'large' size."
-        : "Create a sequence of 3 to 6 panels.";
+
+// Helper to get illustration style description
+const getIllustrationStyleDescription = (styleValue?: string): string => {
+    if (!styleValue) return 'A standard full-color retro newspaper comic panel style.';
+    const selectedOption = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === styleValue);
+    return selectedOption ? selectedOption.description : styleValue;
+};
+
+
+// Prompt constructor for comic plan
+const constructPlanPrompt = (formData: ComicFormData, numPlans: number): string => {
+    const { topic, stance, comedicStyle, illustrationStyle, referenceImages } = formData;
+    const styleDescription = getIllustrationStyleDescription(illustrationStyle);
+
+    let referenceImageInfo = '';
+    if (referenceImages && referenceImages.length > 0) {
+        referenceImageInfo = `The user has provided reference images. Pay close attention to them for visual consistency. The images are tagged as follows:\n${referenceImages.map(img => `- "${img.tag}"`).join('\n')}\nUse these tags in your consistency tags.`;
+    }
+
+    const planCountInstruction = numPlans > 1
+        ? `Generate ${numPlans} completely distinct and creative comic strip ideas based on the user's request.`
+        : `Generate a creative comic strip plan based on the user's request.`;
 
     return `
-    You are a master comic strip writer and artist.
+You are a creative and witty comic strip writer. Your task is to generate a plan for a short comic strip (usually 3-4 panels). The output must be a valid JSON object that adheres to the provided schema.
 
-    **Topic:** ${topic}
-    **Stance (The comic's message):** ${stance}
-    **Comedic Style (The humor's delivery):** ${comedicStyle}
-    **Illustration Style:** ${styleDetails}
-    **Reference Images:** ${referenceImagePrompt}
+**Comic Request:**
+- **Topic:** ${topic}
+- **Your Stance/Angle:** ${stance}
+- **Comedic Style:** ${comedicStyle}
+- **Intended Illustration Style:** ${styleDescription}
+${referenceImageInfo}
 
-    **Instructions for Each Plan:**
-    1.  Create a short, witty title (max 8 words).
-    2.  Write a concise 'summary' of the entire comic strip's concept and punchline (max 20 words).
-    3.  ${panelInstructions}
-    4.  For each panel:
-        -   Write a concise 'slug'.
-        -   Write a detailed 'visual_prompt' for an image generation model. Describe the scene, characters (using their tags like [TAG_NAME] if provided), actions, composition, and emotions. **Do not mention the illustration style in the prompt.** It will be applied separately.
-        -   Define all 'text_elements' (speech, captions, etc.) with their text, role, and approximate position/size as percentages.
-        -   List 'consistency_tags' to help maintain visual continuity, especially for recurring characters or settings. Use the reference image tags here.
-        -   Choose a 'size' ('small', 'medium', 'large') to control the layout.
-        -   The 'aspect_ratio' for all panels **MUST** be '1:1'.
-    5.  The final output must be a valid JSON object/array that strictly adheres to the provided schema.
-    `;
+**Instructions:**
+1.  ${planCountInstruction}
+2.  The "visual_prompt" for each panel must be a detailed description for an AI image generator. It should describe the scene, characters, composition, and actions. **DO NOT include any text, speech, or captions in the visual prompt itself.**
+3.  All text content (speech, captions, sound effects) must be in the "text_elements" array.
+4.  Create "consistency_tags" for any recurring characters or key objects to help the image generator maintain a consistent look. If reference images were provided, use their tags here.
+5.  Vary panel sizes ('small', 'medium', 'large') to create a dynamic layout. Ensure the total number of panels is between 2 and 6.
+6.  The aspect ratio for all panels must be '1:1'.
+7.  Ensure the final output is a single, valid JSON object (or an array of objects if multiple plans were requested) with no extra text or markdown formatting.
+`;
 };
+
+// Prompt constructor for image generation/refinement
+const constructImagePrompt = (
+    basePrompt: string,
+    consistencyTags: string[],
+    illustrationStyle?: string,
+    comedicStyle?: ComedicStyle,
+    refinementPrompt?: string
+): string => {
+    const styleDescription = getIllustrationStyleDescription(illustrationStyle);
+
+    const mainInstruction = refinementPrompt
+        ? `Refine the provided image based on these instructions: "${refinementPrompt}".`
+        : `Generate a comic panel image based on the following description.`;
+    
+    // FIX: Add a defensive check to prevent a crash if the AI omits consistency_tags.
+    const safeConsistencyTags = consistencyTags || [];
+
+    return `
+${mainInstruction}
+
+**Visual Description:**
+${basePrompt}
+
+**Art Style Guidance:**
+- **Overall Style:** ${styleDescription}
+- **Comedic Tone:** The image should reflect a ${comedicStyle} tone.
+- **Consistency Cues:** Maintain visual consistency for these elements: ${safeConsistencyTags.join(', ')}.
+
+CRITICAL INSTRUCTION: Generate ARTWORK ONLY. There must be absolutely no legible or illegible text, words, letters, numbers, or symbols of any kind in the generated image. If a sign or object would normally contain text, render it as a blank surface or with a simple abstract pattern instead. This is a strict rule.
+
+If reference images are provided, use them as a strong visual guide for characters, objects, and overall style. The final output should be a single comic panel image.
+`;
+};
+
+// --- API Functions ---
 
 const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
-    const ai = getAi();
-    const basePrompt = createBasePrompt(formData, userProvidedImages);
-    const prompt = `${basePrompt}\nYour task is to create a single, high-quality plan for a comic strip.`;
-    
+    const prompt = constructPlanPrompt(formData, 1);
+    const parts = [
+        { text: prompt },
+        ...userProvidedImages.map(img => ({
+            inlineData: {
+                data: img.base64,
+                mimeType: img.mimeType
+            }
+        }))
+    ];
+
     const result = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: { parts },
         config: {
             responseMimeType: 'application/json',
-            responseSchema: comicPlanSchema,
-        },
+            responseSchema: comicPlanSchema
+        }
     });
 
-    const jsonText = result.text.trim();
     try {
-        return JSON.parse(jsonText) as ComicPlan;
+        const jsonText = result.text.trim();
+        const plan = JSON.parse(jsonText) as ComicPlan;
+
+        // FIX: Defensively sanitize the AI's output to prevent crashes.
+        // This ensures `panels` is always a valid array, even if the AI omits it.
+        if (plan) {
+            plan.panels = (plan.panels || []).filter(Boolean); // Handle missing array and null entries.
+        }
+
+        return plan;
     } catch (e) {
-        console.error("Failed to parse comic plan JSON:", jsonText);
-        throw new Error("The AI returned an invalid comic plan. Please try again.");
+        console.error("Failed to parse comic plan JSON:", e);
+        console.error("Received text:", result.text);
+        throw new Error("The AI returned an invalid story plan. Please try regenerating.");
     }
 };
-
 
 const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan[]> => {
-    const ai = getAi();
-    const basePrompt = createBasePrompt(formData, userProvidedImages);
-    const prompt = `${basePrompt}\nYour task is to create a list of 3 distinct plans for a comic strip. Each plan should be a unique take on the topic.`;
-
+    const prompt = constructPlanPrompt(formData, 3); // Ask for 3 ideas
+    const parts = [
+        { text: prompt },
+        ...userProvidedImages.map(img => ({
+            inlineData: {
+                data: img.base64,
+                mimeType: img.mimeType
+            }
+        }))
+    ];
 
     const result = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: prompt,
+        contents: { parts },
         config: {
             responseMimeType: 'application/json',
-            responseSchema: {
-                type: Type.ARRAY,
-                items: comicPlanSchema
-            },
-        },
+            responseSchema: multipleComicPlansSchema,
+        }
     });
 
-    const jsonText = result.text.trim();
     try {
-        return JSON.parse(jsonText) as ComicPlan[];
+        const jsonText = result.text.trim();
+        const plans = JSON.parse(jsonText) as ComicPlan[];
+
+        if (!Array.isArray(plans)) {
+            console.error("AI did not return an array for multiple plans. Received:", plans);
+            throw new Error("The AI returned an invalid set of story ideas. Please try regenerating.");
+        }
+        
+        // Filter out any null/undefined plans from the top-level array.
+        const validPlans = plans.filter(Boolean);
+
+        // FIX: Defensively sanitize the panels within each valid plan.
+        validPlans.forEach(plan => {
+            plan.panels = (plan.panels || []).filter(Boolean);
+        });
+
+        return validPlans;
     } catch (e) {
-        console.error("Failed to parse comic plans JSON:", jsonText);
-        throw new Error("The AI returned an invalid set of comic plans. Please try again.");
+        console.error("Failed to parse multiple comic plans JSON:", e);
+        console.error("Received text:", result.text);
+        throw new Error("The AI returned an invalid set of story ideas. Please try regenerating.");
     }
 };
-
 
 const generatePanelImageWithReferences = async (
     visual_prompt: string,
     consistency_tags: string[],
-    illustrationStyle: string | undefined,
-    comedicStyle: ComedicStyle | undefined,
-    references: ProcessedReferenceImage[]
+    illustrationStyle?: string,
+    comedicStyle?: ComedicStyle,
+    userProvidedImages: ProcessedReferenceImage[] = []
 ): Promise<string> => {
-    const ai = getAi();
-    const styleOption = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === illustrationStyle);
-    const styleDetails = styleOption ? styleOption.description : illustrationStyle || 'A standard comic style.';
-
-
-    const fullPrompt = `
-        Visual Prompt: "${visual_prompt}"
-        Style: ${styleDetails}
-        Comedic Style: ${comedicStyle}
-        Consistency Cues: ${consistency_tags.join(', ')}
-        
-        Generate an image based on the prompt, adhering to the style, tone, and consistency cues.
-        If reference images are provided, use them as strong guides for the appearance of tagged characters and objects.
-    `;
-
-    const textPart = { text: fullPrompt };
-    const imageParts = references.map(ref => ({
-        inlineData: {
-            data: ref.base64,
-            mimeType: ref.mimeType,
-        },
-    }));
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle);
+    const parts = [
+        { text: prompt },
+        ...userProvidedImages.map(img => ({
+            inlineData: { data: img.base64, mimeType: img.mimeType }
+        }))
+    ];
 
     const result = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: {
-            parts: [...imageParts, textPart],
-        },
+        contents: { parts },
         config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+            responseModalities: [Modality.IMAGE, Modality.TEXT]
+        }
     });
 
-    const imagePart = result.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+    const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
 
-    // FIX: Corrected typo from 'imagepart' to 'imagePart'.
-    if (!imagePart || !imagePart.inlineData) {
-        console.error("No image part found in response:", result);
-        throw new Error("The AI failed to generate an image for the panel.");
+    if (imagePart?.inlineData) {
+        return imagePart.inlineData.data;
     }
     
-    return imagePart.inlineData.data;
+    throw new Error('Image generation failed: The AI did not return an image.');
 };
 
 const refinePanelImage = async (
     baseImage: string, // base64
     refinementPrompt: string,
-    illustrationStyle: string | undefined,
-    comedicStyle: ComedicStyle | undefined,
-    references: ProcessedReferenceImage[]
+    illustrationStyle?: string,
+    comedicStyle?: ComedicStyle,
+    userProvidedImages: ProcessedReferenceImage[] = []
 ): Promise<string> => {
-    const ai = getAi();
-    const styleOption = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === illustrationStyle);
-    const styleDetails = styleOption ? styleOption.description : illustrationStyle || 'A standard comic style.';
+    const prompt = constructImagePrompt(
+        "The user wants to modify the provided image.",
+        [], // Consistency tags are less relevant for a direct refinement prompt
+        illustrationStyle,
+        comedicStyle,
+        refinementPrompt
+    );
 
-    const fullPrompt = `
-        Refine the provided base image according to these instructions: "${refinementPrompt}"
-        
-        Maintain the overall style, but incorporate the changes.
-        Original Style Context: ${styleDetails}
-        Original Comedic Style Context: ${comedicStyle}
-    `;
-
-    const textPart = { text: fullPrompt };
-    const baseImagePart = {
-        inlineData: {
-            data: baseImage,
-            mimeType: 'image/png', // Assume png for simplicity
-        },
-    };
-    const referenceImageParts = references.map(ref => ({
-        inlineData: {
-            data: ref.base64,
-            mimeType: ref.mimeType,
-        },
-    }));
+    const parts = [
+        { inlineData: { data: baseImage, mimeType: 'image/png' } },
+        { text: prompt },
+        ...userProvidedImages.map(img => ({
+            inlineData: { data: img.base64, mimeType: img.mimeType }
+        }))
+    ];
 
     const result = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image-preview',
-        contents: {
-            parts: [baseImagePart, ...referenceImageParts, textPart],
-        },
+        contents: { parts },
         config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+            responseModalities: [Modality.IMAGE, Modality.TEXT]
+        }
     });
 
-    const imagePart = result.candidates?.[0]?.content?.parts?.find(part => part.inlineData);
+    const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
 
-    if (!imagePart || !imagePart.inlineData) {
-        console.error("No image part found in refinement response:", result);
-        throw new Error("The AI failed to refine the image.");
+    if (imagePart?.inlineData) {
+        return imagePart.inlineData.data;
     }
-
-    return imagePart.inlineData.data;
+    
+    throw new Error('Image refinement failed: The AI did not return an image.');
 };
 
-// FIX: Export a geminiService object containing the service functions.
+// Exported service object
 export const geminiService = {
     generateSingleComicPlan,
     generateMultipleComicPlans,
     generatePanelImageWithReferences,
-    refinePanelImage,
+    refinePanelImage
 };

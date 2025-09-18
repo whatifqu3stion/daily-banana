@@ -1,330 +1,243 @@
 // components/Bubble.tsx
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BubbleData } from '../types';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { BubbleData, ElementPosition } from '../types';
 import InvertColorsIcon from './icons/InvertColorsIcon';
-import TextScaler from './TextScaler'; // Import the new component
+import Tooltip from './Tooltip';
 
 interface BubbleProps {
   bubbleData: BubbleData;
   onUpdate: (updatedData: Partial<BubbleData>) => void;
-  // FIX: Make children prop type more specific to satisfy TextScaler's requirements.
-  children: React.ReactElement<{
-    initialText: string;
-    style?: React.CSSProperties;
-  }>;
+  children: React.ReactNode;
 }
 
-const resolveValue = (value: number | string, max: number): number => {
-    if (typeof value === 'string' && value.endsWith('%')) {
-        return (parseFloat(value) / 100) * max;
-    }
-    return Number(value);
-};
-
-const DraggableHandle: React.FC<{
-    position: { x: number; y: number };
-    onDrag: (pos: { x: number; y: number }) => void;
-    boundary: { width: number; height: number };
-    inverted: boolean;
-}> = ({ position, onDrag, boundary, inverted }) => {
-    const handleRef = useRef<HTMLDivElement>(null);
-    
-    const handleMouseDown = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const initialX = position.x;
-        const initialY = position.y;
-
-        const handleMouseMove = (moveEvent: MouseEvent) => {
-            const dx = moveEvent.clientX - startX;
-            const dy = moveEvent.clientY - startY;
-            let newX = initialX + dx;
-            let newY = initialY + dy;
-            
-            newX = Math.max(-boundary.width * 0.5, Math.min(newX, boundary.width * 1.5));
-            newY = Math.max(-boundary.height * 0.5, Math.min(newY, boundary.height * 1.5));
-            
-            onDrag({ x: newX, y: newY });
-        };
-        
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    };
-
-    return (
-        <div 
-            ref={handleRef}
-            className="tail-handle"
-            style={{ 
-              left: `${position.x}px`, 
-              top: `${position.y}px`,
-              borderColor: inverted ? 'black' : 'white',
-            }}
-            onMouseDown={handleMouseDown}
-        />
-    );
-};
-
-const getTailAttachment = (
-    size: { width: number; height: number },
-    tailPos: { x: number; y: number },
-    padding: number,
-    cornerRadius: number
-) => {
-    const { width, height } = size;
-    const { x: tailX, y: tailY } = tailPos;
-
-    const cx = width / 2;
-    const cy = height / 2;
-    const dx = tailX - cx;
-    const dy = tailY - cy;
-
-    const tailWidth = Math.min(width * 0.2, 20);
-    let p1: { x: number, y: number }, p2: { x: number, y: number };
-
-    if (Math.abs(dx / width) > Math.abs(dy / height)) {
-        if (dx > 0) { // Right edge
-            const y = Math.max(cornerRadius, Math.min(tailY, height - cornerRadius));
-            p1 = { x: width - padding, y: y - tailWidth / 2 };
-            p2 = { x: width - padding, y: y + tailWidth / 2 };
-        } else { // Left edge
-            const y = Math.max(cornerRadius, Math.min(tailY, height - cornerRadius));
-            p1 = { x: padding, y: y + tailWidth / 2 };
-            p2 = { x: padding, y: y - tailWidth / 2 };
-        }
-    } else {
-        if (dy > 0) { // Bottom edge
-            const x = Math.max(cornerRadius, Math.min(tailX, width - cornerRadius));
-            p1 = { x: x - tailWidth / 2, y: height - padding };
-            p2 = { x: x + tailWidth / 2, y: height - padding };
-        } else { // Top edge
-            const x = Math.max(cornerRadius, Math.min(tailX, width - cornerRadius));
-            p1 = { x: x + tailWidth / 2, y: padding };
-            p2 = { x: x - tailWidth / 2, y: padding };
-        }
-    }
-    return { p1, p2 };
-};
-
-const generateBubblePath = (
-    size: { width: number, height: number },
-    tailPos: { x: number, y: number },
-    cornerRadius: number,
-    padding: number
-) => {
-    const { width, height } = size;
-    const { x: tailX, y: tailY } = tailPos;
-
-    const { p1, p2 } = getTailAttachment(size, tailPos, padding, cornerRadius);
-
-    const w = width - padding * 2;
-    const h = height - padding * 2;
-    const r = Math.max(0, cornerRadius - padding);
-    const p = padding;
-
-    const cx = width / 2;
-    const cy = height / 2;
-    const dx = tailX - cx;
-    const dy = tailY - cy;
-    let edge: 'top' | 'right' | 'bottom' | 'left';
-    if (Math.abs(dx / width) > Math.abs(dy / height)) {
-        edge = dx > 0 ? 'right' : 'left';
-    } else {
-        edge = dy > 0 ? 'bottom' : 'top';
-    }
-    
-    const parts: string[] = [];
-    parts.push(`M ${p + r},${p}`);
-
-    if (edge === 'top') {
-        parts.push(`L ${p2.x},${p2.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p1.x},${p1.y}`);
-    }
-    parts.push(`L ${p + w - r},${p}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p + w},${p + r}`);
-
-    if (edge === 'right') {
-        parts.push(`L ${p1.x},${p1.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p2.x},${p2.y}`);
-    }
-    parts.push(`L ${p + w},${p + h - r}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p + w - r},${p + h}`);
-
-    if (edge === 'bottom') {
-        parts.push(`L ${p2.x},${p2.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p1.x},${p1.y}`);
-    }
-    parts.push(`L ${p + r},${p + h}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p},${p + h - r}`);
-
-    if (edge === 'left') {
-        parts.push(`L ${p1.x},${p1.y}`, `L ${tailPos.x},${tailPos.y}`, `L ${p2.x},${p2.y}`);
-    }
-    parts.push(`L ${p},${p + r}`);
-    parts.push(`A ${r},${r} 0 0 1 ${p + r},${p}`);
-
-    parts.push('Z');
-    
-    return parts.join(' ');
-};
-
-const SpeechBubble: React.FC<{ children: BubbleProps['children']; size: { width: number, height: number }, tailPos: {x: number, y: number}, inverted: boolean }> = ({ children, size, tailPos, inverted }) => {
-    const { width, height } = size;
-    if (width === 0 || height === 0) return null;
-
-    const strokeWidth = 2;
-    const padding = strokeWidth / 2;
-    const cornerRadius = Math.min(width, height) * 0.15;
-
-    const bubblePath = generateBubblePath(size, tailPos, cornerRadius, padding);
-    const fill = inverted ? 'black' : 'white';
-    const stroke = inverted ? 'white' : 'black';
-    const textColor = inverted ? 'text-white' : 'text-black';
-    
-    return (
-        <svg width="100%" height="100%" style={{ overflow: 'visible' }}>
-            <path
-                d={bubblePath}
-                fill={fill}
-                stroke={stroke}
-                strokeWidth={strokeWidth}
-                strokeLinejoin="round"
-            />
-            <foreignObject x="0" y="0" width="100%" height="100%">
-                 <div className={`w-full h-full p-4 box-border ${textColor}`}>
-                    {/* FIX: The children prop type is now correctly constrained, satisfying TextScaler. */}
-                    <TextScaler>{children}</TextScaler>
-                </div>
-            </foreignObject>
-        </svg>
-    );
-};
-
-
-const ThoughtBubble: React.FC<{ children: BubbleProps['children']; size: { width: number, height: number }, inverted: boolean }> = ({ children, size, inverted }) => {
-    if (size.width === 0 || size.height === 0) return null;
-
-    const fill = inverted ? 'black' : 'white';
-    const stroke = inverted ? 'white' : 'black';
-    const textColor = inverted ? 'text-white' : 'text-black';
-    
-    return (
-        <div className="relative w-full h-full">
-            <svg
-                className="absolute inset-0 w-full h-full"
-                viewBox="0 0 1 1"
-                preserveAspectRatio="none"
-                style={{ overflow: 'visible' }}
-            >
-                <use href="#thought-bubble-symbol" fill={fill} stroke={stroke} />
-            </svg>
-            
-            <div 
-                className={`absolute inset-[15%] text-center ${textColor}`}
-            >
-                {/* FIX: The children prop type is now correctly constrained, satisfying TextScaler. */}
-                <TextScaler>{children}</TextScaler>
-            </div>
-        </div>
-    );
-};
-
 const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
-  const { role, tailPosition, invertedColors = false } = bubbleData;
+  const { role, tailPosition, invertedColors } = bubbleData;
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  const [resolvedSize, setResolvedSize] = useState({ width: 0, height: 0 });
-  const [resolvedTailPos, setResolvedTailPos] = useState({ x: 0, y: 0 });
-  const isDraggingTailRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = containerRef.current;
-    if (!container || !tailPosition) return;
+    if (!container) return;
 
     const observer = new ResizeObserver(entries => {
-      if (isDraggingTailRef.current) return;
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setResolvedSize({ width, height });
-          setResolvedTailPos({
-            x: resolveValue(tailPosition.x, width),
-            y: resolveValue(tailPosition.y, height),
-          });
-        }
+      const entry = entries[0];
+      if (entry) {
+        setDimensions({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
       }
     });
 
     observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
-    const rect = container.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-        setResolvedSize({ width: rect.width, height: rect.height });
-        setResolvedTailPos({
-            x: resolveValue(tailPosition.x, rect.width),
-            y: resolveValue(tailPosition.y, rect.height),
-        });
-    }
-
-    return () => {
-      observer.disconnect();
+  const resolvePosition = useCallback((pos: ElementPosition, containerWidth: number, containerHeight: number): { x: number; y: number } => {
+    const resolve = (val: string | number, max: number) => {
+      if (typeof val === 'string' && val.endsWith('%')) {
+        return (parseFloat(val) / 100) * max;
+      }
+      return Number(val);
     };
-  }, [tailPosition]);
-
-  const handleTailDrag = useCallback((newPos: { x: number; y: number }) => {
-    isDraggingTailRef.current = true;
-    setResolvedTailPos(newPos);
-    onUpdate({ tailPosition: newPos });
-    setTimeout(() => { isDraggingTailRef.current = false; }, 50);
-  }, [onUpdate]);
-
-  const handleToggleInvert = (e: React.MouseEvent) => {
+    return {
+      x: resolve(pos.x, containerWidth),
+      y: resolve(pos.y, containerHeight),
+    };
+  }, []);
+  
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!tailPosition) return;
+    setIsDragging(true);
+    const { width, height } = dimensions;
+    const currentTailPos = resolvePosition(tailPosition, width, height);
+    dragStart.current = {
+      x: e.clientX - currentTailPos.x,
+      y: e.clientY - currentTailPos.y,
+    };
+    e.preventDefault();
     e.stopPropagation();
-    onUpdate({ invertedColors: !invertedColors });
   };
 
-  if (!tailPosition && role !== 'thought') {
-    return <div className="w-full h-full">{children}</div>;
-  }
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    const { width, height } = dimensions;
+    if (width === 0 || height === 0) return;
+    
+    // Get the container's position relative to the viewport
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
 
+    // Calculate new position relative to the container, not the viewport
+    const newX = e.clientX - containerRect.left - (dragStart.current.x - resolvePosition(tailPosition!, width, height).x);
+    const newY = e.clientY - containerRect.top - (dragStart.current.y - resolvePosition(tailPosition!, width, height).y);
+
+    onUpdate({
+      tailPosition: {
+        x: `${(newX / width) * 100}%`,
+        y: `${(newY / height) * 100}%`,
+      }
+    });
+  }, [isDragging, onUpdate, dimensions, tailPosition, resolvePosition]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  const handleInvertColors = () => {
+    onUpdate({ invertedColors: !invertedColors });
+  };
+  
+  const getSpeechBubblePath = (width: number, height: number, tailX: number, tailY: number) => {
+    const rx = Math.min(width * 0.15, 25);
+    const ry = Math.min(height * 0.15, 25);
+    
+    const body = `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const angle = Math.atan2(tailY - centerY, tailX - centerX);
+
+    // Heuristic to find a point on the rounded rectangle's perimeter
+    const effectiveRadiusX = width / 2 - rx/2;
+    const effectiveRadiusY = height / 2 - ry/2;
+    const intersectX = centerX + Math.cos(angle) * effectiveRadiusX;
+    const intersectY = centerY + Math.sin(angle) * effectiveRadiusY;
+
+    const tailWidthAtBase = 25;
+    const p1x = intersectX + Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
+    const p1y = intersectY + Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
+    const p2x = intersectX - Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
+    const p2y = intersectY - Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
+
+    const tail = `M${p1x},${p1y} L${tailX},${tailY} L${p2x},${p2y}`;
+    
+    return { body, tail };
+  };
+  
+  const getThoughtBubblePath = (width: number, height: number) => {
+    const w = width;
+    const h = height;
+    const path = [
+        `M ${w * 0.2},${h * 0.5}`,
+        `C ${w * 0.05},${h * 0.25}, ${w * 0.3},${h * 0.1}, ${w * 0.5},${h * 0.1}`,
+        `C ${w * 0.7},${h * 0.1}, ${w * 0.95},${h * 0.25}, ${w * 0.8},${h * 0.5}`,
+        `C ${w * 0.95},${h * 0.75}, ${w * 0.7},${h * 0.9}, ${w * 0.5},${h * 0.9}`,
+        `C ${w * 0.3},${h * 0.9}, ${w * 0.05},${h * 0.75}, ${w * 0.2},${h * 0.5}`,
+        `Z`
+    ].join(' ');
+    return path;
+  };
+  
+  const renderBubble = () => {
+    const { width, height } = dimensions;
+    if (width === 0 || height === 0) return null;
+
+    let resolvedTailPos = { x: width / 2, y: height * 1.2 };
+    if (tailPosition) {
+      resolvedTailPos = resolvePosition(tailPosition, width, height);
+    }
+    
+    const commonProps = {
+        strokeWidth: 4,
+        stroke: 'black',
+        fill: invertedColors ? 'black' : 'white',
+        strokeLinejoin: 'round' as const,
+        strokeLinecap: 'round' as const,
+    };
+
+    if (role === 'speech' && tailPosition) {
+        const { body, tail } = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
+        return (
+            <>
+                <path d={body} {...commonProps} />
+                <path d={tail} {...commonProps} />
+            </>
+        )
+    }
+
+    if (role === 'thought') {
+        const body = getThoughtBubblePath(width, height);
+        const centerX = width / 2;
+        const centerY = height * 0.7; // Start tail lower down
+        
+        const tailBubbles = [
+            <circle key="t1" cx={resolvedTailPos.x} cy={resolvedTailPos.y} r={6} {...commonProps} />,
+            <circle key="t2" cx={centerX * 0.3 + resolvedTailPos.x * 0.7} cy={centerY * 0.3 + resolvedTailPos.y * 0.7} r={10} {...commonProps} />,
+            <circle key="t3" cx={centerX * 0.6 + resolvedTailPos.x * 0.4} cy={centerY * 0.6 + resolvedTailPos.y * 0.4} r={14} {...commonProps} />,
+        ];
+
+        return (
+            <>
+                <path d={body} {...commonProps} />
+                {tailBubbles}
+            </>
+        )
+    }
+    
+    // Default fallback (e.g., if speech bubble has no tail)
+    return <rect x="2" y="2" width={width-4} height={height-4} rx="20" ry="20" {...commonProps} />;
+  }
+  
+  let resolvedTailPos = { x: 0, y: 0 };
+  if (tailPosition) {
+    resolvedTailPos = resolvePosition(tailPosition, dimensions.width, dimensions.height);
+  }
+  
   return (
-    <div ref={containerRef} className="w-full h-full relative group no-export">
-      {resolvedSize.width > 0 ? (
-        <>
-          {role === 'thought' ? (
-             <ThoughtBubble size={resolvedSize} inverted={invertedColors}>
-                {children}
-            </ThoughtBubble>
-          ) : (
-            <SpeechBubble size={resolvedSize} tailPos={resolvedTailPos} inverted={invertedColors}>
-                {children}
-            </SpeechBubble>
-          )}
-          {role !== 'thought' && tailPosition && (
-             <DraggableHandle 
-                  position={resolvedTailPos}
-                  onDrag={handleTailDrag}
-                  boundary={resolvedSize}
-                  inverted={invertedColors}
-              />
-          )}
-        </>
-      ) : null}
-      <button
-          onClick={handleToggleInvert}
-          onMouseDown={(e) => e.stopPropagation()}
-          className="absolute -right-1 -top-1 w-6 h-6 bg-white border-2 border-black rounded-full flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity z-20"
-          title="Invert Colors"
-          aria-label="Invert bubble colors"
-      >
-        <InvertColorsIcon className="w-4 h-4 text-black" />
-      </button>
+    <div ref={containerRef} className="relative w-full h-full group">
+        <svg
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
+            className="absolute inset-0"
+            style={{ overflow: 'visible' }}
+        >
+            {renderBubble()}
+        </svg>
+
+        <div className="absolute inset-2">
+            {children}
+        </div>
+
+        {tailPosition && (
+            <div
+                onMouseDown={handleMouseDown}
+                style={{
+                    left: `${resolvedTailPos.x}px`,
+                    top: `${resolvedTailPos.y}px`,
+                }}
+                className="absolute w-4 h-4 bg-black border-2 border-white rounded-full cursor-grab -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 active:cursor-grabbing"
+            />
+        )}
+        
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          <Tooltip text={invertedColors ? "Switch to White Bubble" : "Switch to Black Bubble"}>
+            <button
+              onClick={handleInvertColors}
+              className="p-1 bg-white/50 hover:bg-white rounded-full border border-black"
+              aria-label="Invert bubble colors"
+            >
+              <InvertColorsIcon className="w-4 h-4 text-black" />
+            </button>
+          </Tooltip>
+        </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ComicPlan } from '../types';
 import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
@@ -24,6 +24,21 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
     const handlePrev = () => {
         setCurrentIndex(prev => Math.max(prev - 1, 0));
     };
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowRight') {
+                handleNext();
+            } else if (e.key === 'ArrowLeft') {
+                handlePrev();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [storyPlans.length]); // Re-add listener if plans change, though not expected
 
     const handleSelect = () => {
         onSelectStory(currentPlan);
@@ -71,7 +86,7 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
                         New Ideas
                     </button>
                 </Tooltip>
-                <Tooltip text="I like this story! Let's create the art.">
+                <Tooltip text="I like this story! Let's create the art." wrapperClassName="generate-button-wrapper">
                     <button onClick={handleSelect} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-none">
                         <SparklesIcon className="w-6 h-6" />
                         Choose This Story

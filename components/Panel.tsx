@@ -1,12 +1,15 @@
-import React, { useState, useRef, useCallback } from 'react';
+
+
+import React, { useRef } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
-import Transformable from './Draggable';
-import RefreshIcon from './icons/RefreshIcon';
-import NewComicIcon from './icons/NewComicIcon';
-import SparklesIcon from './icons/SparklesIcon';
-import Tooltip from './Tooltip';
-import EditableText from './EditableText';
+import Draggable from './Draggable';
+// Fix: Corrected the import for the Bubble component. The original error was caused by the Bubble.tsx file containing invalid content, not the import statement itself. With the Bubble component now correctly defined and exported, this import works as intended.
 import Bubble from './Bubble';
+import EditableText from './EditableText';
+import RefreshIcon from './icons/RefreshIcon';
+import WandIcon from './icons/WandIcon';
+import Tooltip from './Tooltip';
+import TextScaler from './TextScaler';
 
 interface PanelProps {
   panelData: PanelData;
@@ -17,178 +20,147 @@ interface PanelProps {
   isLoading: boolean;
 }
 
-const getGridSpanClass = (cols: number): string => {
-  switch (cols) {
-    case 6:
-      return 'md:col-span-6';
-    case 3:
-      return 'md:col-span-3';
-    case 2:
-      return 'md:col-span-2';
-    default:
-      return 'md:col-span-2'; // Default to smallest size
-  }
-};
-
-
-const Panel: React.FC<PanelProps> = ({ panelData, panelIndex, onUpdatePanel, onRegenerateImage, onRefineImage, isLoading }) => {
-  const [userTags, setUserTags] = useState(panelData.user_consistency_tags.join(', ') || '');
+const Panel: React.FC<PanelProps> = ({
+  panelData,
+  panelIndex,
+  onUpdatePanel,
+  onRegenerateImage,
+  onRefineImage,
+  isLoading,
+}) => {
   const boundaryRef = useRef<HTMLDivElement>(null);
-  const [isEditingText, setIsEditingText] = useState(false);
-  
-  const { layoutProps } = panelData;
-  const userTagsAsArray = userTags.split(',').map(t => t.trim()).filter(Boolean);
 
+  const handleUpdateTextElement = (elementId: string, updatedData: Partial<TextElementData>) => {
+    const updatedElements = panelData.text_elements.map(el =>
+      el.id === elementId ? { ...el, ...updatedData } : el
+    );
+    onUpdatePanel(panelIndex, { text_elements: updatedElements });
+  };
+  
   const handleUserTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserTags(e.target.value);
+    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+    onUpdatePanel(panelIndex, { user_consistency_tags: tags });
   };
   
-  const handleUserTagsBlur = () => {
-    onUpdatePanel(panelIndex, { user_consistency_tags: userTagsAsArray });
+  const colSpanClasses: { [key: number]: string } = {
+    2: 'col-span-2',
+    3: 'col-span-3',
+    4: 'col-span-4',
+    6: 'col-span-6',
   };
-  
-  const handleRegenerateClick = () => {
-    onUpdatePanel(panelIndex, { user_consistency_tags: userTagsAsArray });
-    onRegenerateImage(panelIndex);
-  };
+  const gridClass = colSpanClasses[panelData.layoutProps.gridCols] || 'col-span-2';
 
-  const handleRefineClick = () => {
-    onUpdatePanel(panelIndex, { user_consistency_tags: userTagsAsArray });
-    onRefineImage(panelIndex);
-  };
-
-  const handleUpdateTextElement = useCallback((elementId: string, updatedData: Partial<TextElementData>) => {
-      const updatedElements = panelData.text_elements.map(el => 
-          el.id === elementId ? { ...el, ...updatedData } : el
-      );
-      onUpdatePanel(panelIndex, { text_elements: updatedElements });
-  }, [panelData.text_elements, onUpdatePanel, panelIndex]);
-
-
-  const aspectRatioToClass = (aspectRatio: string) => {
-    // Since the app now exclusively generates 1:1 panels,
-    // this function is simplified but kept for structural integrity.
-    // It will always return 'aspect-square'.
-    return 'aspect-square';
-  }
-  
   const renderTextElement = (element: TextElementData) => {
-    if (element.role === 'caption') {
-      // Captions are rendered outside the draggable area.
-      return null;
-    }
-
-    const transformableContent = () => {
-        if (element.role === 'speech' || element.role === 'thought') {
-            return (
-                <Bubble
-                    // FIX: Assert type to BubbleData. The `if` check makes this safe as TypeScript 
-                    // was failing to narrow the type of `element` inside this closure.
-                    bubbleData={element as BubbleData}
-                    onUpdate={(updatedData) => handleUpdateTextElement(element.id, updatedData)}
-                >
-                    <EditableText
-                        initialText={element.text}
-                        onSave={(newText) => handleUpdateTextElement(element.id, { text: newText })}
-                        onEditingChange={setIsEditingText}
-                        className="font-special-elite text-center"
-                        textareaClassName="font-special-elite text-center"
-                    />
-                </Bubble>
-            );
-        }
-        if (element.role === 'sfx') {
-            return (
-                 <div className="sfx-text w-full h-full flex items-center justify-center text-center">
-                    <EditableText
-                      initialText={element.text}
-                      onSave={(newText) => handleUpdateTextElement(element.id, { text: newText })}
-                      onEditingChange={setIsEditingText}
-                      className="font-bangers text-4xl text-yellow-400 text-center"
-                      textareaClassName="font-bangers text-4xl text-yellow-400 text-center"
-                      style={{ WebkitTextStroke: '2px black' }}
-                    />
-                </div>
-            );
-        }
-        return null;
+    const handleSave = (newText: string) => {
+        handleUpdateTextElement(element.id, { text: newText });
     };
 
+    if (element.role === 'speech' || element.role === 'thought') {
+      return (
+        <Bubble
+          bubbleData={element as BubbleData}
+          onUpdate={(updatedBubbleData) => handleUpdateTextElement(element.id, updatedBubbleData)}
+        >
+          <TextScaler>
+            <EditableText
+              initialText={element.text}
+              onSave={handleSave}
+              className={`text-center font-bangers tracking-wider ${element.invertedColors ? 'text-white' : 'text-black'}`}
+            />
+          </TextScaler>
+        </Bubble>
+      );
+    }
+    
+    if (element.role === 'sfx') {
+        const sfxStyle: React.CSSProperties = {
+            WebkitTextStroke: '2px black',
+            paintOrder: 'stroke fill',
+            textShadow: '3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000',
+        };
+        return (
+            <TextScaler>
+                <EditableText
+                    initialText={element.text}
+                    onSave={handleSave}
+                    className="text-center font-bangers text-yellow-400 font-bold"
+                    style={sfxStyle}
+                />
+            </TextScaler>
+        );
+    }
+
+    if (element.role === 'caption') {
+        return (
+            <TextScaler>
+                <EditableText
+                    initialText={element.text}
+                    onSave={handleSave}
+                    className="text-center font-lora text-white bg-black/60 px-2 py-1"
+                />
+            </TextScaler>
+        );
+    }
+
     return (
-      <Transformable
-        key={element.id}
-        initialPosition={element.position}
-        initialSize={element.size}
-        onPositionChange={(pos) => handleUpdateTextElement(element.id, { position: pos })}
-        onSizeChange={(size) => handleUpdateTextElement(element.id, { size: size })}
-        boundaryRef={boundaryRef}
-        disableDrag={isEditingText}
-      >
-        {transformableContent()}
-      </Transformable>
+      <TextScaler>
+        <EditableText
+          initialText={element.text}
+          onSave={handleSave}
+        />
+      </TextScaler>
     );
   };
-
-  const caption = panelData.text_elements.find(el => el.role === 'caption');
-
+  
   return (
-    <div className={`panel-container bg-white border-2 border-black flex flex-col col-span-6 ${getGridSpanClass(layoutProps.gridCols)}`}>
-       <div ref={boundaryRef} className={`relative overflow-hidden border-b-2 border-black ${aspectRatioToClass(layoutProps.aspectRatio)}`}>
-        {isLoading && (
-          <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
-            <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black"></div>
-          </div>
-        )}
-        <img
-          src={`data:image/png;base64,${panelData.image}`}
-          alt={panelData.visual_prompt}
-          className="w-full h-full object-cover"
-        />
-        {panelData.text_elements.map(renderTextElement)}
+    <div className={`relative group flex flex-col border-2 border-black ${gridClass}`}>
+      <div className="relative w-full aspect-square">
+        <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
+          <img
+            src={`data:image/png;base64,${panelData.image}`}
+            alt={panelData.visual_prompt}
+            className="w-full h-full object-cover"
+          />
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
+              <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black"></div>
+            </div>
+          )}
+          
+          {panelData.text_elements.map(element => (
+            <Draggable
+              key={element.id}
+              initialPosition={element.position}
+              initialSize={element.size}
+              onPositionChange={(pos) => handleUpdateTextElement(element.id, { position: pos })}
+              onSizeChange={(size) => handleUpdateTextElement(element.id, { size: size })}
+              boundaryRef={boundaryRef}
+            >
+              {renderTextElement(element)}
+            </Draggable>
+          ))}
+        </div>
       </div>
 
-       <div className="caption text-center italic px-2 py-2 text-sm min-h-14 flex items-center justify-center">
-         {caption && (
-           <EditableText
-             initialText={caption.text}
-             onSave={(newText) => handleUpdateTextElement(caption.id, { text: newText })}
-             onEditingChange={setIsEditingText}
-             textareaClassName="text-center italic text-sm w-full"
-           />
-         )}
-       </div>
-      
-      <div className="flex items-center gap-2 mt-auto p-2 border-t border-gray-200 no-export">
-        <Tooltip text="Add keywords to refine this image (e.g., 'wearing a blue hat', 'sad expression').">
-          <NewComicIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
-        </Tooltip>
+      <div className="flex-grow"></div>
+
+      <div className="no-export bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
         <input
           type="text"
-          value={userTags}
+          value={panelData.user_consistency_tags.join(', ')}
           onChange={handleUserTagsChange}
-          onBlur={handleUserTagsBlur}
-          placeholder="Add refinement details..."
+          placeholder="e.g., 'wearing a red hat', 'add a dog'"
           className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:outline-none"
         />
-        <Tooltip text="Refine the image using the original as a base plus your new tags. Good for small changes.">
-          <button
-            onClick={handleRefineClick}
-            disabled={isLoading || isEditingText}
-            className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Refine panel image"
-          >
-            <SparklesIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
+        <Tooltip text="Refine image (small changes)">
+            <button onClick={() => onRefineImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded hover:bg-gray-200 disabled:opacity-50">
+              <WandIcon className="w-4 h-4" />
+            </button>
         </Tooltip>
-        <Tooltip text="Generate a completely new image from the original prompt plus your new tags. Good for major changes.">
-          <button 
-            onClick={handleRegenerateClick}
-            disabled={isLoading || isEditingText}
-            className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Regenerate panel image"
-          >
-            <RefreshIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
+        <Tooltip text="Regenerate image (major changes)">
+            <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded hover:bg-gray-200 disabled:opacity-50">
+              <RefreshIcon className="w-4 h-4" />
+            </button>
         </Tooltip>
       </div>
     </div>

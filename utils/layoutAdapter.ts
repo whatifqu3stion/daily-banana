@@ -1,55 +1,71 @@
+// utils/layoutAdapter.ts
+import { PlanPanel, LayoutProps } from '../types';
 
-import { PlanPanel } from '../types';
-
-/**
- * Defines the output shape of the layout adapter, providing a direct grid column span
- * and the aspect ratio passed through from the AI's plan.
- */
-export interface LayoutProps {
-  gridCols: number;
-  aspectRatio: PlanPanel['aspect_ratio'];
-}
-
-// A simplified type for the input to make the adapter more reusable.
-type PanelWithSize = { 
-    size?: PlanPanel['size'] | null;
-    aspect_ratio: PlanPanel['aspect_ratio'];
+const sizeToGridCols = (size: PlanPanel['size']): number => {
+    switch (size) {
+        case 'large': return 6;
+        case 'medium': return 3;
+        case 'small': return 2;
+        default: return 2;
+    }
 };
 
 /**
- * A pure function that takes an array of panels and returns an array of layout properties.
- * It translates a simple size hint ('small', 'medium', 'large') from the AI into a
- * column span for a 6-column responsive grid.
- *
- * @param panels An array of panel objects from the AI's plan.
- * @returns An array of `LayoutProps` objects with layout info for each panel.
+ * Adapts the AI's layout plan into a concrete grid layout.
+ * It translates 'small', 'medium', 'large' hints into column spans
+ * for a 6-column grid and adjusts them to fill rows neatly.
+ * @param panels The array of panel plans from the AI.
+ * @returns An array of LayoutProps for each panel.
  */
-export const layoutAdapter = (panels: PanelWithSize[]): LayoutProps[] => {
-    if (panels.length === 0) return [];
+export const layoutAdapter = (panels: PlanPanel[]): LayoutProps[] => {
+    if (!panels || panels.length === 0) {
+        return [];
+    }
 
-    return panels.map((panel) => {
-        let gridCols = 2; // Default for 'small'
-        switch (panel.size) {
-            case 'large':
-                gridCols = 6;
-                break;
-            case 'medium':
-                gridCols = 3;
-                break;
-            case 'small':
-            default:
-                gridCols = 2;
-                break;
+    const initialLayouts: LayoutProps[] = panels.map(panel => ({
+        gridCols: sizeToGridCols(panel.size),
+        aspectRatio: panel.aspect_ratio,
+    }));
+    
+    // Handle single panel case (e.g., magazine gag)
+    if (initialLayouts.length === 1) {
+        initialLayouts[0].gridCols = 6;
+        return initialLayouts;
+    }
+
+    const finalLayouts: LayoutProps[] = [];
+    let currentRow: LayoutProps[] = [];
+    let currentRowWidth = 0;
+
+    const flushRow = () => {
+        if (currentRow.length === 0) return;
+
+        const totalWidth = currentRow.reduce((sum, p) => sum + p.gridCols, 0);
+        
+        // Simple adjustment logic for common awkward cases.
+        // If a row has two panels and they don't fill the space, make them equal medium panels.
+        if (currentRow.length === 2 && totalWidth < 6) {
+            currentRow.forEach(p => p.gridCols = 3);
+        } 
+        // If a row has one panel that doesn't fill the space, make it a full-width large panel.
+        else if (currentRow.length === 1 && totalWidth < 6) {
+            currentRow[0].gridCols = 6;
         }
 
-        // To ensure a row of three small panels fits, we cap the total cols in a "logical row".
-        // This is a simple way to prevent awkward wrapping without complex look-ahead logic.
-        // We can refine this if needed, but it's a robust starting point.
-        // For now, the AI's creativity within the 3-6 panel limit is the primary driver.
-        
-        return { 
-            gridCols,
-            aspectRatio: panel.aspect_ratio || '1:1'
-        };
+        finalLayouts.push(...currentRow);
+        currentRow = [];
+        currentRowWidth = 0;
+    };
+
+    initialLayouts.forEach(layout => {
+        if (currentRow.length > 0 && currentRowWidth + layout.gridCols > 6) {
+            flushRow();
+        }
+        currentRow.push(layout);
+        currentRowWidth += layout.gridCols;
     });
+
+    flushRow(); // Flush the last row
+
+    return finalLayouts;
 };

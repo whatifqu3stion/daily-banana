@@ -10,165 +10,47 @@
 
     <!-- SEO: Meta Description -->
     <meta name="description" content="Create retro, full-color newspaper-style comic strips with The Daily Banana. Use our AI comic generator, powered by Gemini, to bring your stories to life." />
-
-    <!-- SEO: Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://daily-banana-comic.com/" />
-    <meta property="og:title" content="The Daily Banana | AI Newspaper Comic Generator" />
-    <meta property="og:description" content="Create retro, full-color newspaper-style comic strips with The Daily Banana. Use our AI comic generator, powered by Gemini, to bring your stories to life." />
-    <meta property="og:image" content="https://daily-banana-comic.com/social-preview.png" />
-
-    <!-- SEO: Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://daily-banana-comic.com/" />
-    <meta property="twitter:title" content="The Daily Banana | AI Newspaper Comic Generator" />
-    <meta property="twitter:description" content="Create retro, full-color newspaper-style comic strips with The Daily Banana. Use our AI comic generator, powered by Gemini, to bring your stories to life." />
-    <meta property="twitter:image" content="https://daily-banana-comic.com/social-preview.png" />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Lora:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
-    <style>
-      html {
-        background-color: #F3EAD3; /* Paper texture color */
-      }
-      body {
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-        position: relative; /* Required for the ::before pseudo-element */
-        background-color: transparent; /* Allow html background to show through */
-      }
-      body::before {
-        content: '';
-        position: fixed; /* Changed to fixed for viewport-relative masking */
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: -1;
-        background-image: radial-gradient(#D5CBB2 1.5px, transparent 1.5px), radial-gradient(#D5CBB2 1.5px, transparent 1.5px);
-        background-size: 16px 16px;
-        background-position: 0 0, 8px 8px;
-        /* A mask fades the pattern in from the middle of the screen */
-        mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 75%);
-        -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 75%);
-      }
-      .font-lora {
-        font-family: 'Lora', serif;
-      }
-      .font-bangers {
-        font-family: 'Bangers', cursive;
-      }
-      .font-special-elite {
-        font-family: 'Special Elite', monospace;
-      }
-      .tail-handle {
-        position: absolute;
-        width: 16px;
-        height: 16px;
-        background: black;
-        border: 2px solid white;
-        border-radius: 50%;
-        cursor: grab;
-        transform: translate(-50%, -50%);
-        opacity: 0;
-        transition: opacity 0.2s;
-        z-index: 20; /* Ensure handle is on top */
-      }
-      .group:hover .tail-handle {
-        opacity: 1;
-      }
-      .tail-handle:active {
-        cursor: grabbing;
-      }
-      /* Override browser autofill styles that turn the topic input gray */
-      input:-webkit-autofill,
-      input:-webkit-autofill:hover,
-      input:-webkit-autofill:focus,
-      input:-webkit-autofill:active {
-          -webkit-text-fill-color: #000;
-          /* Use the same color as bg-stone-100 */
-          -webkit-box-shadow: 0 0 0px 1000px #f5f5f4 inset;
-          transition: background-color 5000s ease-in-out 0s;
-          font-family: 'Special Elite', monospace;
-      }
-
-      /* Delightful button interaction */
-      .generate-button {
-        transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, background-color 0.15s ease-out;
-      }
-
-      .generate-button:hover, .generate-button:focus-visible {
-        transform: translate(-5px, -5px);
-        box-shadow: 5px 5px 0 0 black;
-        background-color: #FACC15; /* Banana Yellow (yellow-400) */
-        color: black;
-      }
-
-      .generate-button:active {
-          transform: translate(-2px, -2px);
-          box-shadow: 2px 2px 0 0 black;
-      }
-
-      /* Blinking cursor for typewriter effect */
-      @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
-      }
-      .blinking-cursor {
-        animation: blink 1s step-end infinite;
-      }
-    </style>
-<!-- SEO: JSON-LD Structured Data -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "The Daily Banana",
-  "operatingSystem": "WEB",
-  "applicationCategory": "DesignApplication",
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "ratingCount": "89"
-  },
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
-  },
-  "description": "An AI-powered tool to generate retro, newspaper-style comic strips.",
-  "creator": {
-    "@type": "Person",
-    "name": "SummitSatoshi"
-  }
-}
-</script>
-<script type="importmap">
+    
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react": "https://esm.sh/react@^18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@^18.3.1/client",
+    "html-to-image": "https://esm.sh/html-to-image@^1.11.11",
+    "@google/genai": "https://esm.sh/@google/genai",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0",
-    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.13"
+    "react/": "https://aistudiocdn.com/react@^19.1.1/"
   }
 }
 </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Lora:ital,wght@0,400..700;1,400..700&family=Special+Elite&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Lora', serif;
+      }
+      .font-bangers { font-family: 'Bangers', cursive; }
+      .font-lora { font-family: 'Lora', serif; }
+      .font-special-elite { font-family: 'Special Elite', cursive; }
+      .blinking-cursor {
+        font-weight: 100;
+        animation: 1s blink step-end infinite;
+      }
+      @keyframes blink {
+        from, to { color: transparent; }
+        50% { color: black; }
+      }
+      .line-clamp-2 {
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+    </style>
 </head>
-<body class="text-black">
-<div id="root"></div>
-
-<!-- SVG definition for the thought bubble -->
-<svg width="0" height="0">
-  <defs>
-    <symbol id="thought-bubble-symbol" viewBox="0 0 1 1" preserveAspectRatio="none">
-      <path d="M0.5,0.05 C0.2,0.05 0.05,0.25 0.1,0.5 C0.05,0.75 0.2,0.95 0.5,0.95 C0.8,0.95 0.95,0.75 0.9,0.5 C0.95,0.25 0.8,0.05 0.5,0.05Z"
-            stroke-width="0.05" stroke-linejoin="round" stroke-linecap="round" />
-    </symbol>
-  </defs>
-</svg>
-
-<script type="module" src="/index.tsx"></script>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>

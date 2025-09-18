@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ElementPosition, ElementSize } from '../types';
 
-interface TransformableProps {
+interface DraggableProps {
   children: React.ReactNode;
   initialPosition: ElementPosition;
   initialSize: ElementSize;
@@ -12,7 +11,7 @@ interface TransformableProps {
   disableDrag?: boolean;
 }
 
-const Transformable: React.FC<TransformableProps> = ({ children, initialPosition, initialSize, onPositionChange, onSizeChange, boundaryRef, disableDrag = false }) => {
+const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initialSize, onPositionChange, onSizeChange, boundaryRef, disableDrag = false }) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -186,4 +185,4 @@ const Transformable: React.FC<TransformableProps> = ({ children, initialPosition
   );
 };
 
-export default Transformable;
+export default Draggable;

@@ -182,7 +182,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 className="flex-shrink-0 inline-flex items-center justify-center gap-2 px-4 h-14 bg-stone-100 text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-none text-lg font-special-elite"
               >
                 <NewspaperIcon className="w-5 h-5" />
-                <span className="sm:hidden">Suggest from Headlines</span>
+                <span className="hidden sm:inline">Suggest from Headlines</span>
               </button>
             </Tooltip>
           </div>
@@ -254,7 +254,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           </Tooltip>
           <select
             id="illustrationStyle"
-            name="illustrationStyle-select"
+            name="illustrationStyle"
             value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
             onChange={handleIllustrationStyleChange}
             className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
@@ -267,95 +267,96 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             <option value="custom">Write my own...</option>
           </select>
           {showFreeTextIllustrationStyle && (
-              <textarea
-                id="illustrationStyle-custom"
-                name="illustrationStyle"
-                value={formData.illustrationStyle || ''}
-                onChange={handleChange}
-                className="w-full p-3 mt-2 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors h-24"
-                placeholder="e.g., A minimalist style with thick outlines and a muted, pastel color palette..."
-                maxLength={250}
-                autoFocus
-              />
-            )}
+            <input
+              type="text"
+              id="illustrationStyle-custom"
+              name="illustrationStyle"
+              value={formData.illustrationStyle || ''}
+              onChange={handleChange}
+              className="w-full p-3 mt-2 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+              placeholder="Describe your custom style..."
+              maxLength={160}
+              autoFocus
+            />
+          )}
         </div>
-
+        
         <div>
-          <Tooltip text="Upload images of characters, objects, or settings. The AI uses these as a strong visual guide to maintain consistency across panels.">
-            <label className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
-              Reference Images (Encouraged for specific characters, comic style or settings)
+          <Tooltip text="Upload reference images for characters, objects, or styles (optional).">
+            <label htmlFor="referenceImages" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+              Reference Images (Optional)
             </label>
           </Tooltip>
-          {referenceImages.length > 0 && (
-            <div className="space-y-3 mb-3">
-              {referenceImages.map((image, index) => (
-                <div key={index} className="flex items-center gap-3 p-2 border-2 border-gray-300 bg-stone-50">
-                  <img src={image.previewUrl} alt={`preview ${index}`} className="w-16 h-16 object-cover border-2 border-black" />
-                  <div className="flex-grow">
-                    <Tooltip text="Give this image a name or tag (e.g., 'Senator Higgins', 'The Oval Office'). The AI uses this to understand what the image represents.">
-                      <input
-                        type="text"
-                        value={image.tag}
-                        onChange={(e) => handleTagChange(index, e.target.value)}
-                        placeholder="Tag (e.g., character, setting)"
-                        className="w-full p-2 bg-stone-100 border-2 border-black text-sm font-special-elite focus:outline-none focus:ring-1 focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
-                      />
-                    </Tooltip>
+          <div className="mt-2 p-4 border-2 border-dashed border-black">
+            <input
+              type="file"
+              id="referenceImages"
+              name="referenceImages"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              multiple
+              accept="image/png, image/jpeg, image/webp"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full p-4 bg-gray-200 hover:bg-gray-300 transition-colors text-black font-special-elite"
+            >
+              Click to Upload Images
+            </button>
+            {referenceImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {referenceImages.map((image, index) => (
+                  <div key={index} className="relative border border-black">
+                    <img src={image.previewUrl} alt={`Reference ${index + 1}`} className="w-full h-24 object-cover" />
+                    <input
+                      type="text"
+                      value={image.tag}
+                      onChange={(e) => handleTagChange(index, e.target.value)}
+                      placeholder="Tag (e.g., 'main character')"
+                      className="w-full text-xs p-1 border-t border-black focus:outline-none focus:ring-1 focus:ring-black"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-0 right-0 m-1 bg-black/50 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-black"
+                      aria-label={`Remove image ${index + 1}`}
+                    >
+                      &times;
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(index)}
-                    className="px-2 py-1 text-xs font-bold text-red-700 hover:text-red-500"
-                    aria-label={`Remove image ${index + 1}`}
-                  >
-                    REMOVE
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-          <label htmlFor="file-upload" className="flex flex-col items-center justify-center w-full h-32 px-4 transition bg-stone-50 border-2 border-black border-dashed cursor-pointer hover:bg-stone-200">
-              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <svg className="w-8 h-8 mb-2 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                      <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                  </svg>
-                  <p className="mb-2 text-sm text-gray-700">
-                    <span className="font-semibold">Click to add images</span> or drag and drop
-                  </p>
-                  <p className={`text-sm text-gray-600`}>
-                    PNG, JPG, or WEBP (MAX. 2MB)
-                  </p>
+                ))}
               </div>
-              <input id="file-upload" ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg, image/webp" multiple />
-          </label>
+            )}
+          </div>
         </div>
 
-        <div className="pt-4 space-y-4">
-            <div className="flex justify-center">
-                <Tooltip text="Generate multiple distinct story ideas to choose from. This takes longer but offers more creative options.">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            name="brainstormMode"
-                            checked={formData.brainstormMode}
-                            onChange={handleChange}
-                            className="h-5 w-5 rounded border-gray-300 text-black focus:ring-black"
-                        />
-                        <span className="text-lg font-special-elite">Brainstorm Multiple Story Ideas</span>
-                    </label>
-                </Tooltip>
-            </div>
+        <div className="flex items-center justify-between">
+          <Tooltip text="Generate 3 different story ideas to choose from instead of just one.">
+            <label htmlFor="brainstormMode" className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                id="brainstormMode"
+                name="brainstormMode"
+                checked={formData.brainstormMode}
+                onChange={handleChange}
+                className="h-5 w-5 accent-black"
+              />
+              <span className="text-lg font-bold tracking-wide font-special-elite">Brainstorm Mode</span>
+            </label>
+          </Tooltip>
+        </div>
 
-            <div className="text-center">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="generate-button inline-flex items-center justify-center gap-3 px-12 py-4 bg-black text-white font-bangers text-2xl tracking-wider border-2 border-black disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors rounded-none"
-              >
-                <SparklesIcon className="w-6 h-6" />
-                Generate Comic
-              </button>
-            </div>
+        <div className="pt-4 border-t-4 border-black">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-black text-white font-bangers text-2xl tracking-wider border-2 border-black hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <SparklesIcon className={`w-6 h-6 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Generating...' : 'Generate Comic Plan'}
+          </button>
         </div>
       </form>
     </>

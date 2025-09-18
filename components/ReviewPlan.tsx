@@ -1,88 +1,21 @@
-import React, { useState, useCallback } from 'react';
-import { ComicPlan, PlanPanel, ComicFormData, ProcessedReferenceImage } from '../types';
-import { layoutAdapter, LayoutProps } from '../utils/layoutAdapter';
+// components/ReviewPlan.tsx
+import React, { useState } from 'react';
+import { ComicPlan, ComicFormData, ProcessedReferenceImage, LayoutProps } from '../types';
 import { geminiService } from '../services/geminiService';
-import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
-import NewComicIcon from './icons/NewComicIcon';
 import SparklesIcon from './icons/SparklesIcon';
-import ChevronLeftIcon from './icons/ChevronLeftIcon';
-import ChevronRightIcon from './icons/ChevronRightIcon';
+import NewComicIcon from './icons/NewComicIcon';
+import Tooltip from './Tooltip';
 
-
-// A slimmed-down version of the Panel's refinement UI
-const RefinementControls: React.FC<{
-    panelData: { image: string, visual_prompt: string, consistency_tags: string[] };
-    formData: ComicFormData;
+interface ReviewData {
+    plan: ComicPlan;
+    firstPanelImage: string; // base64
     userProvidedImages: ProcessedReferenceImage[];
-    onNewImage: (base64: string) => void;
-}> = ({ panelData, formData, userProvidedImages, onNewImage }) => {
-    const [isLoading, setIsLoading] = useState(false);
-    const [userTags, setUserTags] = useState('');
-    const [error, setError] = useState<string|null>(null);
-
-    const handleRefine = async () => {
-        if (!userTags.trim()) {
-            setError("Please add refinement details to describe the change.");
-            return;
-        }
-        setIsLoading(true);
-        setError(null);
-        try {
-            const newImage = await geminiService.refinePanelImage(
-                panelData.image,
-                userTags,
-                formData.illustrationStyle,
-                // FIX: Corrected a typo. The `ComicFormData` type has `comedicStyle`, not `tone`.
-                formData.comedicStyle,
-                userProvidedImages
-            );
-            onNewImage(newImage);
-        } catch (err) {
-            setError("Failed to refine image. Please try again.");
-            console.error(err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-      <div className="bg-stone-50 p-3 border-t-2 border-black">
-        {error && <p className="text-red-600 text-sm mb-2 text-center">{error}</p>}
-        <div className="flex items-center gap-2">
-            <Tooltip text="Add keywords to refine this image (e.g., 'wearing a blue hat', 'sad expression').">
-                <NewComicIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
-            </Tooltip>
-            <input
-                type="text"
-                value={userTags}
-                onChange={(e) => { setUserTags(e.target.value); setError(null); }}
-                placeholder="Refine style, character, etc..."
-                className="w-full text-sm p-2 bg-gray-100 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:outline-none"
-            />
-            <Tooltip text="Refine the image using your new tags. Good for small changes.">
-                <button
-                    onClick={handleRefine}
-                    disabled={isLoading}
-                    className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
-                    aria-label="Refine panel image"
-                >
-                    <SparklesIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
-                </button>
-            </Tooltip>
-        </div>
-      </div>
-    );
-};
-
+    panelLayouts: LayoutProps[];
+}
 
 interface ReviewPlanProps {
-    reviewData: {
-        plan: ComicPlan;
-        firstPanelImage: string;
-        userProvidedImages: ProcessedReferenceImage[];
-        panelLayouts: LayoutProps[];
-    };
+    reviewData: ReviewData;
     formData: ComicFormData;
     onContinue: () => void;
     onReturnToForm: () => void;
@@ -98,103 +31,147 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
     onRegenerateConcept,
     onUpdateReviewImage
 }) => {
-    const { plan, firstPanelImage, userProvidedImages } = reviewData;
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [refinementTags, setRefinementTags] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleNext = () => {
-        setCurrentIndex(prev => Math.min(prev + 1, plan.panels.length - 1));
+    const firstPanelPlan = reviewData.plan.panels[0];
+
+    const handleRefine = async () => {
+        if (!refinementTags) {
+            setError('Please enter some refinement details to describe the change.');
+            return;
+        }
+        setIsLoading(true);
+        setError(null);
+        try {
+            const newImage = await geminiService.refinePanelImage(
+                reviewData.firstPanelImage,
+                refinementTags,
+                formData.illustrationStyle,
+                formData.comedicStyle,
+                reviewData.userProvidedImages
+            );
+            onUpdateReviewImage(newImage);
+        } catch (err: any) {
+            setError(err.message || "Image refinement failed. Please try again.");
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handlePrev = () => {
-        setCurrentIndex(prev => Math.max(prev - 1, 0));
+    const handleRegenerate = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const userTags = refinementTags.split(',').map(t => t.trim()).filter(Boolean);
+            const consistencyTags = [...firstPanelPlan.consistency_tags, ...userTags];
+            const newImage = await geminiService.generatePanelImageWithReferences(
+                firstPanelPlan.visual_prompt,
+                consistencyTags,
+                formData.illustrationStyle,
+                formData.comedicStyle,
+                reviewData.userProvidedImages
+            );
+            onUpdateReviewImage(newImage);
+        } catch (err: any) {
+            setError(err.message || "Image regeneration failed. Please try again.");
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
     };
-
-    const currentPanel = plan.panels[currentIndex];
 
     return (
-        <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-6">
+        <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
             <div className="text-center">
                 <h2 className="text-2xl font-bold font-special-elite">Review Your Comic Plan</h2>
-                <p className="text-lg font-lora">Here's the script and a preview of the art style. Refine the first panel to lock in the look, then continue.</p>
+                <p className="text-lg font-lora">Here's the plan for your comic. You can refine the first panel before generating the full strip.</p>
             </div>
 
-            <div className="w-full bg-stone-100 border-4 border-black">
-                <header className="text-center p-4 border-b-4 border-black">
-                    <h3 className="text-3xl font-bangers tracking-wider">{plan.title}</h3>
-                </header>
+            {error && (
+                <div className="w-full text-center my-2 p-3 bg-red-100 rounded-md border border-red-300">
+                    <p className="text-red-800 font-bold">{error}</p>
+                </div>
+            )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 min-h-[400px]">
-                    {/* Left side: Panel Image (only for first panel) */}
-                    <div className="flex flex-col justify-center items-center p-4 border-b-2 md:border-b-0 md:border-r-2 border-black">
-                         {currentIndex === 0 ? (
-                            <div className="w-full max-w-sm flex flex-col border-2 border-black">
-                                <img
-                                    src={`data:image/png;base64,${firstPanelImage}`}
-                                    alt="Preview of the first panel's art style"
-                                    className="w-full aspect-square object-cover"
-                                />
-                                <RefinementControls 
-                                    panelData={{
-                                        image: firstPanelImage,
-                                        visual_prompt: plan.panels[0].visual_prompt,
-                                        consistency_tags: plan.panels[0].consistency_tags
-                                    }}
-                                    formData={formData}
-                                    userProvidedImages={userProvidedImages}
-                                    onNewImage={onUpdateReviewImage}
-                                />
-                            </div>
-                         ) : (
-                            <div className="text-center text-gray-500 p-8">
-                                <p className="font-bold">Panel {currentIndex + 1}</p>
-                                <p>The image for this panel will be generated using the style from the first panel.</p>
-                            </div>
-                         )}
-                    </div>
-
-                    {/* Right side: Panel Details */}
-                    <div className="p-6 flex flex-col">
-                        <p className="font-bold text-lg mb-2 font-special-elite">
-                            Panel {currentIndex + 1} of {plan.panels.length}: <span className="font-normal">{currentPanel.slug}</span>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left side: Plan details */}
+                <div className="bg-stone-100 border-4 border-black p-6 flex flex-col">
+                    <header className="text-center pb-4 border-b-2 border-black">
+                        <h3 className="text-3xl font-bangers tracking-wider">{reviewData.plan.title}</h3>
+                        <p className="text-lg font-lora italic text-gray-800 mt-2">
+                            "{reviewData.plan.summary}"
                         </p>
-                        
-                        <div className="space-y-4 text-sm font-lora italic text-gray-800 mb-4 flex-grow">
-                             <p><strong>Visual:</strong> {currentPanel.visual_prompt}</p>
-                             {currentPanel.text_elements.map((el, i) => (
-                                <p key={i}>
-                                    <strong>{el.role.toUpperCase()}:</strong> "{el.text}"
-                                </p>
-                             ))}
+                    </header>
+                    <div className="mt-4 space-y-4 overflow-y-auto max-h-[400px] pr-2">
+                        {reviewData.plan.panels.map((panel, index) => (
+                            <div key={panel.slug} className="text-sm border-b border-gray-300 pb-2">
+                                <h4 className="font-bold font-special-elite">Panel {index + 1}:</h4>
+                                <p className="font-lora text-gray-700">{panel.visual_prompt}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Right side: Image preview and controls */}
+                <div className="flex flex-col">
+                    <div className="bg-white border-2 border-black flex flex-col">
+                        <div className="relative aspect-square border-b-2 border-black">
+                             {isLoading && (
+                                <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
+                                    <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black"></div>
+                                </div>
+                            )}
+                            <img
+                                src={`data:image/png;base64,${reviewData.firstPanelImage}`}
+                                alt="First panel preview"
+                                className="w-full h-full object-cover"
+                            />
                         </div>
-                        
-                        <div className="flex justify-between items-center mt-auto pt-4">
-                            <button onClick={handlePrev} disabled={currentIndex === 0} className="disabled:opacity-40">
-                                <ChevronLeftIcon className="w-8 h-8" />
-                            </button>
-                            <span className="font-special-elite">{currentIndex + 1} / {plan.panels.length}</span>
-                            <button onClick={handleNext} disabled={currentIndex === plan.panels.length - 1} className="disabled:opacity-40">
-                                 <ChevronRightIcon className="w-8 h-8" />
-                            </button>
+                        <div className="flex items-center gap-2 p-2 border-t border-gray-200">
+                             <Tooltip text="Add keywords to refine this image (e.g., 'wearing a blue hat', 'sad expression').">
+                                <NewComicIcon className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                            </Tooltip>
+                            <input
+                                type="text"
+                                value={refinementTags}
+                                onChange={(e) => setRefinementTags(e.target.value)}
+                                placeholder="Add refinement details..."
+                                className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:outline-none"
+                            />
+                            <Tooltip text="Refine the image using the original as a base plus your new tags. Good for small changes.">
+                                <button onClick={handleRefine} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50">
+                                    <SparklesIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                </button>
+                            </Tooltip>
+                            <Tooltip text="Generate a completely new image from the original prompt plus your new tags. Good for major changes.">
+                                <button onClick={handleRegenerate} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50">
+                                    <RefreshIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                </button>
+                            </Tooltip>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div className="w-full flex justify-center items-center gap-4 pt-4">
-                <Tooltip text="Go back and change the topic or style.">
+                <Tooltip text="Go back and change the topic or choose a different story idea.">
                     <button onClick={onReturnToForm} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded">
-                        Start Over
+                        Go Back
                     </button>
                 </Tooltip>
-                 <Tooltip text="Generate a completely new story and style preview.">
+                <Tooltip text="Generate a completely new comic concept with the same settings.">
                     <button onClick={onRegenerateConcept} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded">
                         <RefreshIcon className="w-5 h-5" />
                         New Concept
                     </button>
                 </Tooltip>
-                <Tooltip text="Looks good! Generate the full comic strip.">
+                <Tooltip text="Looks good! Generate the rest of the comic panels." wrapperClassName="generate-button-wrapper">
                     <button onClick={onContinue} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-none">
-                        Generate Full Comic
+                        <SparklesIcon className="w-6 h-6" />
+                        Continue Generation
                     </button>
                 </Tooltip>
             </div>
