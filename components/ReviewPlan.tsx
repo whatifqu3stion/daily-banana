@@ -1,3 +1,4 @@
+
 // components/ReviewPlan.tsx
 import React, { useState } from 'react';
 import { ComicPlan, ComicFormData, ProcessedReferenceImage, LayoutProps } from '../types';
@@ -86,8 +87,8 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
     return (
         <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
             <div className="text-center">
-                <h2 className="text-2xl font-bold font-special-elite">Review Your Comic Plan</h2>
-                <p className="text-lg font-lora">Here's the plan for your comic. You can refine the first panel before generating the full strip.</p>
+                <h2 className="text-2xl font-bold font-special-elite text-black">Review Your Comic Plan</h2>
+                <p className="text-lg font-lora text-black">Here's the plan for your comic. You can refine the first panel before generating the full strip.</p>
             </div>
 
             {error && (
@@ -98,7 +99,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
 
             <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left side: Plan details */}
-                <div className="bg-stone-100 border-4 border-black p-6 flex flex-col">
+                <div className="bg-paper-light border-4 border-black p-6 flex flex-col">
                     <header className="text-center pb-4 border-b-2 border-black">
                         <h3 className="text-3xl font-bangers tracking-wider">{reviewData.plan.title}</h3>
                         <p className="text-lg font-lora italic text-gray-800 mt-2">
@@ -139,15 +140,15 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                                 value={refinementTags}
                                 onChange={(e) => setRefinementTags(e.target.value)}
                                 placeholder="Add refinement details..."
-                                className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:outline-none"
+                                className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none"
                             />
                             <Tooltip text="Refine the image using the original as a base plus your new tags. Good for small changes.">
-                                <button onClick={handleRefine} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50">
+                                <button onClick={handleRefine} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded-md disabled:opacity-50">
                                     <SparklesIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                                 </button>
                             </Tooltip>
                             <Tooltip text="Generate a completely new image from the original prompt plus your new tags. Good for major changes.">
-                                <button onClick={handleRegenerate} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded disabled:opacity-50">
+                                <button onClick={handleRegenerate} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded-md disabled:opacity-50">
                                     <RefreshIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                                 </button>
                             </Tooltip>
@@ -156,20 +157,20 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 </div>
             </div>
 
-            <div className="w-full flex justify-center items-center gap-4 pt-4">
+            <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
                 <Tooltip text="Go back and change the topic or choose a different story idea.">
-                    <button onClick={onReturnToForm} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded">
+                    <button onClick={onReturnToForm} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md">
                         Go Back
                     </button>
                 </Tooltip>
                 <Tooltip text="Generate a completely new comic concept with the same settings.">
-                    <button onClick={onRegenerateConcept} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded">
+                    <button onClick={onRegenerateConcept} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md">
                         <RefreshIcon className="w-5 h-5" />
                         New Concept
                     </button>
                 </Tooltip>
                 <Tooltip text="Looks good! Generate the rest of the comic panels." wrapperClassName="generate-button-wrapper">
-                    <button onClick={onContinue} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-none">
+                    <button onClick={onContinue} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-md">
                         <SparklesIcon className="w-6 h-6" />
                         Continue Generation
                     </button>

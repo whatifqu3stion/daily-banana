@@ -6,6 +6,7 @@ import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 // According to guidelines, API key must be from process.env.API_KEY
 // The user has been instructed that this will be available.
+// FIX: Changed from `import.meta.env.API_KEY` to `process.env.API_KEY` to adhere to API guidelines and resolve the TypeScript error.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Schemas for comic plan generation
@@ -144,6 +145,30 @@ If reference images are provided, use them as a strong visual guide for characte
 
 // --- API Functions ---
 
+// FIX: A more robust sanitization function to prevent crashes from malformed AI responses.
+const sanitizeComicPlan = (plan: any): ComicPlan => {
+    if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
+        // If the top-level structure is wrong, return a minimal valid structure.
+        return { title: 'Invalid Plan', summary: 'AI returned a malformed plan.', panels: [] };
+    }
+
+    const panels = Array.isArray(plan.panels) ? plan.panels : [];
+    
+    const sanitizedPanels = panels
+      .filter((p: any) => p && typeof p === 'object' && !Array.isArray(p))
+      .map((p: any) => ({
+        ...p,
+        consistency_tags: Array.isArray(p.consistency_tags) ? p.consistency_tags : [],
+        text_elements: Array.isArray(p.text_elements) ? p.text_elements : [],
+      }));
+
+    return {
+        title: plan.title || 'Untitled Comic',
+        summary: plan.summary || 'No summary provided.',
+        panels: sanitizedPanels,
+    };
+};
+
 const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
     const prompt = constructPlanPrompt(formData, 1);
     const parts = [
@@ -167,15 +192,8 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
 
     try {
         const jsonText = result.text.trim();
-        const plan = JSON.parse(jsonText) as ComicPlan;
-
-        // FIX: Defensively sanitize the AI's output to prevent crashes.
-        // This ensures `panels` is always a valid array, even if the AI omits it.
-        if (plan) {
-            plan.panels = (plan.panels || []).filter(Boolean); // Handle missing array and null entries.
-        }
-
-        return plan;
+        const rawPlan = JSON.parse(jsonText);
+        return sanitizeComicPlan(rawPlan);
     } catch (e) {
         console.error("Failed to parse comic plan JSON:", e);
         console.error("Received text:", result.text);
@@ -206,22 +224,16 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
 
     try {
         const jsonText = result.text.trim();
-        const plans = JSON.parse(jsonText) as ComicPlan[];
+        const rawPlans = JSON.parse(jsonText);
 
-        if (!Array.isArray(plans)) {
-            console.error("AI did not return an array for multiple plans. Received:", plans);
+        if (!Array.isArray(rawPlans)) {
+            console.error("AI did not return an array for multiple plans. Received:", rawPlans);
             throw new Error("The AI returned an invalid set of story ideas. Please try regenerating.");
         }
         
-        // Filter out any null/undefined plans from the top-level array.
-        const validPlans = plans.filter(Boolean);
+        // Sanitize each plan within the array.
+        return rawPlans.map(sanitizeComicPlan);
 
-        // FIX: Defensively sanitize the panels within each valid plan.
-        validPlans.forEach(plan => {
-            plan.panels = (plan.panels || []).filter(Boolean);
-        });
-
-        return validPlans;
     } catch (e) {
         console.error("Failed to parse multiple comic plans JSON:", e);
         console.error("Received text:", result.text);

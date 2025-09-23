@@ -2,9 +2,8 @@
 import { NewsStory } from '../types';
 
 const RSS_FEED_URL = 'https://feeds.npr.org/1001/rss.xml';
-// FIX: Switched from the unreliable corsproxy.io to a different proxy
-// to resolve the "Failed to fetch" error.
-const PROXY_URL = `https://thingproxy.freeboard.io/fetch/${RSS_FEED_URL}`;
+// FIX: Switched to a different CORS proxy to resolve "Failed to fetch" errors.
+const PROXY_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(RSS_FEED_URL)}`;
 
 /**
  * A client-side utility to strip HTML tags and then decode any leftover HTML entities.
@@ -28,51 +27,41 @@ export const getTopStories = async (): Promise<NewsStory[]> => {
     try {
         const response = await fetch(PROXY_URL, { signal: controller.signal });
         if (!response.ok) {
-            throw new Error(`Failed to fetch news feed. Status: ${response.status}`);
+            throw new Error(`Failed to fetch news feed. Status: ${response.statusText}`);
         }
         
-        const xmlString = await response.text();
-
-        if (!xmlString) {
-            throw new Error("Proxy did not return content from the news feed.");
-        }
-
+        const text = await response.text();
         const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlString, "application/xml");
-        
-        const errorNode = xmlDoc.querySelector("parsererror");
-        if (errorNode) {
-            console.error("XML Parsing Error:", errorNode.textContent);
-            throw new Error("Failed to parse the news feed XML.");
+        const xml = parser.parseFromString(text, 'application/xml');
+
+        const parseError = xml.querySelector('parsererror');
+        if (parseError) {
+            console.error('XML Parsing Error:', parseError.textContent);
+            throw new Error('Failed to parse the news feed. The format may be invalid.');
         }
-
-        const items = Array.from(xmlDoc.querySelectorAll("item")).slice(0, 10);
         
-        const stories: NewsStory[] = items.map(item => {
-            const title = item.querySelector("title")?.textContent?.trim() || 'Untitled Story';
-            
-            // Look for description, with a fallback to content:encoded for wider RSS compatibility.
-            const rawDescription = item.querySelector("description")?.textContent?.trim() 
-                                || item.querySelector("content\\:encoded")?.textContent?.trim() 
-                                || 'No description available.';
-            
-            const description = cleanAndDecodeHtml(rawDescription);
-
-            return { title, description };
+        const items = Array.from(xml.querySelectorAll('item'));
+        const stories: NewsStory[] = items.slice(0, 10).map(item => { // Limit to 10 stories
+            const title = item.querySelector('title')?.textContent || 'No Title';
+            const description = item.querySelector('description')?.textContent || 'No Description';
+            return {
+                title: cleanAndDecodeHtml(title),
+                description: cleanAndDecodeHtml(description),
+            };
         });
 
         if (stories.length === 0) {
-            throw new Error("No news stories were found in the feed.");
+            throw new Error('No news stories found in the feed.');
         }
 
         return stories;
 
     } catch (error: any) {
-        console.error("Error fetching or parsing news stories:", error);
         if (error.name === 'AbortError') {
-             throw new Error("The request for news stories timed out. Please try again.");
+            throw new Error('The request for news stories timed out.');
         }
-        throw new Error("Could not fetch top stories. Please try again later or enter a topic manually.");
+        // Re-throw other errors, including the custom ones from above
+        throw error;
     } finally {
         clearTimeout(timeoutId);
     }

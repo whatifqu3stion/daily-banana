@@ -150,15 +150,15 @@ const Panel: React.FC<PanelProps> = ({
           value={panelData.user_consistency_tags.join(', ')}
           onChange={handleUserTagsChange}
           placeholder="e.g., 'wearing a red hat', 'add a dog'"
-          className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded focus:ring-1 focus:ring-black focus:outline-none"
+          className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none"
         />
         <Tooltip text="Refine image (small changes)">
-            <button onClick={() => onRefineImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded hover:bg-gray-200 disabled:opacity-50">
+            <button onClick={() => onRefineImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded-md hover:bg-gray-200 disabled:opacity-50">
               <WandIcon className="w-4 h-4" />
             </button>
         </Tooltip>
         <Tooltip text="Regenerate image (major changes)">
-            <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded hover:bg-gray-200 disabled:opacity-50">
+            <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded-md hover:bg-gray-200 disabled:opacity-50">
               <RefreshIcon className="w-4 h-4" />
             </button>
         </Tooltip>

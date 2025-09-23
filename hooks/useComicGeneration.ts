@@ -181,7 +181,9 @@ export default function useComicGeneration() {
       panelImages = [...panelImages, ...remainingImages];
       
       const finalPanels: PanelData[] = reviewData.plan.panels.map((planPanel, index) => {
-        const textElements = planPanel.text_elements.map(te => ({
+        // FIX: Add a defensive check to prevent a crash if the AI omits text_elements.
+        // This ensures the .map function is always called on a valid array.
+        const textElements = (planPanel.text_elements || []).map(te => ({
           ...te,
           id: crypto.randomUUID(),
           position: { x: '50%', y: te.role === 'caption' ? '85%' : '20%' },
@@ -195,7 +197,8 @@ export default function useComicGeneration() {
           image: panelImages[index],
           visual_prompt: planPanel.visual_prompt,
           text_elements: textElements,
-          consistency_tags: planPanel.consistency_tags,
+          // FIX: Add a defensive check for consistency_tags as well.
+          consistency_tags: planPanel.consistency_tags || [],
           user_consistency_tags: [],
           layoutProps: reviewData.panelLayouts[index],
         };

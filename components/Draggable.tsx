@@ -179,7 +179,7 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
       </div>
       <div
         onMouseDown={handleResizeStart}
-        className="absolute -right-1 -bottom-1 w-4 h-4 bg-black border-2 border-white rounded-full cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute -right-1.5 -bottom-1.5 w-5 h-5 bg-black border-2 border-white rounded-full cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
       />
     </div>
   );

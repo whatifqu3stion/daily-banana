@@ -4,7 +4,7 @@
 export type Stance = 'supportive' | 'critical' | 'neutral' | (string & {});
 
 // Defines the method or style of humor for the comic.
-export type ComedicStyle = 'satirical' | 'ironic' | 'deadpan' | 'absurdist' | 'slapstick';
+export type ComedicStyle = 'satirical' | 'ironic' | 'deadpan' | 'absurdist' | 'slapstick' | (string & {});
 
 // Defines the stages of the application's UI flow.
 export type AppStage = 'form' | 'story-swipe' | 'review' | 'strip';

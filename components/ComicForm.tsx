@@ -6,6 +6,7 @@ import SparklesIcon from './icons/SparklesIcon';
 import NewspaperIcon from './icons/NewspaperIcon';
 import NewsSelector from './NewsSelector';
 import Tooltip from './Tooltip';
+import UploadIcon from './icons/UploadIcon';
 
 interface ComicFormProps {
   onSubmit: (formData: ComicFormData) => void;
@@ -27,6 +28,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     brainstormMode: false,
   });
   const [showFreeTextStance, setShowFreeTextStance] = useState(false);
+  const [showFreeTextComedicStyle, setShowFreeTextComedicStyle] = useState(false);
   const [showFreeTextIllustrationStyle, setShowFreeTextIllustrationStyle] = useState(false);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,6 +105,17 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
   
+  const handleComedicStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    if (value === 'custom') {
+      setShowFreeTextComedicStyle(true);
+      setFormData((prev) => ({ ...prev, comedicStyle: '' }));
+    } else {
+      setShowFreeTextComedicStyle(false);
+      setFormData((prev) => ({ ...prev, comedicStyle: value as ComedicStyle }));
+    }
+  };
+
   const handleIllustrationStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target;
     if (value === 'custom') {
@@ -154,11 +167,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         />
       )}
 
-      <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-4 border-black bg-stone-100">
+      <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-4 border-black bg-paper-light shadow-lg rounded-lg">
         
         <div>
           <Tooltip text="Describe the main subject, characters, or event for your comic strip.">
-            <label htmlFor="topic" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+            <label htmlFor="topic" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
               Topic
             </label>
           </Tooltip>
@@ -169,7 +182,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               name="topic"
               value={formData.topic}
               onChange={handleChange}
-              className="w-full p-3 h-14 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
               placeholder="e.g., A senator questioning an AI"
               required
               minLength={5}
@@ -179,10 +192,9 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               <button 
                 type="button" 
                 onClick={handleFetchNewsClick}
-                className="flex-shrink-0 inline-flex items-center justify-center gap-2 px-4 h-14 bg-stone-100 text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-none text-lg font-special-elite"
+                className="flex-shrink-0 inline-flex items-center justify-center p-2 h-14 w-14 bg-white text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-lg"
               >
-                <NewspaperIcon className="w-5 h-5" />
-                <span className="hidden sm:inline">Suggest from Headlines</span>
+                <NewspaperIcon className="w-6 h-6" />
               </button>
             </Tooltip>
           </div>
@@ -191,7 +203,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <Tooltip text="Choose the comic's message about the topic.">
-              <label htmlFor="stance" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+              <label htmlFor="stance" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
                 Stance
               </label>
             </Tooltip>
@@ -200,7 +212,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               name="stance-select"
               value={showFreeTextStance ? 'custom' : formData.stance}
               onChange={handleStanceChange}
-              className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
             >
               {STANCE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -216,7 +228,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 name="stance"
                 value={typeof formData.stance === 'string' ? formData.stance : ''}
                 onChange={handleChange}
-                className="w-full p-3 mt-2 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+                className="w-full p-3 mt-2 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
                 placeholder="Your custom stance..."
                 maxLength={160}
                 autoFocus
@@ -226,29 +238,43 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           
           <div>
             <Tooltip text="Select the method for the comic's humor.">
-              <label htmlFor="comedicStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+              <label htmlFor="comedicStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
                 Comedic Style
               </label>
             </Tooltip>
             <select
               id="comedicStyle"
-              name="comedicStyle"
-              value={formData.comedicStyle}
-              onChange={handleChange}
-              className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+              name="comedicStyle-select"
+              value={showFreeTextComedicStyle ? 'custom' : formData.comedicStyle}
+              onChange={handleComedicStyleChange}
+              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
             >
               {COMEDIC_STYLE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
+              <option value="custom">Write my own...</option>
             </select>
+            {showFreeTextComedicStyle && (
+              <input
+                type="text"
+                id="comedicStyle-custom"
+                name="comedicStyle"
+                value={formData.comedicStyle}
+                onChange={handleChange}
+                className="w-full p-3 mt-2 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
+                placeholder="Your custom comedic style..."
+                maxLength={160}
+                autoFocus
+              />
+            )}
           </div>
         </div>
 
         <div>
           <Tooltip text="Select an emblematic style or describe your own to guide the visual tone.">
-            <label htmlFor="illustrationStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
+            <label htmlFor="illustrationStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
               Illustration Style
             </label>
           </Tooltip>
@@ -257,7 +283,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             name="illustrationStyle"
             value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
             onChange={handleIllustrationStyleChange}
-            className="w-full p-3 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+            className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
           >
             {ILLUSTRATION_STYLE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -273,7 +299,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               name="illustrationStyle"
               value={formData.illustrationStyle || ''}
               onChange={handleChange}
-              className="w-full p-3 mt-2 bg-stone-100 border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-none hover:bg-stone-200 transition-colors"
+              className="w-full p-3 mt-2 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
               placeholder="Describe your custom style..."
               maxLength={160}
               autoFocus
@@ -282,12 +308,12 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         </div>
         
         <div>
-          <Tooltip text="Upload reference images for characters, objects, or styles (optional).">
-            <label htmlFor="referenceImages" className="block text-lg font-bold mb-2 tracking-wide font-special-elite">
-              Reference Images (Optional)
+          <Tooltip text="Upload reference images for characters, objects, or styles. This is highly encouraged for better results!">
+            <label htmlFor="referenceImages" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
+              Reference Images (Encouraged)
             </label>
           </Tooltip>
-          <div className="mt-2 p-4 border-2 border-dashed border-black">
+          <div className="mt-2 border-2 border-dashed border-black p-4 bg-white flex flex-col gap-4">
             <input
               type="file"
               id="referenceImages"
@@ -301,26 +327,32 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full p-4 bg-gray-200 hover:bg-gray-300 transition-colors text-black font-special-elite"
+              className="w-full flex flex-col items-center justify-center gap-2 p-4 hover:bg-stone-100 transition-colors text-gray-500 font-special-elite rounded-lg"
             >
-              Click to Upload Images
+              <UploadIcon className="w-8 h-8" />
+              <span>{referenceImages.length > 0 ? 'Upload More Images' : 'Click to Upload Images'}</span>
+              <span className="text-xs text-gray-400 mt-1">(PNG, JPG, WEBP accepted)</span>
             </button>
             {referenceImages.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-4">
                 {referenceImages.map((image, index) => (
-                  <div key={index} className="relative border border-black">
-                    <img src={image.previewUrl} alt={`Reference ${index + 1}`} className="w-full h-24 object-cover" />
-                    <input
-                      type="text"
+                  <div key={index} className="relative flex items-stretch border-2 border-black bg-white">
+                    <img
+                      src={image.previewUrl}
+                      alt={`Reference ${index + 1}`}
+                      className="w-24 h-24 object-cover flex-shrink-0"
+                    />
+                    <textarea
                       value={image.tag}
                       onChange={(e) => handleTagChange(index, e.target.value)}
-                      placeholder="Tag (e.g., 'main character')"
-                      className="w-full text-xs p-1 border-t border-black focus:outline-none focus:ring-1 focus:ring-black"
+                      placeholder="Tag this image (e.g., 'main character', 'grumpy cat')"
+                      className="w-full flex-grow text-base p-3 border-l-2 border-black focus:outline-none focus:ring-2 focus:ring-inset focus:ring-black font-special-elite bg-transparent resize-none text-black placeholder:text-gray-500"
+                      rows={3}
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
-                      className="absolute top-0 right-0 m-1 bg-black/50 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-black"
+                      className="absolute top-1 right-1 bg-black/70 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold hover:bg-black transition-colors"
                       aria-label={`Remove image ${index + 1}`}
                     >
                       &times;
@@ -343,7 +375,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 onChange={handleChange}
                 className="h-5 w-5 accent-black"
               />
-              <span className="text-lg font-bold tracking-wide font-special-elite">Brainstorm Mode</span>
+              <span className="text-lg font-bold tracking-wide font-special-elite text-black">Brainstorm Mode</span>
             </label>
           </Tooltip>
         </div>
@@ -352,9 +384,9 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-black text-white font-bangers text-2xl tracking-wider border-2 border-black hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full group inline-flex items-center justify-center gap-3 px-8 py-4 bg-banana text-black font-bangers text-2xl tracking-wider border-2 border-t-black border-l-black border-r-black border-b-8 border-b-black hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
           >
-            <SparklesIcon className={`w-6 h-6 ${isLoading ? 'animate-spin' : ''}`} />
+            <SparklesIcon className={`w-6 h-6 ${isLoading ? 'animate-spin' : 'group-hover:animate-spin-once'}`} />
             {isLoading ? 'Generating...' : 'Generate Comic Plan'}
           </button>
         </div>

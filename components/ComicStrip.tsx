@@ -128,7 +128,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
-      <div ref={comicRef} className="w-full bg-[#F3EAD3] p-4 md:p-8">
+      <div ref={comicRef} className="w-full bg-paper-light p-4 md:p-8 border-4 border-black shadow-lg rounded-lg">
         <h2 className="text-4xl md:text-5xl font-bangers text-center tracking-wider mb-8">
           {comicData.title}
         </h2>
@@ -163,11 +163,11 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         </footer>
       </div>
       
-      <div className="w-full flex justify-center items-center gap-4 pt-4">
+      <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
         <Tooltip text="Start over and create a completely new comic">
           <button
             onClick={onStartNew}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
           >
             <NewComicIcon className="w-5 h-5" />
             Create New
@@ -176,7 +176,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         <Tooltip text="Regenerate the entire comic strip with the same settings">
           <button
             onClick={onRegenerateComic}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
           >
             <RefreshIcon className="w-5 h-5" />
             Regenerate
@@ -185,7 +185,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         <Tooltip text="Download the comic strip as a high-quality PNG image">
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white font-bold border-2 border-black hover:bg-gray-800 transition-colors rounded"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white font-bold border-2 border-black hover:bg-gray-800 transition-colors rounded-md"
           >
             <DownloadIcon className="w-5 h-5" />
             Download
@@ -194,7 +194,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         <Tooltip text="Share this comic on Twitter">
           <button
             onClick={handleShare}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
             aria-label="Share on Twitter"
           >
             <TwitterIcon className="w-5 h-5" />

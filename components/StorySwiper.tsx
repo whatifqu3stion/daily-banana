@@ -51,7 +51,7 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
                 <p className="text-lg font-lora">Here are a few story ideas. Pick your favorite to continue to the style preview.</p>
             </div>
 
-            <div className="w-full bg-stone-100 border-4 border-black relative">
+            <div className="w-full bg-paper-light border-4 border-black relative shadow-lg rounded-lg">
                 <header className="text-center p-4 border-b-4 border-black">
                     <h3 className="text-3xl font-bangers tracking-wider">{currentPlan.title}</h3>
                 </header>
@@ -76,18 +76,18 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
             
             <div className="w-full flex justify-center items-center gap-4 pt-4">
                 <Tooltip text="Go back and change the topic or style.">
-                    <button onClick={onReturnToForm} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded">
+                    <button onClick={onReturnToForm} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md">
                         Start Over
                     </button>
                 </Tooltip>
                  <Tooltip text="Generate a completely new set of story ideas.">
-                    <button onClick={onRegenerate} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded">
+                    <button onClick={onRegenerate} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md">
                         <RefreshIcon className="w-5 h-5" />
                         New Ideas
                     </button>
                 </Tooltip>
                 <Tooltip text="I like this story! Let's create the art." wrapperClassName="generate-button-wrapper">
-                    <button onClick={handleSelect} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-none">
+                    <button onClick={handleSelect} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-md">
                         <SparklesIcon className="w-6 h-6" />
                         Choose This Story
                     </button>

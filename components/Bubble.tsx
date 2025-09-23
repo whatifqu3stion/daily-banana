@@ -20,19 +20,31 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    
+    let animationFrameId: number;
 
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
       if (entry) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
+        // By wrapping the state update in requestAnimationFrame, we prevent the
+        // "ResizeObserver loop completed with undelivered notifications" error.
+        // This decouples the state update from the synchronous execution of the observer.
+        animationFrameId = requestAnimationFrame(() => {
+            setDimensions({
+              width: entry.contentRect.width,
+              height: entry.contentRect.height,
+            });
         });
       }
     });
 
     observer.observe(container);
-    return () => observer.disconnect();
+    return () => {
+        observer.disconnect();
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+    };
   }, []);
 
   const resolvePosition = useCallback((pos: ElementPosition, containerWidth: number, containerHeight: number): { x: number; y: number } => {
@@ -66,11 +78,9 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     const { width, height } = dimensions;
     if (width === 0 || height === 0) return;
     
-    // Get the container's position relative to the viewport
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
 
-    // Calculate new position relative to the container, not the viewport
     const newX = e.clientX - containerRect.left - (dragStart.current.x - resolvePosition(tailPosition!, width, height).x);
     const newY = e.clientY - containerRect.top - (dragStart.current.y - resolvePosition(tailPosition!, width, height).y);
 
@@ -114,7 +124,6 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     const centerY = height / 2;
     const angle = Math.atan2(tailY - centerY, tailX - centerX);
 
-    // Heuristic to find a point on the rounded rectangle's perimeter
     const effectiveRadiusX = width / 2 - rx/2;
     const effectiveRadiusY = height / 2 - ry/2;
     const intersectX = centerX + Math.cos(angle) * effectiveRadiusX;
@@ -158,86 +167,62 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
         strokeWidth: 4,
         stroke: 'black',
         fill: invertedColors ? 'black' : 'white',
-        strokeLinejoin: 'round' as const,
-        strokeLinecap: 'round' as const,
     };
 
-    if (role === 'speech' && tailPosition) {
+    if (role === 'thought') {
+      const path = getThoughtBubblePath(width, height);
+      const tailX = width / 2;
+      const tailY = height * 0.9;
+      return (
+        <>
+            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+                <path d={path} {...commonProps} />
+                <circle cx={tailX} cy={tailY + 10} r="5" {...commonProps} />
+                <circle cx={tailX - 10} cy={tailY + 25} r="3" {...commonProps} />
+            </svg>
+            <Tooltip text="Invert Colors">
+                <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                    <InvertColorsIcon className="w-5 h-5" />
+                </button>
+            </Tooltip>
+        </>
+      );
+    }
+    
+    if (role === 'speech') {
         const { body, tail } = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
         return (
             <>
-                <path d={body} {...commonProps} />
-                <path d={tail} {...commonProps} />
+                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+                    <path d={body} {...commonProps} />
+                    <path d={tail} stroke="black" strokeWidth={5} fill="none" />
+                    <circle
+                        cx={resolvedTailPos.x}
+                        cy={resolvedTailPos.y}
+                        r="10"
+                        fill="rgba(0,0,0,0.5)"
+                        onMouseDown={handleMouseDown}
+                        className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                </svg>
+                <Tooltip text="Invert Colors">
+                    <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                        <InvertColorsIcon className="w-5 h-5" />
+                    </button>
+                </Tooltip>
             </>
-        )
+        );
     }
 
-    if (role === 'thought') {
-        const body = getThoughtBubblePath(width, height);
-        const centerX = width / 2;
-        const centerY = height * 0.7; // Start tail lower down
-        
-        const tailBubbles = [
-            <circle key="t1" cx={resolvedTailPos.x} cy={resolvedTailPos.y} r={6} {...commonProps} />,
-            <circle key="t2" cx={centerX * 0.3 + resolvedTailPos.x * 0.7} cy={centerY * 0.3 + resolvedTailPos.y * 0.7} r={10} {...commonProps} />,
-            <circle key="t3" cx={centerX * 0.6 + resolvedTailPos.x * 0.4} cy={centerY * 0.6 + resolvedTailPos.y * 0.4} r={14} {...commonProps} />,
-        ];
+    return null;
+  };
 
-        return (
-            <>
-                <path d={body} {...commonProps} />
-                {tailBubbles}
-            </>
-        )
-    }
-    
-    // Default fallback (e.g., if speech bubble has no tail)
-    return <rect x="2" y="2" width={width-4} height={height-4} rx="20" ry="20" {...commonProps} />;
-  }
-  
-  let resolvedTailPos = { x: 0, y: 0 };
-  if (tailPosition) {
-    resolvedTailPos = resolvePosition(tailPosition, dimensions.width, dimensions.height);
-  }
-  
   return (
-    <div ref={containerRef} className="relative w-full h-full group">
-        <svg
-            width="100%"
-            height="100%"
-            viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
-            className="absolute inset-0"
-            style={{ overflow: 'visible' }}
-        >
-            {renderBubble()}
-        </svg>
-
-        <div className="absolute inset-2">
-            {children}
-        </div>
-
-        {tailPosition && (
-            <div
-                onMouseDown={handleMouseDown}
-                style={{
-                    left: `${resolvedTailPos.x}px`,
-                    top: `${resolvedTailPos.y}px`,
-                }}
-                className="absolute w-4 h-4 bg-black border-2 border-white rounded-full cursor-grab -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-20 active:cursor-grabbing"
-            />
-        )}
-        
-        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-          <Tooltip text={invertedColors ? "Switch to White Bubble" : "Switch to Black Bubble"}>
-            <button
-              onClick={handleInvertColors}
-              className="p-1 bg-white/50 hover:bg-white rounded-full border border-black"
-              aria-label="Invert bubble colors"
-            >
-              <InvertColorsIcon className="w-4 h-4 text-black" />
-            </button>
-          </Tooltip>
-        </div>
+    <div ref={containerRef} className="w-full h-full relative group">
+      {renderBubble()}
+      <div className="absolute inset-0 p-4">
+        {children}
+      </div>
     </div>
   );
 };
