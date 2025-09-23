@@ -37,7 +37,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
   }, [currentMessageIndex, messages]);
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-4 border-black bg-paper-light flex flex-col items-center justify-center min-h-[400px] shadow-lg rounded-lg">
+    <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center justify-center min-h-[200px] shadow-xl rounded-lg">
       <div className="w-full max-w-xl text-center">
         <p className="mt-4 text-lg font-special-elite text-black break-words">
           {displayedText}

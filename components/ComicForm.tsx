@@ -167,7 +167,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         />
       )}
 
-      <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-4 border-black bg-paper-light shadow-lg rounded-lg">
+      <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-3 border-black bg-paper-light shadow-xl rounded-lg">
         
         <div>
           <Tooltip text="Describe the main subject, characters, or event for your comic strip.">

@@ -101,8 +101,8 @@ export default function useComicGeneration() {
 
       setReviewData({ plan, firstPanelImage, userProvidedImages: userImages, panelLayouts });
       setAppStage('review');
-    } catch (err: any) {
-      _setError(err.message || 'Failed to generate the first panel image.');
+    } catch (err: any) { 
+        _setError(err.message || 'Failed to generate the first panel image.');
     } finally {
       setIsLoading(false);
     }
@@ -145,44 +145,52 @@ export default function useComicGeneration() {
     }
 
     setIsLoading(true);
-    setLoadingMessages(['Generating your comic strip...', 'Inking the panels...', 'Adding the color...']);
+    setLoadingMessages([ "Spilling ink on the virtual paper..." ]);
     setError(null);
-    setProgress({ current: 0, total: reviewData.plan.panels.length - 1 });
+    
+    const totalPanels = reviewData.plan.panels.length;
+    setProgress({ current: 1, total: totalPanels });
 
     try {
-      // The first image is already generated
-      let panelImages = [reviewData.firstPanelImage];
+      const panelImages = [reviewData.firstPanelImage];
+      const currentReferences = [...activeComicReferences.current];
       
-      // Auto-consistency: if no user refs, use the first panel as a ref.
-      if (activeComicReferences.current.length === 0) {
-          activeComicReferences.current = [{
+      // Start with the user's references. The first panel image is added after its generation.
+      if (currentReferences.length === 0) {
+          // Auto-consistency: if no user refs, use the first panel as a ref.
+          currentReferences.push({
               base64: reviewData.firstPanelImage,
               mimeType: 'image/png',
-              tag: 'auto-generated style reference'
-          }];
+              tag: 'auto-generated style reference from panel 1'
+          });
       }
 
+      // Sequentially generate the remaining panels
       const remainingPanels = reviewData.plan.panels.slice(1);
       
-      const imagePromises = remainingPanels.map((panel, index) => 
-        geminiService.generatePanelImageWithReferences(
+      for (const [index, panel] of remainingPanels.entries()) {
+        const panelNumber = index + 2; // e.g., for the 0th item in remainingPanels, it's the 2nd panel overall
+        setProgress({ current: panelNumber, total: totalPanels });
+        
+        const latestImageAsRef: ProcessedReferenceImage = {
+            base64: panelImages[panelImages.length - 1], // The most recently generated image
+            mimeType: 'image/png',
+            tag: `visual reference from previous panel (${panelNumber - 1})`
+        };
+
+        const combinedReferences = [...currentReferences, latestImageAsRef];
+
+        const newImage = await geminiService.generatePanelImageWithReferences(
           panel.visual_prompt,
           panel.consistency_tags,
           formDataCache?.illustrationStyle,
           formDataCache?.comedicStyle,
-          activeComicReferences.current
-        ).then(image => {
-          setProgress(prev => ({ current: (prev?.current || 0) + 1, total: remainingPanels.length }));
-          return image;
-        })
-      );
-
-      const remainingImages = await Promise.all(imagePromises);
-      panelImages = [...panelImages, ...remainingImages];
+          combinedReferences
+        );
+        panelImages.push(newImage);
+      }
       
       const finalPanels: PanelData[] = reviewData.plan.panels.map((planPanel, index) => {
-        // FIX: Add a defensive check to prevent a crash if the AI omits text_elements.
-        // This ensures the .map function is always called on a valid array.
         const textElements = (planPanel.text_elements || []).map(te => ({
           ...te,
           id: crypto.randomUUID(),
@@ -197,7 +205,6 @@ export default function useComicGeneration() {
           image: panelImages[index],
           visual_prompt: planPanel.visual_prompt,
           text_elements: textElements,
-          // FIX: Add a defensive check for consistency_tags as well.
           consistency_tags: planPanel.consistency_tags || [],
           user_consistency_tags: [],
           layoutProps: reviewData.panelLayouts[index],

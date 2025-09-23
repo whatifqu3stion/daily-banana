@@ -1,5 +1,3 @@
-
-// components/ReviewPlan.tsx
 import React, { useState } from 'react';
 import { ComicPlan, ComicFormData, ProcessedReferenceImage, LayoutProps } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -99,18 +97,28 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
 
             <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left side: Plan details */}
-                <div className="bg-paper-light border-4 border-black p-6 flex flex-col">
+                <div className="bg-paper-light border-3 border-black p-6 flex flex-col shadow-xl rounded-lg">
                     <header className="text-center pb-4 border-b-2 border-black">
-                        <h3 className="text-3xl font-bangers tracking-wider">{reviewData.plan.title}</h3>
+                        <h3 className="text-3xl font-bangers tracking-wider text-black">{reviewData.plan.title}</h3>
                         <p className="text-lg font-lora italic text-gray-800 mt-2">
                             "{reviewData.plan.summary}"
                         </p>
                     </header>
                     <div className="mt-4 space-y-4 overflow-y-auto max-h-[400px] pr-2">
                         {reviewData.plan.panels.map((panel, index) => (
-                            <div key={panel.slug} className="text-sm border-b border-gray-300 pb-2">
+                            <div key={panel.slug} className="text-sm border-b border-gray-300 pb-2 last:border-b-0">
                                 <h4 className="font-bold font-special-elite">Panel {index + 1}:</h4>
-                                <p className="font-lora text-gray-700">{panel.visual_prompt}</p>
+                                <div className="font-lora text-gray-700 space-y-1 mt-1">
+                                    {panel.text_elements.length > 0 ? (
+                                        panel.text_elements.map((el, elIndex) => (
+                                            <p key={elIndex}>
+                                                <span className="font-bold capitalize">{el.role}:</span> "{el.text}"
+                                            </p>
+                                        ))
+                                    ) : (
+                                        <p className="italic">This panel is purely visual.</p>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -140,16 +148,16 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                                 value={refinementTags}
                                 onChange={(e) => setRefinementTags(e.target.value)}
                                 placeholder="Add refinement details..."
-                                className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none"
+                                className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
                             />
                             <Tooltip text="Refine the image using the original as a base plus your new tags. Good for small changes.">
-                                <button onClick={handleRefine} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded-md disabled:opacity-50">
-                                    <SparklesIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                <button onClick={handleRefine} disabled={isLoading} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50">
+                                    <SparklesIcon className={`w-5 h-5 text-black ${isLoading ? 'animate-spin' : ''}`} />
                                 </button>
                             </Tooltip>
                             <Tooltip text="Generate a completely new image from the original prompt plus your new tags. Good for major changes.">
-                                <button onClick={handleRegenerate} disabled={isLoading} className="p-1.5 hover:bg-gray-200 rounded-md disabled:opacity-50">
-                                    <RefreshIcon className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                <button onClick={handleRegenerate} disabled={isLoading} className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-md disabled:opacity-50">
+                                    <RefreshIcon className={`w-5 h-5 text-black ${isLoading ? 'animate-spin' : ''}`} />
                                 </button>
                             </Tooltip>
                         </div>
@@ -170,7 +178,10 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                     </button>
                 </Tooltip>
                 <Tooltip text="Looks good! Generate the rest of the comic panels." wrapperClassName="generate-button-wrapper">
-                    <button onClick={onContinue} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-md">
+                    <button
+                        onClick={onContinue}
+                        className="inline-flex items-center justify-center gap-3 px-8 py-2 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black border-b-4 hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-0.5 transition-all rounded-md"
+                    >
                         <SparklesIcon className="w-6 h-6" />
                         Continue Generation
                     </button>

@@ -51,9 +51,9 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
                 <p className="text-lg font-lora">Here are a few story ideas. Pick your favorite to continue to the style preview.</p>
             </div>
 
-            <div className="w-full bg-paper-light border-4 border-black relative shadow-lg rounded-lg">
+            <div className="w-full bg-paper-light border-3 border-black relative shadow-xl rounded-lg">
                 <header className="text-center p-4 border-b-4 border-black">
-                    <h3 className="text-3xl font-bangers tracking-wider">{currentPlan.title}</h3>
+                    <h3 className="text-3xl font-bangers tracking-wider text-black">{currentPlan.title}</h3>
                 </header>
 
                 <div className="p-8 min-h-[300px] flex flex-col justify-center items-center text-center">

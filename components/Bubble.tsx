@@ -114,12 +114,20 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     onUpdate({ invertedColors: !invertedColors });
   };
   
-  const getSpeechBubblePath = (width: number, height: number, tailX: number, tailY: number) => {
+  /**
+   * FIX: This function has been re-engineered to return a single, continuous SVG path string.
+   * By creating a compound path (the body and the tail as one shape), we solve two problems:
+   * 1. The tail is now correctly filled because it's part of the main shape.
+   * 2. Visual glitches and seams are eliminated because there's only one path to render.
+   */
+  const getSpeechBubblePath = (width: number, height: number, tailX: number, tailY: number): string => {
     const rx = Math.min(width * 0.15, 25);
     const ry = Math.min(height * 0.15, 25);
     
+    // Main bubble body path
     const body = `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
 
+    // Calculate tail connection points
     const centerX = width / 2;
     const centerY = height / 2;
     const angle = Math.atan2(tailY - centerY, tailX - centerX);
@@ -129,29 +137,25 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     const intersectX = centerX + Math.cos(angle) * effectiveRadiusX;
     const intersectY = centerY + Math.sin(angle) * effectiveRadiusY;
 
+    // Create a closed triangular path for the tail
     const tailWidthAtBase = 25;
     const p1x = intersectX + Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
     const p1y = intersectY + Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
     const p2x = intersectX - Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
     const p2y = intersectY - Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
 
-    const tail = `M${p1x},${p1y} L${tailX},${tailY} L${p2x},${p2y}`;
+    const tail = `M${p1x},${p1y} L${tailX},${tailY} L${p2x},${p2y} Z`;
     
-    return { body, tail };
+    // Return both paths as a single string to create a compound path
+    return body + ' ' + tail;
   };
   
   const getThoughtBubblePath = (width: number, height: number) => {
-    const w = width;
-    const h = height;
-    const path = [
-        `M ${w * 0.2},${h * 0.5}`,
-        `C ${w * 0.05},${h * 0.25}, ${w * 0.3},${h * 0.1}, ${w * 0.5},${h * 0.1}`,
-        `C ${w * 0.7},${h * 0.1}, ${w * 0.95},${h * 0.25}, ${w * 0.8},${h * 0.5}`,
-        `C ${w * 0.95},${h * 0.75}, ${w * 0.7},${h * 0.9}, ${w * 0.5},${h * 0.9}`,
-        `C ${w * 0.3},${h * 0.9}, ${w * 0.05},${h * 0.75}, ${w * 0.2},${h * 0.5}`,
-        `Z`
-    ].join(' ');
-    return path;
+    const rx = Math.min(width * 0.15, 25);
+    const ry = Math.min(height * 0.15, 25);
+    // A standard SVG path for a rounded rectangle. This provides a much better
+    // container for text than the previous cloud shape.
+    return `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
   };
   
   const renderBubble = () => {
@@ -190,12 +194,11 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     }
     
     if (role === 'speech') {
-        const { body, tail } = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
+        const path = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
         return (
             <>
                 <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-                    <path d={body} {...commonProps} />
-                    <path d={tail} stroke="black" strokeWidth={5} fill="none" />
+                    <path d={path} {...commonProps} />
                     <circle
                         cx={resolvedTailPos.x}
                         cy={resolvedTailPos.y}

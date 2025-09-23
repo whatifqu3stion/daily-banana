@@ -1,5 +1,3 @@
-
-
 import React, { useRef } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
 import Draggable from './Draggable';
@@ -7,7 +5,7 @@ import Draggable from './Draggable';
 import Bubble from './Bubble';
 import EditableText from './EditableText';
 import RefreshIcon from './icons/RefreshIcon';
-import WandIcon from './icons/WandIcon';
+import SparklesIcon from './icons/SparklesIcon';
 import Tooltip from './Tooltip';
 import TextScaler from './TextScaler';
 
@@ -150,16 +148,16 @@ const Panel: React.FC<PanelProps> = ({
           value={panelData.user_consistency_tags.join(', ')}
           onChange={handleUserTagsChange}
           placeholder="e.g., 'wearing a red hat', 'add a dog'"
-          className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none"
+          className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
         />
-        <Tooltip text="Refine image (small changes)">
-            <button onClick={() => onRefineImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded-md hover:bg-gray-200 disabled:opacity-50">
-              <WandIcon className="w-4 h-4" />
+        <Tooltip text="Refine image (small changes)" position="top-left">
+            <button onClick={() => onRefineImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
+              <SparklesIcon className="w-4 h-4 text-black" />
             </button>
         </Tooltip>
-        <Tooltip text="Regenerate image (major changes)">
-            <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-white rounded-md hover:bg-gray-200 disabled:opacity-50">
-              <RefreshIcon className="w-4 h-4" />
+        <Tooltip text="Regenerate image (major changes)" position="top-right">
+            <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
+              <RefreshIcon className="w-4 h-4 text-black" />
             </button>
         </Tooltip>
       </div>

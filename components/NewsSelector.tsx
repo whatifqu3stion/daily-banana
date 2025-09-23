@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { NewsStory } from '../types';
 
@@ -14,7 +15,7 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true">
       <div 
-        className="bg-stone-100 border-4 border-black w-full max-w-2xl max-h-[80vh] overflow-y-auto p-8 relative" 
+        className="bg-paper-light border-3 border-black rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-8 relative" 
         onClick={e => e.stopPropagation()}
         role="document"
       >
@@ -49,7 +50,7 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, 
                   onClick={() => onSelectStory(story.title)}
                   className="text-left w-full p-3 border-2 border-black bg-white hover:bg-yellow-100 focus:bg-yellow-100 transition-colors focus:outline-none focus:ring-2 focus:ring-black rounded-md"
                 >
-                  <strong className="block text-lg font-special-elite text-gray-900">{story.title}</strong>
+                  <strong className="block text-lg font-special-elite text-black">{story.title}</strong>
                   <p className="text-sm text-gray-600 font-lora mt-1 line-clamp-2">{story.description}</p>
                 </button>
               </li>

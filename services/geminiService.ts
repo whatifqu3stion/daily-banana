@@ -1,7 +1,7 @@
 // FIX: The original file started with an invalid line of text that caused parsing errors. It has been removed.
 // services/geminiService.ts
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ComicFormData, ComicPlan, ProcessedReferenceImage, ComedicStyle } from '../types';
+import { ComicFormData, ComicPlan, ProcessedReferenceImage, ComedicStyle, PlanPanel } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 // According to guidelines, API key must be from process.env.API_KEY
@@ -65,6 +65,19 @@ const multipleComicPlansSchema = {
     items: comicPlanSchema
 };
 
+// System instruction for the comic plan generator. This sets the persona and rules for the AI.
+const PLAN_GENERATION_SYSTEM_INSTRUCTION = `
+You are a creative and witty comic strip writer. Your task is to generate a plan for a short comic strip (usually 3-4 panels) based on a user's request. The output must be a valid JSON object that adheres to the provided schema.
+
+**Key Instructions:**
+1.  The "visual_prompt" for each panel must be a detailed description for an AI image generator. It should describe the scene, characters, composition, and actions. **DO NOT include any text, speech, or captions in the visual prompt itself.**
+2.  All text content (speech, captions, sound effects) must be placed in the "text_elements" array.
+3.  Create "consistency_tags" for any recurring characters or key objects to help the image generator maintain a consistent look. If the user provides reference images, use their tags here.
+4.  Vary panel sizes ('small', 'medium', 'large') to create a dynamic layout. Ensure the total number of panels is between 2 and 6.
+5.  The aspect ratio for all panels must be '1:1'.
+6.  Ensure the final output is a single, valid JSON object (or an array of objects if multiple plans were requested) with no extra text or markdown formatting.
+`;
+
 
 // Helper to get illustration style description
 const getIllustrationStyleDescription = (styleValue?: string): string => {
@@ -74,8 +87,8 @@ const getIllustrationStyleDescription = (styleValue?: string): string => {
 };
 
 
-// Prompt constructor for comic plan
-const constructPlanPrompt = (formData: ComicFormData, numPlans: number): string => {
+// Constructs the user's specific request to be sent as the main content.
+const constructPlanContents = (formData: ComicFormData, numPlans: number): string => {
     const { topic, stance, comedicStyle, illustrationStyle, referenceImages } = formData;
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
 
@@ -89,23 +102,14 @@ const constructPlanPrompt = (formData: ComicFormData, numPlans: number): string 
         : `Generate a creative comic strip plan based on the user's request.`;
 
     return `
-You are a creative and witty comic strip writer. Your task is to generate a plan for a short comic strip (usually 3-4 panels). The output must be a valid JSON object that adheres to the provided schema.
+${planCountInstruction}
 
-**Comic Request:**
+**Comic Request Details:**
 - **Topic:** ${topic}
 - **Your Stance/Angle:** ${stance}
 - **Comedic Style:** ${comedicStyle}
 - **Intended Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
-
-**Instructions:**
-1.  ${planCountInstruction}
-2.  The "visual_prompt" for each panel must be a detailed description for an AI image generator. It should describe the scene, characters, composition, and actions. **DO NOT include any text, speech, or captions in the visual prompt itself.**
-3.  All text content (speech, captions, sound effects) must be in the "text_elements" array.
-4.  Create "consistency_tags" for any recurring characters or key objects to help the image generator maintain a consistent look. If reference images were provided, use their tags here.
-5.  Vary panel sizes ('small', 'medium', 'large') to create a dynamic layout. Ensure the total number of panels is between 2 and 6.
-6.  The aspect ratio for all panels must be '1:1'.
-7.  Ensure the final output is a single, valid JSON object (or an array of objects if multiple plans were requested) with no extra text or markdown formatting.
 `;
 };
 
@@ -145,34 +149,56 @@ If reference images are provided, use them as a strong visual guide for characte
 
 // --- API Functions ---
 
-// FIX: A more robust sanitization function to prevent crashes from malformed AI responses.
+/**
+ * FIX: Replaced the sanitization function with a more robust, defensive version.
+ * This function constructs a guaranteed-valid object from scratch and only populates
+ * it with validated data from the AI's response. This completely prevents any
+ * possibility of a malformed plan object (e.g., one with a missing or non-array
+ * 'panels' property) from propagating through the app and causing '.length'
+ * TypeError crashes downstream.
+ */
 const sanitizeComicPlan = (plan: any): ComicPlan => {
+    // Start with a guaranteed-valid default structure.
+    const safePlan: ComicPlan = {
+        title: 'Invalid Plan',
+        summary: 'The AI returned a malformed plan.',
+        panels: [],
+    };
+
+    // Only proceed if the plan is a non-null object.
     if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
-        // If the top-level structure is wrong, return a minimal valid structure.
-        return { title: 'Invalid Plan', summary: 'AI returned a malformed plan.', panels: [] };
+        return safePlan;
     }
 
-    const panels = Array.isArray(plan.panels) ? plan.panels : [];
-    
-    const sanitizedPanels = panels
-      .filter((p: any) => p && typeof p === 'object' && !Array.isArray(p))
-      .map((p: any) => ({
-        ...p,
-        consistency_tags: Array.isArray(p.consistency_tags) ? p.consistency_tags : [],
-        text_elements: Array.isArray(p.text_elements) ? p.text_elements : [],
-      }));
+    // Safely copy top-level properties.
+    safePlan.title = typeof plan.title === 'string' ? plan.title : 'Untitled Comic';
+    safePlan.summary = typeof plan.summary === 'string' ? plan.summary : 'No summary provided.';
 
-    return {
-        title: plan.title || 'Untitled Comic',
-        summary: plan.summary || 'No summary provided.',
-        panels: sanitizedPanels,
-    };
+    // Only process panels if it's a valid array.
+    if (Array.isArray(plan.panels)) {
+        safePlan.panels = plan.panels
+            .filter((p: any) => p && typeof p === 'object' && !Array.isArray(p)) // Ensure each panel is a valid object.
+            .map((p: any): PlanPanel => {
+                // For each panel, start with a valid default structure and populate it.
+                return {
+                    slug: typeof p.slug === 'string' ? p.slug : 'unknown-slug',
+                    visual_prompt: typeof p.visual_prompt === 'string' ? p.visual_prompt : 'No prompt provided.',
+                    text_elements: Array.isArray(p.text_elements) ? p.text_elements : [], // Guarantee array
+                    consistency_tags: Array.isArray(p.consistency_tags) ? p.consistency_tags : [], // Guarantee array
+                    size: ['small', 'medium', 'large'].includes(p.size) ? p.size : 'medium',
+                    aspect_ratio: p.aspect_ratio === '1:1' ? '1:1' : '1:1',
+                };
+            });
+    }
+    // If plan.panels is not an array, safePlan.panels remains [], which is safe.
+
+    return safePlan;
 };
 
 const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
-    const prompt = constructPlanPrompt(formData, 1);
+    const contents = constructPlanContents(formData, 1);
     const parts = [
-        { text: prompt },
+        { text: contents },
         ...userProvidedImages.map(img => ({
             inlineData: {
                 data: img.base64,
@@ -185,6 +211,7 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
         model: 'gemini-2.5-flash',
         contents: { parts },
         config: {
+            systemInstruction: PLAN_GENERATION_SYSTEM_INSTRUCTION,
             responseMimeType: 'application/json',
             responseSchema: comicPlanSchema
         }
@@ -202,9 +229,9 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
 };
 
 const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan[]> => {
-    const prompt = constructPlanPrompt(formData, 3); // Ask for 3 ideas
+    const contents = constructPlanContents(formData, 3); // Ask for 3 ideas
     const parts = [
-        { text: prompt },
+        { text: contents },
         ...userProvidedImages.map(img => ({
             inlineData: {
                 data: img.base64,
@@ -217,6 +244,7 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
         model: 'gemini-2.5-flash',
         contents: { parts },
         config: {
+            systemInstruction: PLAN_GENERATION_SYSTEM_INSTRUCTION,
             responseMimeType: 'application/json',
             responseSchema: multipleComicPlansSchema,
         }
