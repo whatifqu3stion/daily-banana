@@ -161,6 +161,12 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             {footerDisclaimer}
           </p>
         </footer>
+        {comicData.context && (
+          <div className="mt-6 pt-4 border-t-2 border-dashed border-black">
+            <h4 className="font-special-elite text-lg font-bold text-black">A Note from the Archives:</h4>
+            <p className="font-lora text-base text-gray-800 mt-2">{comicData.context}</p>
+          </div>
+        )}
       </div>
       
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">

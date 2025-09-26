@@ -1,5 +1,4 @@
-
-
+// components/NewsSelector.tsx
 import React from 'react';
 import { NewsStory } from '../types';
 
@@ -36,9 +35,11 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, 
         )}
 
         {error && (
-          <div className="text-center my-4 p-4 bg-red-100 rounded-md">
-            <h4 className="font-bold text-red-800">Could not load news</h4>
-            <p className="text-red-700">{error}</p>
+          <div className="text-center my-4 p-4 bg-red-50 rounded-md border border-red-200">
+            <h4 className="font-bold font-special-elite text-red-800">Could Not Load News</h4>
+            <p className="text-black mt-1 font-lora">
+              We were unable to fetch the latest headlines. Please close this window and try again in a moment.
+            </p>
           </div>
         )}
         

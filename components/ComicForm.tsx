@@ -7,6 +7,7 @@ import NewspaperIcon from './icons/NewspaperIcon';
 import NewsSelector from './NewsSelector';
 import Tooltip from './Tooltip';
 import UploadIcon from './icons/UploadIcon';
+import ConfirmationModal from './ConfirmationModal'; // Import the new modal
 
 interface ComicFormProps {
   onSubmit: (formData: ComicFormData) => void;
@@ -18,6 +19,24 @@ interface ReferenceImageState extends ReferenceImage {
   previewUrl: string;
 }
 
+const SENSITIVE_KEYWORDS = [
+  'shooting', 'shot', 'gun violence', 'massacre', 'killing', 'killed',
+  'attack', 'bombing', 'terrorist', 'terrorism',
+  'suicide', 'self-harm',
+  'tragedy', 'disaster', 'crash',
+  'assault', 'murder', 'homicide', 'slaughter',
+  'war', 'invasion', 'genocide',
+];
+
+const checkForSensitiveContent = (topic: string): boolean => {
+  const lowerCaseTopic = topic.toLowerCase();
+  // Use a regex to match whole words to avoid false positives on words like "assault" in "salt"
+  return SENSITIVE_KEYWORDS.some(keyword =>
+    new RegExp(`\\b${keyword}\\b`).test(lowerCaseTopic)
+  );
+};
+
+
 const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [formData, setFormData] = useState<ComicFormData>({
     topic: '',
@@ -26,6 +45,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     illustrationStyle: 'default-color',
     referenceImages: [],
     brainstormMode: false,
+    includeContext: false,
   });
   const [showFreeTextStance, setShowFreeTextStance] = useState(false);
   const [showFreeTextComedicStyle, setShowFreeTextComedicStyle] = useState(false);
@@ -37,6 +57,9 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [newsStories, setNewsStories] = useState<NewsStory[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
+  
+  // State for the new confirmation modal
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   
   // Effect to revoke object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -127,10 +150,22 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
 
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (checkForSensitiveContent(formData.topic)) {
+      setIsConfirmationModalOpen(true);
+    } else {
+      onSubmit(formData);
+    }
+  };
+  
+  const handleConfirmSensitive = () => {
+    setIsConfirmationModalOpen(false);
     onSubmit(formData);
+  };
+  
+  const handleCancelSensitive = () => {
+    setIsConfirmationModalOpen(false);
   };
 
   const handleFetchNewsClick = async () => {
@@ -166,6 +201,22 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           onClose={() => setIsNewsModalOpen(false)}
         />
       )}
+      
+      <ConfirmationModal
+        isOpen={isConfirmationModalOpen}
+        title="Sensitive Topic Warning"
+        onConfirm={handleConfirmSensitive}
+        onCancel={handleCancelSensitive}
+        confirmText="Proceed Anyway"
+        cancelText="Edit Topic"
+        message={
+            <>
+                <p>Your topic contains terms related to sensitive real-world events (like violence or tragedy).</p>
+                <p>To maintain safety, the AI may generate a comic that is thematically related but avoids depicting the sensitive aspects directly. This can sometimes feel like a 'deflection'.</p>
+                <p className="mt-4 font-bold">Do you wish to continue?</p>
+            </>
+        }
+      />
 
       <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-3 border-black bg-paper-light shadow-xl rounded-lg">
         
@@ -376,6 +427,19 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 className="h-5 w-5 accent-black"
               />
               <span className="text-lg font-bold tracking-wide font-special-elite text-black">Brainstorm Mode</span>
+            </label>
+          </Tooltip>
+          <Tooltip text="Add a brief explanation of the real-world context to the final comic.">
+            <label htmlFor="includeContext" className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                id="includeContext"
+                name="includeContext"
+                checked={formData.includeContext}
+                onChange={handleChange}
+                className="h-5 w-5 accent-black"
+              />
+              <span className="text-lg font-bold tracking-wide font-special-elite text-black">Add Context</span>
             </label>
           </Tooltip>
         </div>

@@ -31,38 +31,37 @@ const TextScaler: React.FC<TextScalerProps> = ({ children }) => {
 
     let animationFrameId: number;
 
-    const observer = new ResizeObserver(() => {
-      // Don't scale if the element is not visible
-      if (container.offsetParent === null) return;
+    const calculateOptimalFontSize = (): number => {
+      if (container.offsetParent === null) return fontSize; // Use current font size if not visible
       
-      // Reset styles for measurement
       content.style.fontSize = '';
 
       let low = MIN_FONT_SIZE;
       let high = MAX_FONT_SIZE;
 
-      // Binary search for the optimal font size
       for (let i = 0; i < ITERATIONS; i++) {
         const mid = (low + high + 1) / 2;
         content.style.fontSize = `${mid}px`;
-        // Check for overflow
         if (content.scrollHeight > container.clientHeight || content.scrollWidth > container.clientWidth) {
           high = mid - 1;
         } else {
           low = mid;
         }
       }
-      
-      // FIX: Wrap the state update in requestAnimationFrame to prevent ResizeObserver loop error.
-      // This decouples the state update from the resize event handler, breaking the synchronous loop.
+      return low;
+    };
+
+    const observer = new ResizeObserver(() => {
       animationFrameId = requestAnimationFrame(() => {
-        setFontSize(low);
+        setFontSize(calculateOptimalFontSize());
       });
     });
 
+    // Only observe the container. Observing the content while modifying it causes the loop.
     observer.observe(container);
-    // Also trigger manually for initial render and text changes
-    observer.observe(content);
+
+    // Initial calculation on mount and on text change.
+    setFontSize(calculateOptimalFontSize());
 
     return () => {
       observer.disconnect();
@@ -70,7 +69,7 @@ const TextScaler: React.FC<TextScalerProps> = ({ children }) => {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [children.props.initialText]); // Rerun when the text content changes
+  }, [children.props.initialText]);
 
   // Clone the child to attach our ref and apply the dynamic font size
   const childWithRef = React.cloneElement(children, {

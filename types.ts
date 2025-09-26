@@ -30,6 +30,7 @@ export interface ComicFormData {
   illustrationStyle?: string;
   referenceImages?: ReferenceImage[];
   brainstormMode: boolean;
+  includeContext: boolean; // New feature: Add context explainer
 }
 
 // Interface for element positioning.
@@ -110,6 +111,7 @@ export interface PanelData {
 export interface ComicStripData {
   title: string;
   panels: PanelData[];
+  context?: string; // New feature: Optional context explainer text
 }
 
 // Interface for a single news story fetched from an RSS feed.

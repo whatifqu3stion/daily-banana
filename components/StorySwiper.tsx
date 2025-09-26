@@ -47,29 +47,39 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
     return (
         <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-6">
             <div className="text-center">
-                <h2 className="text-2xl font-bold font-special-elite">Choose Your Story</h2>
-                <p className="text-lg font-lora">Here are a few story ideas. Pick your favorite to continue to the style preview.</p>
+                <h2 className="text-2xl font-bold font-special-elite text-black">Choose Your Story</h2>
+                <p className="text-lg font-lora text-black">Here are a few story ideas. Pick your favorite to continue to the style preview.</p>
             </div>
 
-            <div className="w-full bg-paper-light border-3 border-black relative shadow-xl rounded-lg">
-                <header className="text-center p-4 border-b-4 border-black">
+            <div className="w-full bg-paper-light border-3 border-black relative shadow-xl rounded-lg overflow-hidden">
+                <header className="text-center p-4 border-b-2 border-black bg-newsprint">
                     <h3 className="text-3xl font-bangers tracking-wider text-black">{currentPlan.title}</h3>
                 </header>
 
-                <div className="p-8 min-h-[300px] flex flex-col justify-center items-center text-center">
-                    <p className="text-xl font-lora italic text-gray-800">
+                <div className="bg-paper-light p-6 min-h-[250px] flex flex-col justify-center items-center text-center">
+                    <p className="text-3xl font-lora italic text-black">
                         "{currentPlan.summary}"
                     </p>
                 </div>
 
                 {/* Navigation */}
-                <div className="flex justify-between items-center p-4 border-t-2 border-black">
-                    <button onClick={handlePrev} disabled={currentIndex === 0} className="disabled:opacity-40 p-2">
-                        <ChevronLeftIcon className="w-8 h-8" />
+                <div className="flex justify-between items-center p-4 border-t-2 border-black bg-newsprint">
+                    <button 
+                        onClick={handlePrev} 
+                        disabled={currentIndex === 0} 
+                        className="w-12 h-12 flex items-center justify-center bg-banana rounded-full text-black disabled:opacity-40 disabled:bg-yellow-200 transition-colors"
+                        aria-label="Previous story"
+                    >
+                        <ChevronLeftIcon className="w-8 h-8" strokeWidth="2.5" />
                     </button>
-                    <span className="font-special-elite text-lg">Idea {currentIndex + 1} of {storyPlans.length}</span>
-                    <button onClick={handleNext} disabled={currentIndex === storyPlans.length - 1} className="disabled:opacity-40 p-2">
-                         <ChevronRightIcon className="w-8 h-8" />
+                    <span className="font-special-elite text-lg text-black">Idea {currentIndex + 1} of {storyPlans.length}</span>
+                    <button 
+                        onClick={handleNext} 
+                        disabled={currentIndex === storyPlans.length - 1} 
+                        className="w-12 h-12 flex items-center justify-center bg-banana rounded-full text-black disabled:opacity-40 disabled:bg-yellow-200 transition-colors"
+                        aria-label="Next story"
+                    >
+                         <ChevronRightIcon className="w-8 h-8" strokeWidth="2.5" />
                     </button>
                 </div>
             </div>
@@ -87,7 +97,10 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
                     </button>
                 </Tooltip>
                 <Tooltip text="I like this story! Let's create the art." wrapperClassName="generate-button-wrapper">
-                    <button onClick={handleSelect} className="generate-button inline-flex items-center justify-center gap-3 px-8 py-3 bg-black text-white font-bangers text-xl tracking-wider border-2 border-black transition-colors rounded-md">
+                    <button 
+                        onClick={handleSelect} 
+                        className="inline-flex items-center justify-center gap-3 px-8 py-1.5 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black border-b-4 hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-0.5 transition-all rounded-md"
+                    >
                         <SparklesIcon className="w-6 h-6" />
                         Choose This Story
                     </button>

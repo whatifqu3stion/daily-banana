@@ -81,7 +81,15 @@ export default function useComicGeneration() {
     }
     
     setIsLoading(true);
-    setLoadingMessages(['Generating style preview...']);
+    setLoadingMessages([
+        "Sketching the first panel...",
+        "Finding the perfect art style...",
+        "Consulting the style guide...",
+        "Dipping the brush in digital ink...",
+        "Setting the scene for panel one...",
+        "Casting the main character...",
+        "Blocking out the first shot...",
+    ]);
     setError(null);
 
     try {
@@ -139,53 +147,50 @@ export default function useComicGeneration() {
   }, [processReferenceImages, _setError, handleSelectStory]);
   
   const handleContinueGeneration = useCallback(async () => {
-    if (!reviewData) {
+    if (!reviewData || !formDataCache) {
       _setError("Review data is missing. Cannot continue.");
       return;
     }
 
     setIsLoading(true);
-    setLoadingMessages([ "Spilling ink on the virtual paper..." ]);
+    setLoadingMessages([
+        "Inking the final panels...",
+        "Mixing the perfect CMYK colors...",
+        "Applying the Ben-Day dots...",
+        "Consulting the ghost of Charles Schulz...",
+        "Aligning the speech bubbles...",
+        "Sharpening the digital pencils...",
+        "Warming up the virtual printing press...",
+    ]);
     setError(null);
-    
-    const totalPanels = reviewData.plan.panels.length;
-    setProgress({ current: 1, total: totalPanels });
+    setProgress(null);
 
     try {
       const panelImages = [reviewData.firstPanelImage];
-      const currentReferences = [...activeComicReferences.current];
+      // Keep a constant list of the user's original reference images.
+      const userReferences = [...activeComicReferences.current];
       
-      // Start with the user's references. The first panel image is added after its generation.
-      if (currentReferences.length === 0) {
-          // Auto-consistency: if no user refs, use the first panel as a ref.
-          currentReferences.push({
-              base64: reviewData.firstPanelImage,
-              mimeType: 'image/png',
-              tag: 'auto-generated style reference from panel 1'
-          });
-      }
-
-      // Sequentially generate the remaining panels
       const remainingPanels = reviewData.plan.panels.slice(1);
       
+      // Sequentially generate the remaining panels one by one.
       for (const [index, panel] of remainingPanels.entries()) {
-        const panelNumber = index + 2; // e.g., for the 0th item in remainingPanels, it's the 2nd panel overall
-        setProgress({ current: panelNumber, total: totalPanels });
-        
-        const latestImageAsRef: ProcessedReferenceImage = {
+        const panelNumber = index + 2;
+
+        // The reference set for this specific panel generation is the user's original
+        // images plus the single, immediately preceding panel image.
+        const previousImageAsRef: ProcessedReferenceImage = {
             base64: panelImages[panelImages.length - 1], // The most recently generated image
             mimeType: 'image/png',
             tag: `visual reference from previous panel (${panelNumber - 1})`
         };
-
-        const combinedReferences = [...currentReferences, latestImageAsRef];
+        const referencesForThisPanel = [...userReferences, previousImageAsRef];
 
         const newImage = await geminiService.generatePanelImageWithReferences(
           panel.visual_prompt,
           panel.consistency_tags,
           formDataCache?.illustrationStyle,
           formDataCache?.comedicStyle,
-          combinedReferences
+          referencesForThisPanel // Use the clean, non-accumulating set of references
         );
         panelImages.push(newImage);
       }
@@ -211,7 +216,17 @@ export default function useComicGeneration() {
         };
       });
 
-      setComicStripData({ title: reviewData.plan.title, panels: finalPanels });
+      let contextText: string | undefined = undefined;
+      if (formDataCache.includeContext) {
+          setLoadingMessages(["Checking the archives for context..."]);
+          contextText = await geminiService.generateContextExplainer(reviewData.plan.title, reviewData.plan.summary);
+      }
+
+      setComicStripData({ 
+        title: reviewData.plan.title, 
+        panels: finalPanels,
+        context: contextText,
+      });
       setAppStage('strip');
 
     } catch (err: any) {

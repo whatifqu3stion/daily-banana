@@ -9,6 +9,7 @@ import StorySwiper from './components/StorySwiper';
 import ReviewPlan from './components/ReviewPlan';
 import ComicStrip from './components/ComicStrip';
 import BananaIcon from './components/icons/BananaIcon';
+import ErrorState from './components/ErrorState'; // Import the new error component
 
 const App: React.FC = () => {
   const {
@@ -50,16 +51,7 @@ const App: React.FC = () => {
 
     if (error) {
       return (
-        <div className="text-center my-4 p-4 bg-red-100 rounded-md border border-red-300 w-full max-w-3xl mx-auto">
-          <h4 className="font-bold text-red-800">An Error Occurred</h4>
-          <p className="text-red-700 mt-1">{error}</p>
-          <button
-            onClick={handleStartNew}
-            className="mt-4 px-4 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-700"
-          >
-            Start Over
-          </button>
-        </div>
+        <ErrorState error={error} onStartOver={handleStartNew} />
       );
     }
 

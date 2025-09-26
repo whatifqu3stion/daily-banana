@@ -4,9 +4,9 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, ComedicStyle, PlanPanel } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
-// According to guidelines, API key must be from process.env.API_KEY
-// The user has been instructed that this will be available.
-// FIX: Changed from `import.meta.env.API_KEY` to `process.env.API_KEY` to adhere to API guidelines and resolve the TypeScript error.
+// According to guidelines, API key must be from the environment.
+// FIX: The API key must be read from `process.env.API_KEY` as per the coding guidelines.
+// This resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Schemas for comic plan generation
@@ -150,50 +150,71 @@ If reference images are provided, use them as a strong visual guide for characte
 // --- API Functions ---
 
 /**
- * FIX: Replaced the sanitization function with a more robust, defensive version.
- * This function constructs a guaranteed-valid object from scratch and only populates
- * it with validated data from the AI's response. This completely prevents any
- * possibility of a malformed plan object (e.g., one with a missing or non-array
- * 'panels' property) from propagating through the app and causing '.length'
- * TypeError crashes downstream.
+ * FIX: Replaced the comic plan sanitization function with a highly defensive, imperative "builder" version.
+ * This new function constructs a guaranteed-valid comic plan object from scratch, validating every property
+ * from the AI's response. This is the most robust possible defense against malformed data and will permanently
+ * resolve the recurring "Cannot read properties of undefined (reading 'length')" error.
  */
 const sanitizeComicPlan = (plan: any): ComicPlan => {
-    // Start with a guaranteed-valid default structure.
-    const safePlan: ComicPlan = {
-        title: 'Invalid Plan',
-        summary: 'The AI returned a malformed plan.',
-        panels: [],
-    };
+  const newPlan: ComicPlan = {
+    title: 'Untitled Comic',
+    summary: 'No summary provided.',
+    panels: [],
+  };
 
-    // Only proceed if the plan is a non-null object.
-    if (!plan || typeof plan !== 'object' || Array.isArray(plan)) {
-        return safePlan;
+  if (typeof plan !== 'object' || plan === null) {
+    return newPlan;
+  }
+
+  if (typeof plan.title === 'string') {
+    newPlan.title = plan.title.trim();
+  }
+  if (typeof plan.summary === 'string') {
+    newPlan.summary = plan.summary.trim();
+  }
+
+  if (Array.isArray(plan.panels)) {
+    for (const p of plan.panels) {
+      if (typeof p !== 'object' || p === null) {
+        continue; // Skip invalid panel entries like null
+      }
+
+      const newPanel: PlanPanel = {
+        slug: `panel-${Date.now()}-${Math.random()}`,
+        visual_prompt: 'No visual prompt provided.',
+        text_elements: [],
+        consistency_tags: [],
+        size: 'medium',
+        aspect_ratio: '1:1',
+      };
+
+      if (typeof p.slug === 'string') newPanel.slug = p.slug;
+      if (typeof p.visual_prompt === 'string') newPanel.visual_prompt = p.visual_prompt;
+      if (['small', 'medium', 'large'].includes(p.size)) newPanel.size = p.size;
+      
+      if (Array.isArray(p.text_elements)) {
+          for (const el of p.text_elements) {
+              if (typeof el === 'object' && el !== null && typeof el.text === 'string' && typeof el.role === 'string') {
+                  newPanel.text_elements.push({ text: el.text, role: el.role as any });
+              }
+          }
+      }
+
+      if (Array.isArray(p.consistency_tags)) {
+          for (const tag of p.consistency_tags) {
+              if (typeof tag === 'string') {
+                  newPanel.consistency_tags.push(tag);
+              }
+          }
+      }
+      
+      newPlan.panels.push(newPanel);
     }
+  }
 
-    // Safely copy top-level properties.
-    safePlan.title = typeof plan.title === 'string' ? plan.title : 'Untitled Comic';
-    safePlan.summary = typeof plan.summary === 'string' ? plan.summary : 'No summary provided.';
-
-    // Only process panels if it's a valid array.
-    if (Array.isArray(plan.panels)) {
-        safePlan.panels = plan.panels
-            .filter((p: any) => p && typeof p === 'object' && !Array.isArray(p)) // Ensure each panel is a valid object.
-            .map((p: any): PlanPanel => {
-                // For each panel, start with a valid default structure and populate it.
-                return {
-                    slug: typeof p.slug === 'string' ? p.slug : 'unknown-slug',
-                    visual_prompt: typeof p.visual_prompt === 'string' ? p.visual_prompt : 'No prompt provided.',
-                    text_elements: Array.isArray(p.text_elements) ? p.text_elements : [], // Guarantee array
-                    consistency_tags: Array.isArray(p.consistency_tags) ? p.consistency_tags : [], // Guarantee array
-                    size: ['small', 'medium', 'large'].includes(p.size) ? p.size : 'medium',
-                    aspect_ratio: p.aspect_ratio === '1:1' ? '1:1' : '1:1',
-                };
-            });
-    }
-    // If plan.panels is not an array, safePlan.panels remains [], which is safe.
-
-    return safePlan;
+  return newPlan;
 };
+
 
 const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
     const contents = constructPlanContents(formData, 1);
@@ -219,7 +240,13 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
 
     try {
         const jsonText = result.text.trim();
+        if (!jsonText) {
+            console.error("AI returned empty text for single comic plan.");
+            throw new Error("The AI returned an empty response. Please try again.");
+        }
         const rawPlan = JSON.parse(jsonText);
+        // --- DEBUG LOGGING ---
+        console.log("Raw plan from AI:", JSON.stringify(rawPlan, null, 2));
         return sanitizeComicPlan(rawPlan);
     } catch (e) {
         console.error("Failed to parse comic plan JSON:", e);
@@ -252,7 +279,13 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
 
     try {
         const jsonText = result.text.trim();
+        if (!jsonText) {
+            console.error("AI returned empty text for multiple comic plans.");
+            throw new Error("The AI returned an empty response. Please try again.");
+        }
         const rawPlans = JSON.parse(jsonText);
+        // --- DEBUG LOGGING ---
+        console.log("Raw plans from AI:", JSON.stringify(rawPlans, null, 2));
 
         if (!Array.isArray(rawPlans)) {
             console.error("AI did not return an array for multiple plans. Received:", rawPlans);
@@ -341,10 +374,36 @@ const refinePanelImage = async (
     throw new Error('Image refinement failed: The AI did not return an image.');
 };
 
+const generateContextExplainer = async (title: string, summary: string): Promise<string> => {
+    const contents = `
+    The following is the title and summary of a satirical comic strip. Write a brief, neutral, one-paragraph explanation (2-3 sentences) of the real-world context or news event that this comic is likely referencing. Be concise and informative, like an archivist's note.
+    
+    **Title:** "${title}"
+    **Summary:** "${summary}"
+    
+    **Context Explanation:**
+    `;
+
+    try {
+        const result = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents,
+            // Low temperature for factual, non-creative response
+            config: { temperature: 0.1 }
+        });
+        return result.text;
+    } catch (error) {
+        console.error("Failed to generate context explainer:", error);
+        // Return a fallback message instead of throwing an error to avoid breaking the main flow
+        return "Could not generate context at this time.";
+    }
+};
+
 // Exported service object
 export const geminiService = {
     generateSingleComicPlan,
     generateMultipleComicPlans,
     generatePanelImageWithReferences,
-    refinePanelImage
+    refinePanelImage,
+    generateContextExplainer,
 };

@@ -2,8 +2,50 @@
 import { NewsStory } from '../types';
 
 const RSS_FEED_URL = 'https://feeds.npr.org/1001/rss.xml';
-// FIX: Switched to a different CORS proxy to resolve "Failed to fetch" errors.
-const PROXY_URL = `https://api.allorigins.win/raw?url=${encodeURIComponent(RSS_FEED_URL)}`;
+
+// A list of public CORS proxies. We'll try them all and use the first one that works.
+const PROXY_URLS = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(RSS_FEED_URL)}`,
+    `https://corsproxy.io/?${encodeURIComponent(RSS_FEED_URL)}`,
+    `https://proxy.cors.sh/${RSS_FEED_URL}`,
+    `https://cors-anywhere.ai-studio-collab.com/${RSS_FEED_URL}`,
+];
+
+// FIX: Add a polyfill for `Promise.any` to support environments where it's not available.
+// This resolves the "Property 'any' does not exist on type 'PromiseConstructor'" error
+// by providing a compatible implementation.
+function promiseAny<T>(promises: Array<Promise<T>>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let hasResolved = false;
+    let rejectedCount = 0;
+    const errors: any[] = [];
+    const totalPromises = promises.length;
+
+    if (totalPromises === 0) {
+      const err = new Error('All promises were rejected');
+      (err as any).errors = [];
+      return reject(err);
+    }
+
+    promises.forEach((promise, index) => {
+      promise.then(value => {
+        if (!hasResolved) {
+          hasResolved = true;
+          resolve(value);
+        }
+      }).catch(error => {
+        if (hasResolved) return; // another promise already resolved
+        errors[index] = error;
+        rejectedCount++;
+        if (rejectedCount === totalPromises) {
+          const err = new Error("All promises were rejected");
+          (err as any).errors = errors;
+          reject(err);
+        }
+      });
+    });
+  });
+}
 
 /**
  * A client-side utility to strip HTML tags and then decode any leftover HTML entities.
@@ -22,15 +64,23 @@ const cleanAndDecodeHtml = (html: string): string => {
 
 export const getTopStories = async (): Promise<NewsStory[]> => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout for the entire operation
+
+    const fetchPromises = PROXY_URLS.map(url =>
+        fetch(url, { signal: controller.signal })
+            .then(response => {
+                if (!response.ok) {
+                    // Throw an error to signal that this promise should be rejected by Promise.any
+                    throw new Error(`Proxy ${url} failed with status: ${response.status}`);
+                }
+                return response.text();
+            })
+    );
 
     try {
-        const response = await fetch(PROXY_URL, { signal: controller.signal });
-        if (!response.ok) {
-            throw new Error(`Failed to fetch news feed. Status: ${response.statusText}`);
-        }
+        // Promise.any resolves with the value of the first promise that fulfills.
+        const text = await promiseAny(fetchPromises);
         
-        const text = await response.text();
         const parser = new DOMParser();
         const xml = parser.parseFromString(text, 'application/xml');
 
@@ -60,8 +110,9 @@ export const getTopStories = async (): Promise<NewsStory[]> => {
         if (error.name === 'AbortError') {
             throw new Error('The request for news stories timed out.');
         }
-        // Re-throw other errors, including the custom ones from above
-        throw error;
+        // If Promise.any fails, it means all proxies failed.
+        console.error("All CORS proxies failed:", error);
+        throw new Error('Failed to fetch news feed from all available sources. Please try again later.');
     } finally {
         clearTimeout(timeoutId);
     }

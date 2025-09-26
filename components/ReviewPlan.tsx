@@ -107,7 +107,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                     <div className="mt-4 space-y-4 overflow-y-auto max-h-[400px] pr-2">
                         {reviewData.plan.panels.map((panel, index) => (
                             <div key={panel.slug} className="text-sm border-b border-gray-300 pb-2 last:border-b-0">
-                                <h4 className="font-bold font-special-elite">Panel {index + 1}:</h4>
+                                <h4 className="font-bold font-special-elite text-gray-700">Panel {index + 1}:</h4>
                                 <div className="font-lora text-gray-700 space-y-1 mt-1">
                                     {panel.text_elements.length > 0 ? (
                                         panel.text_elements.map((el, elIndex) => (

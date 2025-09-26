@@ -26,9 +26,6 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
       if (entry) {
-        // By wrapping the state update in requestAnimationFrame, we prevent the
-        // "ResizeObserver loop completed with undelivered notifications" error.
-        // This decouples the state update from the synchronous execution of the observer.
         animationFrameId = requestAnimationFrame(() => {
             setDimensions({
               width: entry.contentRect.width,
@@ -63,12 +60,19 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!tailPosition) return;
     setIsDragging(true);
+
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+    
     const { width, height } = dimensions;
     const currentTailPos = resolvePosition(tailPosition, width, height);
+
+    // Store the offset of the click FROM the tail's center. This is the new, corrected logic.
     dragStart.current = {
-      x: e.clientX - currentTailPos.x,
-      y: e.clientY - currentTailPos.y,
+      x: (e.clientX - containerRect.left) - currentTailPos.x,
+      y: (e.clientY - containerRect.top) - currentTailPos.y,
     };
+
     e.preventDefault();
     e.stopPropagation();
   };
@@ -81,8 +85,10 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
 
-    const newX = e.clientX - containerRect.left - (dragStart.current.x - resolvePosition(tailPosition!, width, height).x);
-    const newY = e.clientY - containerRect.top - (dragStart.current.y - resolvePosition(tailPosition!, width, height).y);
+    // The new tail position is the current mouse position relative to the container,
+    // minus the initial offset from the click. This is the new, corrected logic.
+    const newX = (e.clientX - containerRect.left) - dragStart.current.x;
+    const newY = (e.clientY - containerRect.top) - dragStart.current.y;
 
     onUpdate({
       tailPosition: {
@@ -90,7 +96,7 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
         y: `${(newY / height) * 100}%`,
       }
     });
-  }, [isDragging, onUpdate, dimensions, tailPosition, resolvePosition]);
+  }, [isDragging, onUpdate, dimensions]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -114,20 +120,12 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     onUpdate({ invertedColors: !invertedColors });
   };
   
-  /**
-   * FIX: This function has been re-engineered to return a single, continuous SVG path string.
-   * By creating a compound path (the body and the tail as one shape), we solve two problems:
-   * 1. The tail is now correctly filled because it's part of the main shape.
-   * 2. Visual glitches and seams are eliminated because there's only one path to render.
-   */
   const getSpeechBubblePath = (width: number, height: number, tailX: number, tailY: number): string => {
     const rx = Math.min(width * 0.15, 25);
     const ry = Math.min(height * 0.15, 25);
     
-    // Main bubble body path
     const body = `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
 
-    // Calculate tail connection points
     const centerX = width / 2;
     const centerY = height / 2;
     const angle = Math.atan2(tailY - centerY, tailX - centerX);
@@ -137,7 +135,6 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     const intersectX = centerX + Math.cos(angle) * effectiveRadiusX;
     const intersectY = centerY + Math.sin(angle) * effectiveRadiusY;
 
-    // Create a closed triangular path for the tail
     const tailWidthAtBase = 25;
     const p1x = intersectX + Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
     const p1y = intersectY + Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
@@ -146,15 +143,12 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
 
     const tail = `M${p1x},${p1y} L${tailX},${tailY} L${p2x},${p2y} Z`;
     
-    // Return both paths as a single string to create a compound path
     return body + ' ' + tail;
   };
   
   const getThoughtBubblePath = (width: number, height: number) => {
     const rx = Math.min(width * 0.15, 25);
     const ry = Math.min(height * 0.15, 25);
-    // A standard SVG path for a rounded rectangle. This provides a much better
-    // container for text than the previous cloud shape.
     return `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
   };
   
