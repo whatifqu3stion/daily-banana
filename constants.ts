@@ -12,6 +12,8 @@ export const COMEDIC_STYLE_OPTIONS: { value: ComedicStyle; label: string }[] = [
   { value: 'deadpan', label: 'Deadpan' },
   { value: 'absurdist', label: 'Absurdist / Surreal' },
   { value: 'slapstick', label: 'Slapstick / Exaggerated' },
+  { value: 'dark-comedy', label: 'Dark Comedy' },
+  { value: 'parody', label: 'Parody / Pastiche' },
 ];
 
 export const ILLUSTRATION_STYLE_OPTIONS: { value: string; label: string; description: string }[] = [

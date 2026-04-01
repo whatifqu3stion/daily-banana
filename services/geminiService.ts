@@ -162,15 +162,17 @@ const STYLE_CRAFT_NOTES: Record<string, string> = {
     deadpan: `DEADPAN MODE: Everyone in the strip treats the insane situation as completely routine. No character reacts with surprise or horror — that's the audience's job. The comedy lives in the gap between the outrageous event and the flat, matter-of-fact response.`,
     absurdist: `ABSURDIST MODE: Pick one impossible or surreal premise and follow its internal logic to the breaking point. Do NOT explain the absurdity. The characters live in this world and accept it. The escalation should feel inevitable given the broken rules of this universe.`,
     slapstick: `SLAPSTICK MODE: Physical comedy drives this strip. Bodies misbehave, objects act against their owners, mishaps escalate. Each panel the physical chaos compounds. Describe exaggerated expressions and body contortions in the visual_prompt. Sound effects (sfx) are your friends.`,
+    'dark-comedy': `DARK COMEDY MODE: Find the laugh inside the genuinely bleak, tragic, or taboo. The humour comes from the gap between the severity of a situation and the inappropriately casual or optimistic response to it. Tone must stay bone-dry — never wink at the audience. The best dark comedy makes the reader laugh and immediately feel guilty about it. Avoid shock for its own sake; the joke must have a point. The punchline should land with a quiet, horrible logic rather than a bang.`,
+    parody: `PARODY / PASTICHE MODE: The strip imitates a specific real-world format to deliver its satirical point — a corporate all-hands memo, a government safety announcement, a movie trailer voice-over, a nature documentary, a news ticker, a self-help listicle. Pick ONE format and commit to it completely. Characters should speak in the clichés and jargon of that format. The comedy comes from the collision between the ridiculous content and the straight-faced institutional voice. Use captions (narrator boxes) liberally to sell the format imitation.`,
 };
 
 const getStanceGuidance = (stance: string): string =>
     STANCE_GUIDANCE[stance.toLowerCase()] ??
-    `Your angle is: "${stance}". Apply this perspective as the satirical lens — what does someone who holds this view find funny, infuriating, or absurd about the topic?`;
+    `Your angle is: "${stance}". Before designing panels, consider: what does this perspective find most absurd or infuriating about the topic? What behaviour or assumption does it want to expose or celebrate? What would a reader who shares this view find cathartic or vindicating about the punchline? Let these questions shape every panel's visual and dialogue choices.`;
 
 const getStyleCraftNote = (style: string): string =>
     STYLE_CRAFT_NOTES[style.toLowerCase()] ??
-    `STYLE: "${style}". Commit to this comedic register fully across all panels. Let it shape character voice, pacing, and the type of punchline you choose.`;
+    `CUSTOM STYLE — "${style}": Before designing panels, analyse what this comedic register implies: What is the emotional tone (warm, cold, angry, bewildered)? What pacing does it demand (slow build or rapid fire)? What kind of punchline does it favour (a twist, a visual gag, a bleak non-resolution, a triumphant reversal)? What should characters sound like in their dialogue? Apply all of these inferred qualities consistently across every panel. Commit fully to this register — never break it.`;
 
 
 // Helper to get illustration style description
