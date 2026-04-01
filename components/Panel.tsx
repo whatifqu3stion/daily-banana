@@ -114,11 +114,26 @@ const Panel: React.FC<PanelProps> = ({
     <div className={`relative group flex flex-col border-2 border-black ${gridClass}`}>
       <div className="relative w-full aspect-square">
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
-          <img
-            src={`data:image/png;base64,${panelData.image}`}
-            alt={panelData.visual_prompt}
-            className="w-full h-full object-cover"
-          />
+          {panelData.failed ? (
+            <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-3 p-4"
+              style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(0,0,0,0.05) 8px, rgba(0,0,0,0.05) 16px)' }}>
+              <p className="font-special-elite text-sm text-center text-gray-700">Generation failed</p>
+              <button
+                onClick={() => onRegenerateImage(panelIndex)}
+                disabled={isLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-banana border-2 border-black font-bangers text-sm tracking-wide rounded hover:bg-yellow-300 disabled:opacity-50 transition-colors"
+              >
+                <RefreshIcon className="w-4 h-4" />
+                Retry
+              </button>
+            </div>
+          ) : (
+            <img
+              src={`data:image/png;base64,${panelData.image}`}
+              alt={panelData.visual_prompt}
+              className="w-full h-full object-cover"
+            />
+          )}
           {isLoading && (
             <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
               <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black"></div>

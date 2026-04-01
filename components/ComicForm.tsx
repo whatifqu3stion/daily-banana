@@ -37,15 +37,28 @@ const checkForSensitiveContent = (topic: string): boolean => {
 };
 
 
+const STORAGE_KEY = 'dailyBanana_formState';
+
+const loadSavedForm = (): Partial<ComicFormData> => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+};
+
 const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
+  const saved = loadSavedForm();
   const [formData, setFormData] = useState<ComicFormData>({
-    topic: '',
-    stance: 'critical',
-    comedicStyle: 'satirical',
-    illustrationStyle: 'default-color',
+    topic: saved.topic ?? '',
+    stance: saved.stance ?? 'critical',
+    comedicStyle: saved.comedicStyle ?? 'satirical',
+    illustrationStyle: saved.illustrationStyle ?? 'default-color',
     referenceImages: [],
-    brainstormMode: false,
-    includeContext: false,
+    brainstormMode: saved.brainstormMode ?? false,
+    includeContext: saved.includeContext ?? false,
   });
   const [showFreeTextStance, setShowFreeTextStance] = useState(false);
   const [showFreeTextComedicStyle, setShowFreeTextComedicStyle] = useState(false);
@@ -61,6 +74,14 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   // State for the new confirmation modal
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   
+  // Persist form state to localStorage on every change (excluding File objects)
+  useEffect(() => {
+    try {
+      const { referenceImages: _skip, ...saveable } = formData;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveable));
+    } catch { /* ignore storage errors */ }
+  }, [formData]);
+
   // Effect to revoke object URLs on unmount to prevent memory leaks
   useEffect(() => {
     return () => {

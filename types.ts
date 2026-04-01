@@ -98,6 +98,7 @@ export interface LayoutProps {
 export interface PanelData {
   id: string;
   image: string; // base64 encoded image
+  failed?: boolean; // true if image generation failed for this panel
   visual_prompt: string;
   text_elements: TextElementData[];
   consistency_tags: string[];
