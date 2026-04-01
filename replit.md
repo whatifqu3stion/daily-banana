@@ -7,7 +7,7 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 - **Frontend:** React 19 + TypeScript
 - **Build Tool:** Vite 6
 - **Styling:** Tailwind CSS (via CDN in dev, CDN in prod)
-- **AI:** Google Gemini (`gemini-2.5-flash` for text, `gemini-2.5-flash-image-preview` for images)
+- **AI:** Google Gemini (`gemini-2.5-flash` for text, `gemini-3.1-flash-image-preview` for images)
 - **Image Export:** html-to-image
 - **News:** NPR RSS feed via CORS proxies
 
