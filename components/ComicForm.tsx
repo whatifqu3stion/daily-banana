@@ -70,6 +70,14 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [newsStories, setNewsStories] = useState<NewsStory[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
+
+  // Pre-fetch headlines in the background as soon as the form mounts
+  const newsPrefetchRef = useRef<Promise<NewsStory[]> | null>(null);
+  useEffect(() => {
+    const p = getTopStories();
+    p.catch(() => {}); // suppress unhandled-rejection during silent prefetch
+    newsPrefetchRef.current = p;
+  }, []);
   
   // State for the new confirmation modal
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -195,7 +203,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     setNewsStories([]);
     setIsNewsLoading(true);
     try {
-      const stories = await getTopStories();
+      // Reuse the background prefetch if it's in-flight or already done;
+      // fall back to a fresh call only if no prefetch exists.
+      const promise = newsPrefetchRef.current ?? getTopStories();
+      newsPrefetchRef.current = null; // next open will fetch fresh headlines
+      const stories = await promise;
       setNewsStories(stories);
     } catch (error: any) {
       setNewsError(error.message || "An unknown error occurred.");
