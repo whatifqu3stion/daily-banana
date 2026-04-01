@@ -13,70 +13,164 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 const comicPlanSchema = {
     type: Type.OBJECT,
     properties: {
-        title: { type: Type.STRING, description: 'A catchy, newspaper-style title for the comic strip.' },
-        summary: { type: Type.STRING, description: 'A one-sentence summary of the comic\'s story or joke.' },
+        premise: {
+            type: Type.STRING,
+            description: 'ONE sentence that states the core joke or comedic engine of this strip. Written before the panels to anchor everything. E.g. "A senator terrified of AI secretly uses it for every single task." This is your creative north star — every panel must serve it.'
+        },
+        title: { type: Type.STRING, description: 'A punchy, newspaper-headline-style title. Should tease the joke without giving it away. Avoid puns that require the strip to understand.' },
+        summary: { type: Type.STRING, description: 'A one-sentence log-line of the strip, as a TV listings entry would describe it.' },
         panels: {
             type: Type.ARRAY,
-            description: 'An array of panel objects, representing the sequence of the comic strip. Usually 3-4 panels.',
+            description: 'An array of 3–4 panel objects. Each panel must earn its place in the comedic arc. Do not pad.',
             items: {
                 type: Type.OBJECT,
                 properties: {
-                    slug: { type: Type.STRING, description: 'A short, URL-friendly identifier for the panel, e.g., "senator-confused".' },
+                    slug: { type: Type.STRING, description: 'A short, URL-friendly identifier for the panel, e.g., "senator-panics".' },
+                    comedic_role: {
+                        type: Type.STRING,
+                        description: 'The structural job this panel does: "establish" (introduce premise/character), "escalate" (push the absurdity further), "punchline" (the payoff — a twist, reversal, or visual gag), or "button" (optional short final beat after the punchline).'
+                    },
                     visual_prompt: {
                         type: Type.STRING,
-                        description: 'A detailed description for an image generation model, outlining the scene, characters, actions, and emotions. This should NOT contain any text, speech bubbles, or captions.'
+                        description: 'Rich scene description for an image-generation model. Include: specific character appearance and expression, body language, setting details, camera framing (close-up / wide shot / over-shoulder), and any physical comedy or sight gag. The image must be able to carry the joke on its own. DO NOT include any text, speech bubbles, or captions here.'
                     },
                     text_elements: {
                         type: Type.ARRAY,
-                        description: 'All text content for the panel, including speech, thoughts, sound effects, and captions.',
+                        description: 'ALL spoken/written content for the panel. Keep each entry SHORT — aim for 3–8 words. Never explain the joke in dialogue. If the punchline panel works visually with no text, leave this array empty.',
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                text: { type: Type.STRING, description: 'The text content.' },
-                                role: { type: Type.STRING, description: 'The role of the text: "speech", "thought", "sfx", or "caption".' },
+                                text: { type: Type.STRING, description: 'The text content. Keep it brief and punchy.' },
+                                role: { type: Type.STRING, description: '"speech" (talking), "thought" (thinking), "sfx" (sound effect), or "caption" (narrator box).' },
                             },
                             required: ['text', 'role'],
                         },
                     },
                     consistency_tags: {
                         type: Type.ARRAY,
-                        description: 'An array of descriptive tags for maintaining visual consistency of characters and settings across panels (e.g., "Senator Higgins with red tie", "oak desk").',
+                        description: 'Highly specific visual tags for recurring characters and key props. Be precise: "Senator Hal — bald, round face, oversized American flag lapel pin, navy suit" not just "politician". These are injected into the image prompt verbatim.',
                         items: { type: Type.STRING }
                     },
                     size: {
                         type: Type.STRING,
-                        description: 'A layout hint for the panel\'s relative size: "small", "medium", or "large".'
+                        description: 'Layout weight: "small" (quick beat), "medium" (standard), "large" (visual gag or punchline that needs space to breathe).'
                     },
                     aspect_ratio: {
                         type: Type.STRING,
-                        description: 'The aspect ratio of the panel, which must be "1:1".'
+                        description: 'Must always be "1:1".'
                     }
                 },
-                required: ['slug', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
+                required: ['slug', 'comedic_role', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
             }
         }
     },
-    required: ['title', 'summary', 'panels']
+    required: ['premise', 'title', 'summary', 'panels']
 };
 
 const multipleComicPlansSchema = {
     type: Type.ARRAY,
-    description: "An array of 2 to 3 distinct comic plan objects.",
+    description: "An array of exactly 3 comic plan objects, each using a fundamentally different comedic approach as instructed.",
     items: comicPlanSchema
 };
 
-// System instruction for the comic plan generator. This sets the persona and rules for the AI.
+// System instruction for the comic plan generator.
 const PLAN_GENERATION_SYSTEM_INSTRUCTION = `
-You are a creative and witty comic strip writer. Your task is to generate a plan for a short comic strip (usually 3-4 panels) based on a user's request. The output must be a valid JSON object that adheres to the provided schema.
+You are a veteran satirical comic strip writer — think Doonesbury meets The Onion. You produce strips that are genuinely funny: tight, visually inventive, and structurally sound. Your job is to generate comic strip plans that a skilled cartoonist would be proud to draw.
 
-**Key Instructions:**
-1.  The "visual_prompt" for each panel must be a detailed description for an AI image generator. It should describe the scene, characters, composition, and actions. **DO NOT include any text, speech, or captions in the visual prompt itself.**
-2.  All text content (speech, captions, sound effects) must be placed in the "text_elements" array.
-3.  Create "consistency_tags" for any recurring characters or key objects to help the image generator maintain a consistent look. If the user provides reference images, use their tags here.
-4.  Vary panel sizes ('small', 'medium', 'large') to create a dynamic layout. Ensure the total number of panels is between 2 and 6.
-5.  The aspect ratio for all panels must be '1:1'.
-6.  Ensure the final output is a single, valid JSON object (or an array of objects if multiple plans were requested) with no extra text or markdown formatting.
+---
+
+## STEP 1 — CRYSTALLISE THE PREMISE FIRST
+Before designing a single panel, write the "premise" field: one sentence capturing the core comedic engine. The best premises have a built-in irony or contradiction. 
+- WEAK: "Politicians are corrupt."
+- STRONG: "A senator crusading against Big Tech delivers his speech using every Big Tech product, reading from notes written by ChatGPT."
+Every panel must serve this premise. If a panel doesn't advance or pay off the joke, cut it.
+
+---
+
+## STEP 2 — BUILD THE STRUCTURAL ARC
+Choose your panel count and follow its arc rigidly:
+
+**3 panels (classic):**
+- Panel 1 "establish": Introduce the absurd situation and key character(s) in one clear image.
+- Panel 2 "escalate": Push the premise to a more extreme or unexpected place. The audience should think "oh no, where is this going?"
+- Panel 3 "punchline": Land the twist. Subvert the expectation. The joke should feel inevitable in retrospect but surprising in the moment. **Consider a silent punchline — no dialogue at all.**
+
+**4 panels (full arc):**
+- Panel 1 "establish": Setup.
+- Panel 2 "escalate": Complicate.
+- Panel 3 "escalate": Push further — raise the stakes or reveal something.
+- Panel 4 "punchline": Hard landing. Should recontextualise everything before it.
+
+**2 panels:** Brutal economy. Setup + punchline only. Works best for visual sight gags.
+
+---
+
+## STEP 3 — APPLY THE COMEDIC STYLE
+The user specifies a style. Apply it with craft, not just as a label:
+
+- **Satirical**: Expose a real hypocrisy through exaggeration. The target behaviour must be recognisable — the audience should wince in recognition. Use specificity: name the type of politician, the exact technology, the specific corporate jargon.
+- **Ironic**: Characters say or do the opposite of what they mean. Dramatic irony is powerful — let the *reader* know something the character doesn't. Understatement is your friend.
+- **Deadpan**: Characters treat the absurd as completely routine. No one acknowledges the insanity. The comedy comes from the gap between the outrageous situation and the characters' flat reaction to it.
+- **Absurdist**: Take one impossible premise and follow its logic ruthlessly. The comedy is in the internal consistency of a broken universe. Do not explain the absurdity — commit to it fully.
+- **Slapstick**: Physical escalation. Bodies misbehave. Objects behave badly. Each panel the physical mishap compounds. Exaggerated facial expressions and body language carry the strip. Go big.
+
+---
+
+## STEP 4 — DIALOGUE ECONOMICS
+- Target: **3–7 words per speech bubble.** Fewer is almost always better.
+- Never let a character explain the joke. If you've written "As you can see, this ironically shows that..." — delete it.
+- Avoid hedging language: no "Well...", "I suppose...", "Perhaps...".
+- The punchline panel should often be **silent**. Trust the image.
+- Captions are for setting time/place only, not commentary.
+- Sound effects (sfx) must be vivid and specific: "KA-CHING", "SQUEAK SQUEAK", "BOOM" — not "thud".
+
+---
+
+## STEP 5 — VISUAL COMEDY PRINCIPLES
+The image must carry at least 50% of the joke. Before writing dialogue, ask: "Could this be funny without any words?"
+
+- **Character specificity**: Give characters a strong, memorable visual hook (a signature prop, an absurd posture, a telling fashion choice). Avoid generic "man in suit."
+- **Sight gags**: The funniest moments are often visual — an unexpected object in the background, an absurd scale contrast, a character doing something physically impossible with perfect calm.
+- **Expressions matter**: Specify the exact expression. Not "looks surprised" — "eyes wide open, mouth forming a small horrified 'O', one hand raised with a half-eaten biscuit frozen mid-air."
+- **Framing for comedy**: Close-ups emphasise reaction. Wide shots reveal scale and context. Over-the-shoulder shots create suspense. Use size "large" for panels where the visual gag needs room.
+- **Avoid talking-head panels**: If two characters just face each other and talk, the image adds nothing. Give them something to do, hold, react to.
+
+---
+
+## HARD RULES
+1. **Never explain the joke** — in dialogue, captions, or the summary.
+2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
+3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
+4. **visual_prompt contains zero text, zero speech, zero captions.** Describe only what is seen.
+5. **aspect_ratio is always "1:1".**
+6. **Panel count: 2–4.** Do not pad with unnecessary panels.
+7. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 `;
+
+
+// Stance → satirical technique mapping
+const STANCE_GUIDANCE: Record<string, string> = {
+    supportive: `Your angle is SUPPORTIVE — find the genuine heroism, absurdity of opposition, or comic irony in defending this position. The comedy comes from showing how ridiculous the critics look, or how unexpectedly complicated it is to do the right thing.`,
+    critical: `Your angle is CRITICAL — expose the hypocrisy, incompetence, or self-interest at the heart of this topic. Use specific, recognisable behaviour. The target should be identifiable but the critique should feel earned, not preachy.`,
+    neutral: `Your angle is NEUTRAL / OBSERVATIONAL — you're the incredulous everyman watching the chaos. The comedy comes from the absurdity of the situation itself, not from taking sides. Both sides can look foolish.`,
+};
+
+// Comedic style → craft note mapping
+const STYLE_CRAFT_NOTES: Record<string, string> = {
+    satirical: `SATIRICAL MODE: Exaggerate real behaviour until it reveals its own absurdity. Specificity is everything — the more recognisable the target, the sharper the satire. Avoid generic "politician does bad thing"; instead show the exact specific bad thing in vivid detail.`,
+    ironic: `IRONIC MODE: Build your strip on dramatic irony or verbal irony. Let the reader see the gap between what characters claim and what is actually happening. Understatement is more powerful than overstatement here.`,
+    deadpan: `DEADPAN MODE: Everyone in the strip treats the insane situation as completely routine. No character reacts with surprise or horror — that's the audience's job. The comedy lives in the gap between the outrageous event and the flat, matter-of-fact response.`,
+    absurdist: `ABSURDIST MODE: Pick one impossible or surreal premise and follow its internal logic to the breaking point. Do NOT explain the absurdity. The characters live in this world and accept it. The escalation should feel inevitable given the broken rules of this universe.`,
+    slapstick: `SLAPSTICK MODE: Physical comedy drives this strip. Bodies misbehave, objects act against their owners, mishaps escalate. Each panel the physical chaos compounds. Describe exaggerated expressions and body contortions in the visual_prompt. Sound effects (sfx) are your friends.`,
+};
+
+const getStanceGuidance = (stance: string): string =>
+    STANCE_GUIDANCE[stance.toLowerCase()] ??
+    `Your angle is: "${stance}". Apply this perspective as the satirical lens — what does someone who holds this view find funny, infuriating, or absurd about the topic?`;
+
+const getStyleCraftNote = (style: string): string =>
+    STYLE_CRAFT_NOTES[style.toLowerCase()] ??
+    `STYLE: "${style}". Commit to this comedic register fully across all panels. Let it shape character voice, pacing, and the type of punchline you choose.`;
 
 
 // Helper to get illustration style description
@@ -91,25 +185,44 @@ const getIllustrationStyleDescription = (styleValue?: string): string => {
 const constructPlanContents = (formData: ComicFormData, numPlans: number): string => {
     const { topic, stance, comedicStyle, illustrationStyle, referenceImages } = formData;
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
+    const stanceGuidance = getStanceGuidance(stance);
+    const styleCraftNote = getStyleCraftNote(comedicStyle);
 
     let referenceImageInfo = '';
     if (referenceImages && referenceImages.length > 0) {
-        referenceImageInfo = `The user has provided reference images. Pay close attention to them for visual consistency. The images are tagged as follows:\n${referenceImages.map(img => `- "${img.tag}"`).join('\n')}\nUse these tags in your consistency tags.`;
+        referenceImageInfo = `\n**Reference Images Provided:**\nThe user has supplied reference images. Use them as the visual foundation for characters/settings. Tag them precisely in consistency_tags:\n${referenceImages.map(img => `- "${img.tag}"`).join('\n')}\n`;
     }
 
-    const planCountInstruction = numPlans > 1
-        ? `Generate ${numPlans} completely distinct and creative comic strip ideas based on the user's request.`
-        : `Generate a creative comic strip plan based on the user's request.`;
+    if (numPlans > 1) {
+        // Brainstorm mode: force three structurally distinct comedic approaches
+        return `
+Generate exactly 3 comic strip concepts about the topic below. Each concept MUST use a fundamentally different comedic approach — do not let them feel like variations of the same idea.
+
+**Mandatory structural variety:**
+- Concept 1 — VISUAL/PHYSICAL: The comedy lives almost entirely in the image. Minimal or no dialogue. A sight gag, visual absurdity, or slapstick mishap carries the punchline. Think Buster Keaton, not a stand-up comedian.
+- Concept 2 — IRONIC REVERSAL: Build the strip around a strong dramatic or verbal irony. The reader knows something characters don't, or characters say the exact opposite of what they mean. Dialogue is central but kept short.
+- Concept 3 — ABSURD ESCALATION: One impossible or surreal premise, followed ruthlessly to its logical extreme. Each panel the situation gets more ridiculous but remains internally consistent. No one in the strip finds this strange.
+
+**Creative Brief:**
+- **Topic:** ${topic}
+- **Angle:** ${stanceGuidance}
+- **Comedic Register:** ${styleCraftNote}
+- **Illustration Style:** ${styleDescription}
+${referenceImageInfo}
+Remember: write the "premise" field first for each concept before designing panels. That one sentence is your anchor.
+`;
+    }
 
     return `
-${planCountInstruction}
+Generate a single comic strip plan about the topic below.
 
-**Comic Request Details:**
+**Creative Brief:**
 - **Topic:** ${topic}
-- **Your Stance/Angle:** ${stance}
-- **Comedic Style:** ${comedicStyle}
-- **Intended Illustration Style:** ${styleDescription}
+- **Angle:** ${stanceGuidance}
+- **Comedic Register:** ${styleCraftNote}
+- **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
+Remember: write the "premise" field first before designing panels. That one sentence anchors the entire strip.
 `;
 };
 
@@ -166,17 +279,14 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
     return newPlan;
   }
 
-  if (typeof plan.title === 'string') {
-    newPlan.title = plan.title.trim();
-  }
-  if (typeof plan.summary === 'string') {
-    newPlan.summary = plan.summary.trim();
-  }
+  if (typeof plan.premise === 'string') newPlan.premise = plan.premise.trim();
+  if (typeof plan.title === 'string') newPlan.title = plan.title.trim();
+  if (typeof plan.summary === 'string') newPlan.summary = plan.summary.trim();
 
   if (Array.isArray(plan.panels)) {
     for (const p of plan.panels) {
       if (typeof p !== 'object' || p === null) {
-        continue; // Skip invalid panel entries like null
+        continue;
       }
 
       const newPanel: PlanPanel = {
@@ -191,7 +301,10 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
       if (typeof p.slug === 'string') newPanel.slug = p.slug;
       if (typeof p.visual_prompt === 'string') newPanel.visual_prompt = p.visual_prompt;
       if (['small', 'medium', 'large'].includes(p.size)) newPanel.size = p.size;
-      
+      if (['establish', 'escalate', 'punchline', 'button'].includes(p.comedic_role)) {
+          newPanel.comedic_role = p.comedic_role;
+      }
+
       if (Array.isArray(p.text_elements)) {
           for (const el of p.text_elements) {
               if (typeof el === 'object' && el !== null && typeof el.text === 'string' && typeof el.role === 'string') {
@@ -207,7 +320,7 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
               }
           }
       }
-      
+
       newPlan.panels.push(newPanel);
     }
   }

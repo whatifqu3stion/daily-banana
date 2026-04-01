@@ -67,6 +67,7 @@ export type BubbleData = Omit<TextElementData, 'role'> & {
 // Data for a single generated panel from the AI plan.
 export interface PlanPanel {
     slug: string;
+    comedic_role?: 'establish' | 'escalate' | 'punchline' | 'button';
     visual_prompt: string;
     // A single, unified array for all text elements.
     // FIX: Removed position and size from the AI's responsibility to improve reliability.
@@ -82,8 +83,9 @@ export interface PlanPanel {
 
 // Data for the entire comic plan from the AI.
 export interface ComicPlan {
+    premise?: string; // Internal core-joke anchor used during generation
     title: string;
-    summary: string; // A new field for a quick, digestible summary.
+    summary: string;
     panels: PlanPanel[];
 }
 

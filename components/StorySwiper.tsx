@@ -48,14 +48,24 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
                     <p className="text-sm font-special-elite text-gray-600 mb-1">Idea {currentIndex + 1} of {storyPlans.length}</p>
                     <h3 className="text-3xl font-bangers tracking-wider text-black">{currentPlan.title}</h3>
                     <p className="text-base font-lora italic text-gray-700 mt-1">"{currentPlan.summary}"</p>
+                    {currentPlan.premise && (
+                        <p className="text-xs font-special-elite text-banana bg-black rounded px-2 py-1 mt-2 inline-block">
+                            Core joke: {currentPlan.premise}
+                        </p>
+                    )}
                 </header>
 
                 <div className="p-6 space-y-3">
                     {currentPlan.panels.map((panel, i) => (
                         <div key={panel.slug} className="flex gap-3 items-start text-sm border-b border-black/10 pb-3 last:border-b-0 last:pb-0">
-                            <span className="font-bangers text-base text-gray-500 flex-shrink-0 w-16">
-                                Panel {i + 1}
-                            </span>
+                            <div className="flex-shrink-0 w-16">
+                                <span className="font-bangers text-base text-gray-500">
+                                    Panel {i + 1}
+                                </span>
+                                {panel.comedic_role && (
+                                    <span className="block text-xs font-special-elite text-gray-400 uppercase">{panel.comedic_role}</span>
+                                )}
+                            </div>
                             <div className="flex-1 space-y-1">
                                 {panel.text_elements.length > 0 ? (
                                     panel.text_elements.map((el, j) => (
