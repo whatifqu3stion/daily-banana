@@ -171,8 +171,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const handleFetchNewsClick = async () => {
     setIsNewsModalOpen(true);
     setNewsError(null);
-    if (newsStories.length > 0) return; // Don't re-fetch if we already have them
-
+    setNewsStories([]);
     setIsNewsLoading(true);
     try {
       const stories = await getTopStories();
