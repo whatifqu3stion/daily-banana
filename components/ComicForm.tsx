@@ -352,6 +352,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 autoFocus
               />
             )}
+            {formData.comedicStyle === 'dark-comedy' && !showFreeTextComedicStyle && (
+              <p className="mt-2 text-xs font-special-elite text-amber-800 bg-amber-50 border border-amber-300 rounded px-3 py-2">
+                Dark Comedy stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence, tragedy, or explicit harm may be blocked by the AI's content filters.
+              </p>
+            )}
           </div>
         </div>
 

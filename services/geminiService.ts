@@ -162,7 +162,7 @@ const STYLE_CRAFT_NOTES: Record<string, string> = {
     deadpan: `DEADPAN MODE: Everyone in the strip treats the insane situation as completely routine. No character reacts with surprise or horror — that's the audience's job. The comedy lives in the gap between the outrageous event and the flat, matter-of-fact response.`,
     absurdist: `ABSURDIST MODE: Pick one impossible or surreal premise and follow its internal logic to the breaking point. Do NOT explain the absurdity. The characters live in this world and accept it. The escalation should feel inevitable given the broken rules of this universe.`,
     slapstick: `SLAPSTICK MODE: Physical comedy drives this strip. Bodies misbehave, objects act against their owners, mishaps escalate. Each panel the physical chaos compounds. Describe exaggerated expressions and body contortions in the visual_prompt. Sound effects (sfx) are your friends.`,
-    'dark-comedy': `DARK COMEDY MODE: Find the laugh inside the genuinely bleak, tragic, or taboo. The humour comes from the gap between the severity of a situation and the inappropriately casual or optimistic response to it. Tone must stay bone-dry — never wink at the audience. The best dark comedy makes the reader laugh and immediately feel guilty about it. Avoid shock for its own sake; the joke must have a point. The punchline should land with a quiet, horrible logic rather than a bang.`,
+    'dark-comedy': `DARK COMEDY MODE: Find the laugh in institutional indifference, the absurd cruelty of bureaucratic systems, existential futility, and the comedy of powerlessness. Think Catch-22, Dr. Strangelove, The Death of Stalin — dry, cynical, bleak irony where the punchline is that nothing matters and everyone knows it. The humour comes from the gap between the severity of a situation and the characters' inappropriately casual or resigned response. Tone must stay bone-dry — no winking at the audience. CRITICAL CONTENT BOUNDARY: Stay firmly within satirical newspaper editorial standards. Do NOT depict graphic violence, explicit harm, real named individuals suffering, or any content that would be rejected by a mainstream editorial publication. Dark should mean cynical and nihilistic — never graphic or shocking. The joke must have a satirical point. The punchline should land with a quiet, horrible logic.`,
     parody: `PARODY / PASTICHE MODE: The strip imitates a specific real-world format to deliver its satirical point — a corporate all-hands memo, a government safety announcement, a movie trailer voice-over, a nature documentary, a news ticker, a self-help listicle. Pick ONE format and commit to it completely. Characters should speak in the clichés and jargon of that format. The comedy comes from the collision between the ridiculous content and the straight-faced institutional voice. Use captions (narrator boxes) liberally to sell the format imitation.`,
 };
 
@@ -265,6 +265,23 @@ If reference images are provided, use them as a strong visual guide for characte
 // --- API Functions ---
 
 /**
+ * Checks the first candidate's finishReason for a safety block and throws a
+ * user-friendly error if found. Call this after every generateContent call,
+ * before trying to read the response body.
+ */
+const assertNotSafetyBlocked = (result: any, context: string): void => {
+    const candidate = result.candidates?.[0];
+    const finishReason = candidate?.finishReason as string | undefined;
+    if (!candidate || finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+        console.warn(`Safety block detected (${context}). finishReason: ${finishReason}`);
+        throw new Error(
+            "The AI's content filters blocked this request. Try rephrasing your topic or choosing a different comedic style. " +
+            "If using Dark Comedy, keep the subject matter within editorial-cartoon bounds — avoid explicit references to harm, violence, or tragedy."
+        );
+    }
+};
+
+/**
  * FIX: Replaced the comic plan sanitization function with a highly defensive, imperative "builder" version.
  * This new function constructs a guaranteed-valid comic plan object from scratch, validating every property
  * from the AI's response. This is the most robust possible defense against malformed data and will permanently
@@ -353,6 +370,8 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
         }
     });
 
+    assertNotSafetyBlocked(result, 'generateSingleComicPlan');
+
     try {
         const jsonText = result.text.trim();
         if (!jsonText) {
@@ -391,6 +410,8 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
             responseSchema: multipleComicPlansSchema,
         }
     });
+
+    assertNotSafetyBlocked(result, 'generateMultipleComicPlans');
 
     try {
         const jsonText = result.text.trim();
@@ -440,6 +461,8 @@ const generatePanelImageWithReferences = async (
         }
     });
 
+    assertNotSafetyBlocked(result, 'generatePanelImageWithReferences');
+
     const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
 
     if (imagePart?.inlineData) {
@@ -479,6 +502,8 @@ const refinePanelImage = async (
             responseModalities: [Modality.IMAGE, Modality.TEXT]
         }
     });
+
+    assertNotSafetyBlocked(result, 'refinePanelImage');
 
     const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
 
