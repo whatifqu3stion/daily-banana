@@ -32,8 +32,16 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 ## Running the App
 ```bash
 npm install
-npm run dev   # Starts on http://0.0.0.0:5000
+npm run dev          # Starts on http://0.0.0.0:5000
+npm run check-prices # Verify image model prices against Google AI pricing page
 ```
+
+## Pricing Verification
+`scripts/check-pricing.mjs` fetches the Google AI pricing page and compares the
+`pricePerImage` values in `constants.ts` against the live "Output price" rows.
+- Runs automatically as part of `npm run build` (gates the build on success).
+- Soft-warns (exit 0) when the page is unreachable; fails the build (exit 1) only on confirmed mismatches.
+- If Google renames a pricing section, update `MODEL_PAGE_HEADING_IDS` in the script.
 
 ## Deployment
 - **Type:** Static site
