@@ -91,18 +91,31 @@
         -webkit-mask-image: linear-gradient(to bottom, transparent 25%, black 100%);
       }
       
-      /* Masthead title: halftone fill clipped to text only + light letter spacing */
+      /* Masthead title: two-layer halftone effect.
+         Layer 1 (h1 itself): solid lighter text — visible through the dot gaps.
+         Layer 2 (::after): pure-black dots clipped to the letterforms, overlaid on top.
+         Together they produce the look of ink printed through a halftone screen. */
       .masthead-title {
+        position: relative;
         display: inline-block;
         font-size: 5.5rem;
         line-height: 1;
         letter-spacing: 0.04em;
         white-space: nowrap;
-        background-image: radial-gradient(circle, #3a3a3a 40%, transparent 40%);
+        color: #666;
+      }
+      .masthead-title::after {
+        content: attr(data-text);
+        position: absolute;
+        top: 0;
+        left: 0;
+        white-space: nowrap;
+        background-image: radial-gradient(circle, #000 45%, transparent 45%);
         background-size: 3px 3px;
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
+        pointer-events: none;
       }
 
       /* Custom animation that is not part of Tailwind */
