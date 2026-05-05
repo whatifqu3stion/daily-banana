@@ -40,6 +40,23 @@ const makeConsistencyRef = (base64: string, panelNumber: number): ProcessedRefer
   tag: `CHARACTER & STYLE REFERENCE (panel ${panelNumber}): Reproduce the art style, character faces, body types, clothing, and colour palette from this image exactly. Treat it as the authoritative style sheet for all characters.`,
 });
 
+/**
+ * Curated starting positions for speech/thought bubbles — one per screen quadrant.
+ * Each slot's tail points toward the opposite quadrant, where a character's mouth
+ * would typically appear relative to their speech bubble.
+ *
+ *  Slot 0 — top-left,     tail → lower-right
+ *  Slot 1 — top-right,    tail → lower-left
+ *  Slot 2 — bottom-left,  tail → upper-right
+ *  Slot 3 — bottom-right, tail → upper-left
+ */
+const BUBBLE_SLOTS = [
+  { pos: { x: '2%',  y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '120%' } },
+  { pos: { x: '50%', y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '120%' } },
+  { pos: { x: '2%',  y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '-20%' } },
+  { pos: { x: '50%', y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '-20%' } },
+] as const;
+
 export default function useComicGeneration() {
   const [appStage, setAppStage] = useState<AppStage>('form');
   const [formDataCache, setFormDataCache] = useState<ComicFormData | null>(null);
@@ -296,21 +313,6 @@ export default function useComicGeneration() {
         reviewData.plan.summary
       );
     }
-
-    // Curated starting slots for speech/thought bubbles.
-    // Each slot puts the bubble in a distinct quadrant with a tail pointing
-    // toward the opposite quadrant (where a character mouth typically appears).
-    //
-    //  Slot 0 — top-left,    tail → lower-right
-    //  Slot 1 — top-right,   tail → lower-left
-    //  Slot 2 — bottom-left, tail → upper-right
-    //  Slot 3 — bottom-right,tail → upper-left
-    const BUBBLE_SLOTS = [
-      { pos: { x: '2%',  y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '120%' } },
-      { pos: { x: '50%', y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '120%' } },
-      { pos: { x: '2%',  y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '-20%' } },
-      { pos: { x: '50%', y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '-20%' } },
-    ] as const;
 
     const finalPanels: PanelData[] = reviewData.plan.panels.map((planPanel, index) => {
       const image = panelImages[index] ?? '';

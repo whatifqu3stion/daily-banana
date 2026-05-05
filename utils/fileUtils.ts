@@ -1,4 +1,9 @@
+// utils/fileUtils.ts — browser file utilities.
 
+/**
+ * Reads a File object and resolves with its base64-encoded contents and MIME
+ * type, ready to pass directly to the Gemini API's `inlineData` image format.
+ */
 export const toBase64 = (file: File): Promise<{ base64: string; mimeType: string }> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();

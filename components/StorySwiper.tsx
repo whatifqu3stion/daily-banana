@@ -13,6 +13,7 @@ interface StorySwiperProps {
     onReturnToForm: () => void;
 }
 
+// Emoji icon shown beside each text-element role in the story preview cards.
 const ROLE_LABELS: Record<string, string> = {
   speech: '💬',
   thought: '💭',

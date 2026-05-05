@@ -19,6 +19,9 @@ interface ReferenceImageState extends ReferenceImage {
   previewUrl: string;
 }
 
+// Topics that are likely to trip the AI safety filters before a useful comic
+// can be generated. Uses whole-word regex matching to avoid false positives
+// (e.g. "salt" shouldn't match "assault").
 const SENSITIVE_KEYWORDS = [
   'shooting', 'shot', 'gun violence', 'massacre', 'killing', 'killed',
   'attack', 'bombing', 'terrorist', 'terrorism',

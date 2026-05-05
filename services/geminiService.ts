@@ -1,15 +1,14 @@
-// FIX: The original file started with an invalid line of text that caused parsing errors. It has been removed.
-// services/geminiService.ts
+// services/geminiService.ts — all Gemini API interactions:
+//   • Comic plan generation  (single plan + multi-plan brainstorm)
+//   • Panel image generation and refinement
+//   • News context explainer
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, ComedicStyle, PlanPanel } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
-// According to guidelines, API key must be from the environment.
-// FIX: The API key must be read from `process.env.API_KEY` as per the coding guidelines.
-// This resolves the "Property 'env' does not exist on type 'ImportMeta'" error.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Schemas for comic plan generation
+// ─── Response schemas ────────────────────────────────────────────────────────
 const comicPlanSchema = {
     type: Type.OBJECT,
     properties: {
@@ -73,7 +72,7 @@ const multipleComicPlansSchema = {
     items: comicPlanSchema
 };
 
-// System instruction for the comic plan generator.
+// ─── System instruction ──────────────────────────────────────────────────────
 const PLAN_GENERATION_SYSTEM_INSTRUCTION = `
 You are a veteran satirical comic strip writer — think Doonesbury meets The Onion. You produce strips that are genuinely funny: tight, visually inventive, and structurally sound. Your job is to generate comic strip plans that a skilled cartoonist would be proud to draw.
 
@@ -147,6 +146,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 `;
 
 
+// ─── Per-request prompt builders ─────────────────────────────────────────────
 // Stance → satirical technique mapping
 const STANCE_GUIDANCE: Record<string, string> = {
     supportive: `Your angle is SUPPORTIVE — find the genuine heroism, absurdity of opposition, or comic irony in defending this position. The comedy comes from showing how ridiculous the critics look, or how unexpectedly complicated it is to do the right thing.`,
@@ -227,7 +227,12 @@ Remember: write the "premise" field first before designing panels. That one sent
 `;
 };
 
-// Prompt constructor for image generation/refinement
+/**
+ * Builds the final text prompt sent to the image model.
+ * When `refinementPrompt` is provided the instruction becomes "refine this image";
+ * otherwise it generates from scratch. `consistencyTags` is guarded against
+ * null/undefined since the AI occasionally omits the field.
+ */
 const constructImagePrompt = (
     basePrompt: string,
     consistencyTags: string[],
@@ -240,8 +245,7 @@ const constructImagePrompt = (
     const mainInstruction = refinementPrompt
         ? `Refine the provided image based on these instructions: "${refinementPrompt}".`
         : `Generate a comic panel image based on the following description.`;
-    
-    // FIX: Add a defensive check to prevent a crash if the AI omits consistency_tags.
+
     const safeConsistencyTags = consistencyTags || [];
 
     const consistencyBlock = safeConsistencyTags.length > 0
@@ -268,7 +272,7 @@ If a reference image is provided, treat it as the authoritative style and charac
 `;
 };
 
-// --- API Functions ---
+// ─── Response sanitization ───────────────────────────────────────────────────
 
 /**
  * Checks the first candidate's finishReason for a safety block and throws a
@@ -288,10 +292,10 @@ const assertNotSafetyBlocked = (result: any, context: string): void => {
 };
 
 /**
- * FIX: Replaced the comic plan sanitization function with a highly defensive, imperative "builder" version.
- * This new function constructs a guaranteed-valid comic plan object from scratch, validating every property
- * from the AI's response. This is the most robust possible defense against malformed data and will permanently
- * resolve the recurring "Cannot read properties of undefined (reading 'length')" error.
+ * Constructs a guaranteed-valid ComicPlan from raw AI output.
+ * Builds a fresh object rather than spreading the raw response so every field
+ * is explicitly validated. Callers can rely on the result having the correct
+ * shape even when the AI returns partial or malformed JSON.
  */
 const sanitizeComicPlan = (plan: any): ComicPlan => {
   const newPlan: ComicPlan = {
@@ -353,6 +357,7 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
   return newPlan;
 };
 
+// ─── API functions ───────────────────────────────────────────────────────────
 
 const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
     const contents = constructPlanContents(formData, 1);

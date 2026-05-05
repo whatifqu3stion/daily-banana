@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
 import Draggable from './Draggable';
-// Fix: Corrected the import for the Bubble component. The original error was caused by the Bubble.tsx file containing invalid content, not the import statement itself. With the Bubble component now correctly defined and exported, this import works as intended.
 import Bubble from './Bubble';
 import EditableText from './EditableText';
 import RefreshIcon from './icons/RefreshIcon';

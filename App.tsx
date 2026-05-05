@@ -1,6 +1,6 @@
-// FIX: The entire file is new, replacing a placeholder.
-// This component now serves as the main application entry point,
-// managing state and orchestrating the comic generation workflow.
+// App.tsx — root layout component.
+// Owns the masthead, footer, and top-level stage rendering.
+// All comic generation state and logic lives in useComicGeneration().
 import React from 'react';
 import useComicGeneration from './hooks/useComicGeneration';
 import ComicForm from './components/ComicForm';

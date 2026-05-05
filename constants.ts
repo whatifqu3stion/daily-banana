@@ -1,3 +1,4 @@
+// constants.ts — static option lists shared by the form UI and the AI prompt builders.
 import { Stance, ComedicStyle, ImageModel } from './types';
 
 export const STANCE_OPTIONS: { value: Stance; label: string }[] = [
