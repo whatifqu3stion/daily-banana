@@ -105,7 +105,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
         <div className="flex items-center justify-center gap-4 max-w-6xl mx-auto">
           <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-36 md:h-44 w-auto flex-shrink-0" />
-          <div className="text-center min-w-0">
+          <div className="text-center flex-1 min-w-0">
             <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
               {today}
             </p>
@@ -116,6 +116,7 @@ const App: React.FC = () => {
               The news makes us want to cry, but we choose to laugh.
             </p>
           </div>
+          <img src="/price-tag.png" alt="Only 10 cents per copy" className="h-[108px] md:h-[132px] w-auto flex-shrink-0" />
         </div>
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mt-2"></div>
       </header>
