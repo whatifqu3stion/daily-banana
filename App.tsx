@@ -105,14 +105,14 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen p-4 sm:p-8 font-sans">
       <header className="text-center mb-16">
-        <div className="w-full max-w-3xl mx-auto h-1 bg-black mb-2"></div>
-        <div className="flex items-end justify-center gap-4 max-w-3xl mx-auto">
+        <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
+        <div className="flex items-center justify-center gap-4 max-w-6xl mx-auto">
           <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-36 md:h-44 w-auto flex-shrink-0" />
-          <div className="text-center">
+          <div className="text-center min-w-0">
             <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
               {today}
             </p>
-            <h1 className="masthead-title font-masthead font-black text-6xl md:text-7xl mt-1">
+            <h1 className="masthead-title font-masthead font-black mt-1">
               The Daily Bannana
             </h1>
             <p className="text-xl font-special-elite text-gray-800 mt-2">
@@ -120,7 +120,7 @@ const App: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="w-full max-w-3xl mx-auto h-1 bg-black mt-2"></div>
+        <div className="w-full max-w-6xl mx-auto h-1 bg-black mt-2"></div>
       </header>
       <main>
         {renderContent()}
