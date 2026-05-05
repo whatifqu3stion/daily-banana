@@ -57,7 +57,7 @@ const comicPlanSchema = {
                     },
                     aspect_ratio: {
                         type: Type.STRING,
-                        description: 'Must always be "1:1".'
+                        description: 'Compositional hint for this panel. Use "large" size for panels that need visual room — the layout system will render those panels wider or in cinematic 16:9. Always set "1:1" here; aspect ratio is determined by the layout engine based on size and comedic_role.'
                     }
                 },
                 required: ['slug', 'comedic_role', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
@@ -142,9 +142,8 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
 3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
 4. **visual_prompt contains zero text, zero speech, zero captions.** Describe only what is seen.
-5. **aspect_ratio is always "1:1".**
-6. **Panel count: 2–4.** Do not pad with unnecessary panels.
-7. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
+5. **Panel count: 2–4.** Do not pad with unnecessary panels.
+6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 `;
 
 
@@ -314,7 +313,7 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
         text_elements: [],
         consistency_tags: [],
         size: 'medium',
-        aspect_ratio: '1:1',
+        aspect_ratio: '1:1', // layoutAdapter overrides this via template selection
       };
 
       if (typeof p.slug === 'string') newPanel.slug = p.slug;

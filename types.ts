@@ -68,21 +68,24 @@ export type BubbleData = Omit<TextElementData, 'role'> & {
 };
 
 
+// Supported aspect ratios for panel display.
+// 1:1 and 4:3 are square-ish; 16:9 is cinematic landscape; 9:16 is portrait.
+export type AspectRatio = '1:1' | '16:9' | '4:3' | '9:16';
+
 // Data for a single generated panel from the AI plan.
 export interface PlanPanel {
     slug: string;
     comedic_role?: 'establish' | 'escalate' | 'punchline' | 'button';
     visual_prompt: string;
     // A single, unified array for all text elements.
-    // FIX: Removed position and size from the AI's responsibility to improve reliability.
     text_elements: {
         text: string;
         role: 'speech' | 'thought' | 'sfx' | 'caption';
     }[];
     consistency_tags: string[];
-    // Direct layout hints from the AI.
+    // Layout hints from the AI — used by layoutAdapter to select a template.
     size: 'small' | 'medium' | 'large';
-    aspect_ratio: '1:1';
+    aspect_ratio: AspectRatio;
 }
 
 // Data for the entire comic plan from the AI.
@@ -93,11 +96,10 @@ export interface ComicPlan {
     panels: PlanPanel[];
 }
 
-// FIX: Define LayoutProps here as the single source of truth for panel layout data.
-// This resolves import errors and improves type consistency.
+// Concrete layout props produced by layoutAdapter for each panel.
 export interface LayoutProps {
   gridCols: number;
-  aspectRatio: PlanPanel['aspect_ratio'];
+  aspectRatio: AspectRatio;
 }
 
 // Enriched data for a panel within the application state.

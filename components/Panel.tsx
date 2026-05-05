@@ -48,6 +48,19 @@ const Panel: React.FC<PanelProps> = ({
   };
   const gridClass = colSpanClasses[panelData.layoutProps.gridCols] || 'col-span-2';
 
+  // Map the stored aspect ratio to Tailwind classes / inline styles.
+  const aspectRatioTailwind: { [key: string]: string } = {
+    '1:1':  'aspect-square',
+    '16:9': 'aspect-video',
+  };
+  const aspectRatioInline: { [key: string]: React.CSSProperties } = {
+    '4:3':  { aspectRatio: '4 / 3' },
+    '9:16': { aspectRatio: '9 / 16' },
+  };
+  const ar = panelData.layoutProps.aspectRatio ?? '1:1';
+  const arClass = aspectRatioTailwind[ar] ?? 'aspect-square';
+  const arStyle = aspectRatioInline[ar] ?? {};
+
   const renderTextElement = (element: TextElementData) => {
     const handleSave = (newText: string) => {
         handleUpdateTextElement(element.id, { text: newText });
@@ -112,7 +125,7 @@ const Panel: React.FC<PanelProps> = ({
   
   return (
     <div className={`relative group flex flex-col border-2 border-black ${gridClass}`}>
-      <div className="relative w-full aspect-square">
+      <div className={`relative w-full ${arClass}`} style={arStyle}>
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
           {panelData.failed ? (
             <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-3 p-4"

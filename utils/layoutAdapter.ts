@@ -1,71 +1,139 @@
 // utils/layoutAdapter.ts
-import { PlanPanel, LayoutProps } from '../types';
+import { PlanPanel, LayoutProps, AspectRatio } from '../types';
 
-const sizeToGridCols = (size: PlanPanel['size']): number => {
-    switch (size) {
-        case 'large': return 6;
-        case 'medium': return 3;
-        case 'small': return 2;
-        default: return 2;
-    }
+type TemplateSlot = {
+    gridCols: number;
+    aspectRatio: AspectRatio;
 };
 
 /**
- * Adapts the AI's layout plan into a concrete grid layout.
- * It translates 'small', 'medium', 'large' hints into column spans
- * for a 6-column grid and adjusts them to fill rows neatly.
- * @param panels The array of panel plans from the AI.
- * @returns An array of LayoutProps for each panel.
+ * Curated layout templates keyed by name.
+ * Full-width panels (col-span-6) get a 16:9 cinematic ratio.
+ * All other panels stay 1:1 — width variation alone provides differentiation.
+ * This keeps rows consistent in height (no mixed-ratio mismatches within a row).
+ */
+const TEMPLATES: Record<string, TemplateSlot[]> = {
+    // ── 1 panel ─────────────────────────────────────────────────────────────
+    'single': [
+        { gridCols: 6, aspectRatio: '16:9' },
+    ],
+
+    // ── 2 panels ─────────────────────────────────────────────────────────────
+    // Default: equal halves
+    'split': [
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+    ],
+    // Establish shot gets extra width
+    'feature-left': [
+        { gridCols: 4, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+    ],
+    // Punchline gets extra width
+    'feature-right': [
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 4, aspectRatio: '1:1' },
+    ],
+
+    // ── 3 panels ─────────────────────────────────────────────────────────────
+    // Default: three equal beats
+    'triplet': [
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+    ],
+    // Cinematic opener, then two smaller panels
+    'cinematic-open-3': [
+        { gridCols: 6, aspectRatio: '16:9' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+    ],
+    // Two build-up panels, then a panoramic punchline
+    'wide-punchline-3': [
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 6, aspectRatio: '16:9' },
+    ],
+
+    // ── 4 panels ─────────────────────────────────────────────────────────────
+    // Default: two balanced rows
+    'quad-equal': [
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+    ],
+    // Cinematic opener, then three equal beats
+    'cinematic-open-4': [
+        { gridCols: 6, aspectRatio: '16:9' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+    ],
+    // Three beats, then a panoramic punchline
+    'wide-punchline-4': [
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 6, aspectRatio: '16:9' },
+    ],
+};
+
+const isLarge     = (p: PlanPanel) => p.size === 'large';
+const isEstablish = (p: PlanPanel) => p.comedic_role === 'establish';
+const isPunchline = (p: PlanPanel) => p.comedic_role === 'punchline' || p.comedic_role === 'button';
+
+/**
+ * Picks the best named template by reading comedic_role + size assignments.
+ */
+function pickTemplateName(panels: PlanPanel[]): string {
+    const n   = panels.length;
+    const p0  = panels[0];
+    const pLast = panels[n - 1];
+
+    switch (n) {
+        case 1:
+            return 'single';
+
+        case 2:
+            if (isEstablish(p0) && isLarge(p0))      return 'feature-left';
+            if (isPunchline(pLast) && isLarge(pLast)) return 'feature-right';
+            return 'split';
+
+        case 3:
+            if (isEstablish(p0) && isLarge(p0))      return 'cinematic-open-3';
+            if (isPunchline(pLast) && isLarge(pLast)) return 'wide-punchline-3';
+            return 'triplet';
+
+        case 4:
+            if (isEstablish(p0) && isLarge(p0))      return 'cinematic-open-4';
+            if (isPunchline(pLast) && isLarge(pLast)) return 'wide-punchline-4';
+            return 'quad-equal';
+
+        default:
+            // Fallback for unexpected panel counts: distribute into equal columns
+            return 'quad-equal';
+    }
+}
+
+/**
+ * Adapts the AI's panel plan into concrete layout props using curated,
+ * comedic-role-aware named templates instead of a generic row-packer.
  */
 export const layoutAdapter = (panels: PlanPanel[]): LayoutProps[] => {
-    if (!panels || panels.length === 0) {
-        return [];
+    if (!panels || panels.length === 0) return [];
+
+    const templateName = pickTemplateName(panels);
+    const template = TEMPLATES[templateName];
+
+    if (!template || template.length !== panels.length) {
+        // Safety fallback: equal-width squares
+        const cols = Math.max(2, Math.floor(6 / Math.min(panels.length, 3)));
+        return panels.map(() => ({ gridCols: cols, aspectRatio: '1:1' as AspectRatio }));
     }
 
-    const initialLayouts: LayoutProps[] = panels.map(panel => ({
-        gridCols: sizeToGridCols(panel.size),
-        aspectRatio: panel.aspect_ratio,
+    return template.map(slot => ({
+        gridCols: slot.gridCols,
+        aspectRatio: slot.aspectRatio,
     }));
-    
-    // Handle single panel case (e.g., magazine gag)
-    if (initialLayouts.length === 1) {
-        initialLayouts[0].gridCols = 6;
-        return initialLayouts;
-    }
-
-    const finalLayouts: LayoutProps[] = [];
-    let currentRow: LayoutProps[] = [];
-    let currentRowWidth = 0;
-
-    const flushRow = () => {
-        if (currentRow.length === 0) return;
-
-        const totalWidth = currentRow.reduce((sum, p) => sum + p.gridCols, 0);
-        
-        // Simple adjustment logic for common awkward cases.
-        // If a row has two panels and they don't fill the space, make them equal medium panels.
-        if (currentRow.length === 2 && totalWidth < 6) {
-            currentRow.forEach(p => p.gridCols = 3);
-        } 
-        // If a row has one panel that doesn't fill the space, make it a full-width large panel.
-        else if (currentRow.length === 1 && totalWidth < 6) {
-            currentRow[0].gridCols = 6;
-        }
-
-        finalLayouts.push(...currentRow);
-        currentRow = [];
-        currentRowWidth = 0;
-    };
-
-    initialLayouts.forEach(layout => {
-        if (currentRow.length > 0 && currentRowWidth + layout.gridCols > 6) {
-            flushRow();
-        }
-        currentRow.push(layout);
-        currentRowWidth += layout.gridCols;
-    });
-
-    flushRow(); // Flush the last row
-
-    return finalLayouts;
 };
