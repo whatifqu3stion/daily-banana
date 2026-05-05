@@ -91,6 +91,26 @@
         -webkit-mask-image: linear-gradient(to bottom, transparent 25%, black 100%);
       }
       
+      /* Masthead title: stretch text to match subtitle width + halftone overlay */
+      .masthead-title {
+        text-align: justify;
+        text-align-last: justify;
+        text-justify: inter-character;
+        display: block;
+        width: 100%;
+        position: relative;
+        isolation: isolate;
+      }
+      .masthead-title::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        background-image: radial-gradient(circle, rgba(255,255,255,0.55) 1.5px, transparent 1.5px);
+        background-size: 5px 5px;
+        mix-blend-mode: screen;
+        pointer-events: none;
+      }
+
       /* Custom animation that is not part of Tailwind */
       .blinking-cursor {
         font-weight: 100;

@@ -108,14 +108,14 @@ const App: React.FC = () => {
         <div className="w-full max-w-3xl mx-auto h-1 bg-black mb-2"></div>
         <div className="flex items-end justify-center gap-4 max-w-3xl mx-auto">
           <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-36 md:h-44 w-auto flex-shrink-0" />
-          <div className="text-center">
-            <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
+          <div className="text-center w-max">
+            <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest whitespace-nowrap">
               {today}
             </p>
-            <h1 className="text-6xl md:text-7xl font-masthead font-black tracking-tight text-black mt-1">
+            <h1 className="masthead-title font-masthead font-black text-5xl md:text-6xl text-black mt-1">
               The Daily Bannana
             </h1>
-            <p className="text-xl font-special-elite text-gray-800 mt-2">
+            <p className="text-xl font-special-elite text-gray-800 mt-2 whitespace-nowrap">
               The news makes us want to cry, but we choose to laugh.
             </p>
           </div>
