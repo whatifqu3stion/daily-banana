@@ -56,7 +56,9 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     stance: saved.stance ?? 'critical',
     comedicStyle: saved.comedicStyle ?? 'satirical',
     illustrationStyle: saved.illustrationStyle ?? 'default-color',
-    imageModel: (saved.imageModel as ImageModel) ?? 'gemini-3.1-flash-image-preview',
+    imageModel: (IMAGE_MODEL_OPTIONS.some(o => o.value === saved.imageModel)
+      ? saved.imageModel
+      : 'gemini-3.1-flash-image-preview') as ImageModel,
     referenceImages: [],
     brainstormMode: saved.brainstormMode ?? false,
     includeContext: saved.includeContext ?? false,
@@ -445,7 +447,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             const maxCost = (opt.pricePerImage * 4).toFixed(2);
             return (
               <p className="mt-2 text-xs font-special-elite text-gray-500 bg-stone-50 border border-stone-200 rounded px-3 py-2">
-                Est. <span className="font-bold text-black">${minCost}–${maxCost}</span> for a 2–4 panel strip &middot; Estimates only, subject to Google AI pricing.
+                <span className="font-bold text-black">{opt.label}</span> &middot; {opt.note} &middot; Est. <span className="font-bold text-black">${minCost}–${maxCost}</span> for a 2–4 panel strip &middot; Estimates only, subject to Google AI pricing.
               </p>
             );
           })()}
