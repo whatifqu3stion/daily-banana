@@ -423,7 +423,16 @@ export default function useComicGeneration() {
         ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
       ];
 
-      // Use the nearest successfully-generated neighbour as a style/character reference.
+      // Build reference list:
+      //  1. User-uploaded character images (always first)
+      //  2. Panel 0 as primary style sheet — unless we ARE regenerating panel 0
+      //  3. The nearest successfully-generated neighbour for local continuity
+      const panel0 = comicStripData.panels[0];
+      const primaryRef: ProcessedReferenceImage[] =
+        panelIndex > 0 && panel0?.image
+          ? [makePrimaryStyleRef(panel0.image)]
+          : [];
+
       const neighbourPanel = panelIndex > 0
         ? comicStripData.panels[panelIndex - 1]
         : comicStripData.panels[panelIndex + 1];
@@ -436,7 +445,7 @@ export default function useComicGeneration() {
         globalTags,
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
-        [...activeComicReferences.current, ...neighbourRefs],
+        [...activeComicReferences.current, ...primaryRef, ...neighbourRefs],
         formDataCache.imageModel
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false });
@@ -461,6 +470,10 @@ export default function useComicGeneration() {
 
       if (!refinementPrompt) {
         throw new Error("Please add tags to describe the change you want to make.");
+      }
+
+      if (!panel.image) {
+        throw new Error("This panel has no image to refine. Try regenerating it first.");
       }
 
       const newImage = await geminiService.refinePanelImage(
