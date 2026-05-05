@@ -20,59 +20,39 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    
     let animationFrameId: number;
-
     const observer = new ResizeObserver(entries => {
       const entry = entries[0];
       if (entry) {
         animationFrameId = requestAnimationFrame(() => {
-            setDimensions({
-              width: entry.contentRect.width,
-              height: entry.contentRect.height,
-            });
+          setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height });
         });
       }
     });
-
     observer.observe(container);
     return () => {
-        observer.disconnect();
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
+      observer.disconnect();
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
-  const resolvePosition = useCallback((pos: ElementPosition, containerWidth: number, containerHeight: number): { x: number; y: number } => {
-    const resolve = (val: string | number, max: number) => {
-      if (typeof val === 'string' && val.endsWith('%')) {
-        return (parseFloat(val) / 100) * max;
-      }
-      return Number(val);
-    };
-    return {
-      x: resolve(pos.x, containerWidth),
-      y: resolve(pos.y, containerHeight),
-    };
+  const resolvePosition = useCallback((pos: ElementPosition, w: number, h: number) => {
+    const resolve = (val: string | number, max: number) =>
+      typeof val === 'string' && val.endsWith('%') ? (parseFloat(val) / 100) * max : Number(val);
+    return { x: resolve(pos.x, w), y: resolve(pos.y, h) };
   }, []);
-  
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!tailPosition) return;
     setIsDragging(true);
-
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
-    
     const { width, height } = dimensions;
     const currentTailPos = resolvePosition(tailPosition, width, height);
-
-    // Store the offset of the click FROM the tail's center. This is the new, corrected logic.
     dragStart.current = {
       x: (e.clientX - containerRect.left) - currentTailPos.x,
       y: (e.clientY - containerRect.top) - currentTailPos.y,
     };
-
     e.preventDefault();
     e.stopPropagation();
   };
@@ -81,26 +61,14 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     if (!isDragging) return;
     const { width, height } = dimensions;
     if (width === 0 || height === 0) return;
-    
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
-
-    // The new tail position is the current mouse position relative to the container,
-    // minus the initial offset from the click. This is the new, corrected logic.
     const newX = (e.clientX - containerRect.left) - dragStart.current.x;
     const newY = (e.clientY - containerRect.top) - dragStart.current.y;
-
-    onUpdate({
-      tailPosition: {
-        x: `${(newX / width) * 100}%`,
-        y: `${(newY / height) * 100}%`,
-      }
-    });
+    onUpdate({ tailPosition: { x: `${(newX / width) * 100}%`, y: `${(newY / height) * 100}%` } });
   }, [isDragging, onUpdate, dimensions]);
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
   useEffect(() => {
     if (isDragging) {
@@ -116,99 +84,172 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     };
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  const handleInvertColors = () => {
-    onUpdate({ invertedColors: !invertedColors });
+  const handleInvertColors = () => onUpdate({ invertedColors: !invertedColors });
+
+  /**
+   * Builds a speech-bubble SVG path where the tail is INTEGRATED into the
+   * body outline — no separate closed triangle, no internal stroke seam.
+   *
+   * The algorithm finds which edge (top / right / bottom / left) the ray from
+   * the bubble centre to the tail tip exits through, computes the intersection
+   * point on that edge, then walks the rounded-rectangle path and "detours"
+   * through the tail at that edge.
+   */
+  const getSpeechBubblePath = (w: number, h: number, tailX: number, tailY: number): string => {
+    const rx = Math.min(w * 0.12, 16);
+    const ry = Math.min(h * 0.12, 16);
+    const hw = 14; // half-width of tail base
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const dx = tailX - cx;
+    const dy = tailY - cy;
+
+    // Normalise direction by half-extents to find dominant edge.
+    const normDx = dx / cx;  // ±1 at the left/right edge
+    const normDy = dy / cy;  // ±1 at the top/bottom edge
+
+    // Minimum padding so the tail base stays on the straight (non-arc) part
+    const pad = rx + hw + 4;
+
+    if (Math.abs(normDy) >= Math.abs(normDx)) {
+      // ── Tail exits through top or bottom ─────────────────────────────────
+      const exitY = dy >= 0 ? h : 0;
+      // x-coordinate where the centre→tip ray crosses that horizontal edge
+      let bx = dy !== 0 ? cx + dx * (exitY - cy) / dy : cx;
+      bx = Math.max(pad, Math.min(w - pad, bx));
+
+      if (dy >= 0) {
+        // Bottom exit
+        return [
+          `M ${rx} 0`, `H ${w - rx}`,
+          `A ${rx} ${ry} 0 0 1 ${w} ${ry}`,
+          `V ${h - ry}`,
+          `A ${rx} ${ry} 0 0 1 ${w - rx} ${h}`,
+          `H ${bx + hw}`,
+          `L ${tailX} ${tailY}`,
+          `L ${bx - hw} ${h}`,
+          `H ${rx}`,
+          `A ${rx} ${ry} 0 0 1 0 ${h - ry}`,
+          `V ${ry}`,
+          `A ${rx} ${ry} 0 0 1 ${rx} 0 Z`,
+        ].join(' ');
+      } else {
+        // Top exit
+        return [
+          `M ${rx} 0`,
+          `H ${bx - hw}`,
+          `L ${tailX} ${tailY}`,
+          `L ${bx + hw} 0`,
+          `H ${w - rx}`,
+          `A ${rx} ${ry} 0 0 1 ${w} ${ry}`,
+          `V ${h - ry}`,
+          `A ${rx} ${ry} 0 0 1 ${w - rx} ${h}`,
+          `H ${rx}`,
+          `A ${rx} ${ry} 0 0 1 0 ${h - ry}`,
+          `V ${ry}`,
+          `A ${rx} ${ry} 0 0 1 ${rx} 0 Z`,
+        ].join(' ');
+      }
+    } else {
+      // ── Tail exits through left or right ─────────────────────────────────
+      const exitX = dx >= 0 ? w : 0;
+      let by = dx !== 0 ? cy + dy * (exitX - cx) / dx : cy;
+      by = Math.max(pad, Math.min(h - pad, by));
+
+      if (dx >= 0) {
+        // Right exit
+        return [
+          `M ${rx} 0`, `H ${w - rx}`,
+          `A ${rx} ${ry} 0 0 1 ${w} ${ry}`,
+          `V ${by - hw}`,
+          `L ${tailX} ${tailY}`,
+          `L ${w} ${by + hw}`,
+          `V ${h - ry}`,
+          `A ${rx} ${ry} 0 0 1 ${w - rx} ${h}`,
+          `H ${rx}`,
+          `A ${rx} ${ry} 0 0 1 0 ${h - ry}`,
+          `V ${ry}`,
+          `A ${rx} ${ry} 0 0 1 ${rx} 0 Z`,
+        ].join(' ');
+      } else {
+        // Left exit
+        return [
+          `M ${rx} 0`, `H ${w - rx}`,
+          `A ${rx} ${ry} 0 0 1 ${w} ${ry}`,
+          `V ${h - ry}`,
+          `A ${rx} ${ry} 0 0 1 ${w - rx} ${h}`,
+          `H ${rx}`,
+          `A ${rx} ${ry} 0 0 1 0 ${h - ry}`,
+          `V ${by + hw}`,
+          `L ${tailX} ${tailY}`,
+          `L 0 ${by - hw}`,
+          `V ${ry}`,
+          `A ${rx} ${ry} 0 0 1 ${rx} 0 Z`,
+        ].join(' ');
+      }
+    }
   };
-  
-  const getSpeechBubblePath = (width: number, height: number, tailX: number, tailY: number): string => {
-    const rx = Math.min(width * 0.15, 25);
-    const ry = Math.min(height * 0.15, 25);
-    
-    const body = `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
 
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const angle = Math.atan2(tailY - centerY, tailX - centerX);
-
-    const effectiveRadiusX = width / 2 - rx/2;
-    const effectiveRadiusY = height / 2 - ry/2;
-    const intersectX = centerX + Math.cos(angle) * effectiveRadiusX;
-    const intersectY = centerY + Math.sin(angle) * effectiveRadiusY;
-
-    const tailWidthAtBase = 25;
-    const p1x = intersectX + Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
-    const p1y = intersectY + Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
-    const p2x = intersectX - Math.cos(angle + Math.PI / 2) * tailWidthAtBase / 2;
-    const p2y = intersectY - Math.sin(angle + Math.PI / 2) * tailWidthAtBase / 2;
-
-    const tail = `M${p1x},${p1y} L${tailX},${tailY} L${p2x},${p2y} Z`;
-    
-    return body + ' ' + tail;
+  const getThoughtBubblePath = (w: number, h: number) => {
+    const rx = Math.min(w * 0.15, 25);
+    const ry = Math.min(h * 0.15, 25);
+    return `M${rx},0 H${w - rx} A${rx},${ry} 0 0 1 ${w},${ry} V${h - ry} A${rx},${ry} 0 0 1 ${w - rx},${h} H${rx} A${rx},${ry} 0 0 1 0,${h - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
   };
-  
-  const getThoughtBubblePath = (width: number, height: number) => {
-    const rx = Math.min(width * 0.15, 25);
-    const ry = Math.min(height * 0.15, 25);
-    return `M${rx},0 H${width - rx} A${rx},${ry} 0 0 1 ${width},${ry} V${height - ry} A${rx},${ry} 0 0 1 ${width - rx},${height} H${rx} A${rx},${ry} 0 0 1 0,${height - ry} V${ry} A${rx},${ry} 0 0 1 ${rx},0 Z`;
-  };
-  
+
   const renderBubble = () => {
     const { width, height } = dimensions;
     if (width === 0 || height === 0) return null;
 
-    let resolvedTailPos = { x: width / 2, y: height * 1.2 };
-    if (tailPosition) {
-      resolvedTailPos = resolvePosition(tailPosition, width, height);
-    }
-    
-    const commonProps = {
-        strokeWidth: 4,
-        stroke: 'black',
-        fill: invertedColors ? 'black' : 'white',
-    };
+    const fill   = invertedColors ? 'black' : 'white';
+    const stroke = 'black';
 
     if (role === 'thought') {
       const path = getThoughtBubblePath(width, height);
-      const tailX = width / 2;
-      const tailY = height * 0.9;
+      const dotCx = width / 2;
+      const dotCy = height * 0.9;
       return (
         <>
-            <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-                <path d={path} {...commonProps} />
-                <circle cx={tailX} cy={tailY + 10} r="5" {...commonProps} />
-                <circle cx={tailX - 10} cy={tailY + 25} r="3" {...commonProps} />
-            </svg>
-            <Tooltip text="Invert Colors">
-                <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                    <InvertColorsIcon className="w-5 h-5" />
-                </button>
-            </Tooltip>
+          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+            <path d={path} strokeWidth={4} stroke={stroke} fill={fill} />
+            <circle cx={dotCx} cy={dotCy + 10} r="5" strokeWidth={3} stroke={stroke} fill={fill} />
+            <circle cx={dotCx - 8} cy={dotCy + 23} r="3" strokeWidth={2} stroke={stroke} fill={fill} />
+          </svg>
+          <Tooltip text="Invert Colors">
+            <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+              <InvertColorsIcon className="w-5 h-5" />
+            </button>
+          </Tooltip>
         </>
       );
     }
-    
+
     if (role === 'speech') {
-        const path = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
-        return (
-            <>
-                <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-                    <path d={path} {...commonProps} />
-                    <circle
-                        cx={resolvedTailPos.x}
-                        cy={resolvedTailPos.y}
-                        r="10"
-                        fill="rgba(0,0,0,0.5)"
-                        onMouseDown={handleMouseDown}
-                        className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                </svg>
-                <Tooltip text="Invert Colors">
-                    <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                        <InvertColorsIcon className="w-5 h-5" />
-                    </button>
-                </Tooltip>
-            </>
-        );
+      let resolvedTailPos = { x: width / 2, y: height * 1.2 };
+      if (tailPosition) resolvedTailPos = resolvePosition(tailPosition, width, height);
+
+      const path = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
+      return (
+        <>
+          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+            <path d={path} strokeWidth={4} stroke={stroke} fill={fill} />
+            {/* Drag handle — visible on hover */}
+            <circle
+              cx={resolvedTailPos.x}
+              cy={resolvedTailPos.y}
+              r="10"
+              fill="rgba(0,0,0,0.45)"
+              onMouseDown={handleMouseDown}
+              className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          </svg>
+          <Tooltip text="Invert Colors">
+            <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+              <InvertColorsIcon className="w-5 h-5" />
+            </button>
+          </Tooltip>
+        </>
+      );
     }
 
     return null;

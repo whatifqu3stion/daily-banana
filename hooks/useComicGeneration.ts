@@ -297,18 +297,59 @@ export default function useComicGeneration() {
       );
     }
 
+    // Curated starting slots for speech/thought bubbles.
+    // Each slot puts the bubble in a distinct quadrant with a tail pointing
+    // toward the opposite quadrant (where a character mouth typically appears).
+    //
+    //  Slot 0 — top-left,    tail → lower-right
+    //  Slot 1 — top-right,   tail → lower-left
+    //  Slot 2 — bottom-left, tail → upper-right
+    //  Slot 3 — bottom-right,tail → upper-left
+    const BUBBLE_SLOTS = [
+      { pos: { x: '2%',  y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '120%' } },
+      { pos: { x: '50%', y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '120%' } },
+      { pos: { x: '2%',  y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '-20%' } },
+      { pos: { x: '50%', y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '-20%' } },
+    ] as const;
+
     const finalPanels: PanelData[] = reviewData.plan.panels.map((planPanel, index) => {
       const image = panelImages[index] ?? '';
       const failed = image === '';
 
-      const textElements = (planPanel.text_elements || []).map(te => ({
-        ...te,
-        id: crypto.randomUUID(),
-        position: { x: '50%', y: te.role === 'caption' ? '85%' : '20%' },
-        size: { width: '80%', height: '30%' },
-        tailPosition: { x: '50%', y: '110%' },
-        invertedColors: false,
-      }));
+      let bubbleSlot = 0;
+      const textElements = (planPanel.text_elements || []).map(te => {
+        if (te.role === 'caption') {
+          return {
+            ...te,
+            id: crypto.randomUUID(),
+            position: { x: '5%', y: '83%' },
+            size: { width: '90%', height: '14%' },
+            tailPosition: { x: '50%', y: '50%' },
+            invertedColors: false,
+          };
+        }
+        if (te.role === 'sfx') {
+          return {
+            ...te,
+            id: crypto.randomUUID(),
+            position: { x: '25%', y: '35%' },
+            size: { width: '50%', height: '22%' },
+            tailPosition: { x: '50%', y: '50%' },
+            invertedColors: false,
+          };
+        }
+        // speech / thought — assign next slot
+        const slot = BUBBLE_SLOTS[bubbleSlot % BUBBLE_SLOTS.length];
+        bubbleSlot++;
+        return {
+          ...te,
+          id: crypto.randomUUID(),
+          position: slot.pos,
+          size: slot.size,
+          tailPosition: slot.tail,
+          invertedColors: false,
+        };
+      });
 
       return {
         id: crypto.randomUUID(),
