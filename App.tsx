@@ -112,8 +112,8 @@ const App: React.FC = () => {
             <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
               {today}
             </p>
-            <h1 className="text-6xl md:text-7xl font-bangers tracking-wider text-black mt-1">
-              The Daily Banana
+            <h1 className="text-6xl md:text-7xl font-masthead font-black tracking-tight text-black mt-1">
+              The Daily Bannana
             </h1>
             <p className="text-xl font-special-elite text-gray-800 mt-2">
               The news makes us want to cry, but we choose to laugh.
