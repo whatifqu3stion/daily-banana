@@ -41,7 +41,7 @@ const comicPlanSchema = {
                             type: Type.OBJECT,
                             properties: {
                                 text: { type: Type.STRING, description: 'The text content. Keep it brief and punchy.' },
-                                role: { type: Type.STRING, description: '"speech" (talking), "thought" (thinking), "sfx" (sound effect), or "caption" (narrator box).' },
+                                role: { type: Type.STRING, description: '"speech" — words SPOKEN by a specific visible character (renders as a speech bubble with a tail). "thought" — a character\'s internal monologue (thought cloud). "sfx" — a sound effect like BANG or CRASH. "caption" — narrator box, scene label, punchline text, or any text NOT attributed to a specific speaking character. IMPORTANT: punchline panels and final-beat commentary must use "caption", not "speech". When in doubt, prefer "caption".' },
                             },
                             required: ['text', 'role'],
                         },

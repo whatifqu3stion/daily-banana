@@ -63,8 +63,25 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     if (width === 0 || height === 0) return;
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
-    const newX = (e.clientX - containerRect.left) - dragStart.current.x;
-    const newY = (e.clientY - containerRect.top) - dragStart.current.y;
+    let newX = (e.clientX - containerRect.left) - dragStart.current.x;
+    let newY = (e.clientY - containerRect.top) - dragStart.current.y;
+
+    // Keep the tail tip OUTSIDE the bubble body so the path never inverts.
+    // If the user drags it inside, snap it to the nearest edge + a small overshoot.
+    const overshoot = 24;
+    const inside = newX > 0 && newX < width && newY > 0 && newY < height;
+    if (inside) {
+      const dL = newX;
+      const dR = width - newX;
+      const dT = newY;
+      const dB = height - newY;
+      const min = Math.min(dL, dR, dT, dB);
+      if (min === dL)      newX = -overshoot;
+      else if (min === dR) newX = width + overshoot;
+      else if (min === dT) newY = -overshoot;
+      else                 newY = height + overshoot;
+    }
+
     onUpdate({ tailPosition: { x: `${(newX / width) * 100}%`, y: `${(newY / height) * 100}%` } });
   }, [isDragging, onUpdate, dimensions]);
 
