@@ -16,9 +16,6 @@ interface ComicStripProps {
   onStartNew: () => void;
   onRegenerateComic: () => void;
   isPanelLoading: (panelIndex: number) => boolean;
-  footerCredit: string;
-  footerLinkText: string;
-  footerLinkHref: string;
   footerDisclaimer: string;
 }
 
@@ -79,9 +76,6 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   onStartNew,
   onRegenerateComic,
   isPanelLoading,
-  footerCredit,
-  footerLinkText,
-  footerLinkHref,
   footerDisclaimer,
 }) => {
   const comicRef = useRef<HTMLDivElement>(null);
@@ -145,28 +139,17 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             />
           ))}
         </div>
-        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite">
-          <p className="text-lg">
-            {footerCredit}
-            <a
-              href={footerLinkHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              {footerLinkText}
-            </a>
-          </p>
-          <p className="text-base text-gray-600 mt-1">
-            {footerDisclaimer}
-          </p>
-        </footer>
         {comicData.context && (
           <div className="mt-6 pt-4 border-t-2 border-dashed border-black">
             <h4 className="font-special-elite text-lg font-bold text-black">A Note from the Archives:</h4>
             <p className="font-lora text-base text-gray-800 mt-2">{comicData.context}</p>
           </div>
         )}
+        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite">
+          <p className="text-base text-gray-600">
+            {footerDisclaimer}
+          </p>
+        </footer>
       </div>
       
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
