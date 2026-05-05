@@ -8,7 +8,6 @@ import LoadingState from './components/LoadingState';
 import StorySwiper from './components/StorySwiper';
 import ReviewPlan from './components/ReviewPlan';
 import ComicStrip from './components/ComicStrip';
-import BananaIcon from './components/icons/BananaIcon';
 import ErrorState from './components/ErrorState'; // Import the new error component
 
 const App: React.FC = () => {
@@ -111,7 +110,7 @@ const App: React.FC = () => {
           {today}
         </p>
         <h1 className="text-6xl md:text-7xl font-bangers tracking-wider text-black flex items-center justify-center gap-2 mt-1">
-          <BananaIcon className="w-16 h-16" />
+          <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 w-auto" />
           The Daily Banana
         </h1>
         <p className="text-xl font-special-elite text-gray-800 mt-2">
