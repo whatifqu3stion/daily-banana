@@ -448,25 +448,6 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               );
             })}
           </div>
-          {(() => {
-            const opt = IMAGE_MODEL_OPTIONS.find(o => o.value === formData.imageModel);
-            if (!opt) return null;
-            const minCost = (opt.pricePerImage * 2).toFixed(2);
-            const maxCost = (opt.pricePerImage * 4).toFixed(2);
-            return (
-              <p className="mt-2 text-xs font-special-elite text-gray-500 bg-stone-50 border border-stone-200 rounded px-3 py-2">
-                <span className="font-bold text-black">{opt.label}</span> &middot; {opt.note} &middot; Est. <span className="font-bold text-black">${minCost}–${maxCost}</span> for a 2–4 panel strip &middot; Estimates only — verify on the{' '}
-                <a
-                  href="https://ai.google.dev/gemini-api/docs/pricing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline text-gray-600 hover:text-black"
-                >
-                  Google AI pricing page
-                </a>.
-              </p>
-            );
-          })()}
         </div>
 
         <div>

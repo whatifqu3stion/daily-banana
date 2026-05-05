@@ -106,16 +106,20 @@ const App: React.FC = () => {
     <div className="min-h-screen p-4 sm:p-8 font-sans">
       <header className="text-center mb-16">
         <div className="w-full max-w-3xl mx-auto h-1 bg-black mb-2"></div>
-        <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
-          {today}
-        </p>
-        <h1 className="text-6xl md:text-7xl font-bangers tracking-wider text-black flex items-center justify-center gap-2 mt-1">
-          <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 w-auto" />
-          The Daily Banana
-        </h1>
-        <p className="text-xl font-special-elite text-gray-800 mt-2">
-          The news makes us want to cry, but we choose to laugh.
-        </p>
+        <div className="flex items-end justify-center gap-4 max-w-3xl mx-auto">
+          <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-36 md:h-44 w-auto flex-shrink-0" />
+          <div className="text-center">
+            <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
+              {today}
+            </p>
+            <h1 className="text-6xl md:text-7xl font-bangers tracking-wider text-black mt-1">
+              The Daily Banana
+            </h1>
+            <p className="text-xl font-special-elite text-gray-800 mt-2">
+              The news makes us want to cry, but we choose to laugh.
+            </p>
+          </div>
+        </div>
         <div className="w-full max-w-3xl mx-auto h-1 bg-black mt-2"></div>
       </header>
       <main>
