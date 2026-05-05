@@ -64,12 +64,12 @@ export const IMAGE_MODEL_OPTIONS: {
     value: 'gemini-3.1-flash-image-preview',
     label: 'Flash Image 3.1',
     note: 'Higher quality · natively multimodal',
-    pricePerImage: 0.07,
+    pricePerImage: 0.067,
   },
   {
     value: 'gemini-2.5-flash-preview-image-generation',
     label: 'Flash Image 2.5',
     note: 'Fast · cost-effective',
-    pricePerImage: 0.04,
+    pricePerImage: 0.039,
   },
 ];
