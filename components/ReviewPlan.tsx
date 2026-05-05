@@ -36,6 +36,9 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
 
     const firstPanelPlan = reviewData.plan.panels[0];
 
+    // Pool consistency tags across all panels, not just panel 0.
+    const globalTags = [...new Set(reviewData.plan.panels.flatMap(p => p.consistency_tags ?? []))];
+
     const handleRefine = async () => {
         if (!refinementTags) {
             setError('Please enter some refinement details to describe the change.');
@@ -49,7 +52,8 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 refinementTags,
                 formData.illustrationStyle,
                 formData.comedicStyle,
-                reviewData.userProvidedImages
+                reviewData.userProvidedImages,
+                formData.imageModel
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {
@@ -65,13 +69,13 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
         setError(null);
         try {
             const userTags = refinementTags.split(',').map(t => t.trim()).filter(Boolean);
-            const consistencyTags = [...firstPanelPlan.consistency_tags, ...userTags];
             const newImage = await geminiService.generatePanelImageWithReferences(
                 firstPanelPlan.visual_prompt,
-                consistencyTags,
+                [...globalTags, ...userTags],
                 formData.illustrationStyle,
                 formData.comedicStyle,
-                reviewData.userProvidedImages
+                reviewData.userProvidedImages,
+                formData.imageModel
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {

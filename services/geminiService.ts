@@ -121,7 +121,7 @@ The user specifies a style. Apply it with craft, not just as a label:
 - Never let a character explain the joke. If you've written "As you can see, this ironically shows that..." — delete it.
 - Avoid hedging language: no "Well...", "I suppose...", "Perhaps...".
 - The punchline panel should often be **silent**. Trust the image.
-- Captions are for setting time/place only, not commentary.
+- Captions (narrator boxes) can carry punchline text, scene labels, or time/place — but keep them short.
 - Sound effects (sfx) must be vivid and specific: "KA-CHING", "SQUEAK SQUEAK", "BOOM" — not "thud".
 
 ---
@@ -385,8 +385,6 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
             throw new Error("The AI returned an empty response. Please try again.");
         }
         const rawPlan = JSON.parse(jsonText);
-        // --- DEBUG LOGGING ---
-        console.log("Raw plan from AI:", JSON.stringify(rawPlan, null, 2));
         return sanitizeComicPlan(rawPlan);
     } catch (e) {
         console.error("Failed to parse comic plan JSON:", e);
@@ -426,8 +424,6 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
             throw new Error("The AI returned an empty response. Please try again.");
         }
         const rawPlans = JSON.parse(jsonText);
-        // --- DEBUG LOGGING ---
-        console.log("Raw plans from AI:", JSON.stringify(rawPlans, null, 2));
 
         if (!Array.isArray(rawPlans)) {
             console.error("AI did not return an array for multiple plans. Received:", rawPlans);

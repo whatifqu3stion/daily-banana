@@ -107,7 +107,7 @@ const Panel: React.FC<PanelProps> = ({
                 <EditableText
                     initialText={element.text}
                     onSave={handleSave}
-                    className="text-center font-lora text-white bg-black/60 px-2 py-1"
+                    className="text-center font-special-elite text-black bg-white border-2 border-black px-2 py-1"
                 />
             </TextScaler>
         );
