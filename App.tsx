@@ -115,7 +115,7 @@ const App: React.FC = () => {
           The Daily Banana
         </h1>
         <p className="text-xl font-special-elite text-gray-800 mt-2">
-          The news makes us want to cry—so let's laugh instead.
+          The news makes us want to cry, but we choose to laugh.
         </p>
         <div className="w-full max-w-3xl mx-auto h-1 bg-black mt-2"></div>
       </header>
