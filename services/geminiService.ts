@@ -443,7 +443,8 @@ const generatePanelImageWithReferences = async (
     consistency_tags: string[],
     illustrationStyle?: string,
     comedicStyle?: ComedicStyle,
-    userProvidedImages: ProcessedReferenceImage[] = []
+    userProvidedImages: ProcessedReferenceImage[] = [],
+    imageModel: string = 'gemini-3.1-flash-image-preview'
 ): Promise<string> => {
     const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle);
     const parts = [
@@ -454,7 +455,7 @@ const generatePanelImageWithReferences = async (
     ];
 
     const result = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
+        model: imageModel,
         contents: { parts },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT]
@@ -477,7 +478,8 @@ const refinePanelImage = async (
     refinementPrompt: string,
     illustrationStyle?: string,
     comedicStyle?: ComedicStyle,
-    userProvidedImages: ProcessedReferenceImage[] = []
+    userProvidedImages: ProcessedReferenceImage[] = [],
+    imageModel: string = 'gemini-3.1-flash-image-preview'
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         "The user wants to modify the provided image.",
@@ -496,7 +498,7 @@ const refinePanelImage = async (
     ];
 
     const result = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
+        model: imageModel,
         contents: { parts },
         config: {
             responseModalities: [Modality.IMAGE, Modality.TEXT]

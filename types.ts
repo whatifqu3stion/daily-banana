@@ -6,6 +6,9 @@ export type Stance = 'supportive' | 'critical' | 'neutral' | (string & {});
 // Defines the method or style of humor for the comic.
 export type ComedicStyle = 'satirical' | 'ironic' | 'deadpan' | 'absurdist' | 'slapstick' | (string & {});
 
+// Defines which Gemini image generation model to use for panel rendering.
+export type ImageModel = 'gemini-3.1-flash-image-preview' | 'gemini-2.5-flash-preview-image-generation';
+
 // Defines the stages of the application's UI flow.
 export type AppStage = 'form' | 'story-swipe' | 'review' | 'strip';
 
@@ -28,9 +31,10 @@ export interface ComicFormData {
   stance: Stance;
   comedicStyle: ComedicStyle;
   illustrationStyle?: string;
+  imageModel: ImageModel;
   referenceImages?: ReferenceImage[];
   brainstormMode: boolean;
-  includeContext: boolean; // New feature: Add context explainer
+  includeContext: boolean;
 }
 
 // Interface for element positioning.

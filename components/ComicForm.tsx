@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ComicFormData, Stance, ComedicStyle, ReferenceImage, NewsStory } from '../types';
-import { STANCE_OPTIONS, COMEDIC_STYLE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS } from '../constants';
+import { ComicFormData, Stance, ComedicStyle, ImageModel, ReferenceImage, NewsStory } from '../types';
+import { STANCE_OPTIONS, COMEDIC_STYLE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS, IMAGE_MODEL_OPTIONS } from '../constants';
 import { getTopStories } from '../services/newsService';
 import SparklesIcon from './icons/SparklesIcon';
 import NewspaperIcon from './icons/NewspaperIcon';
@@ -56,6 +56,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     stance: saved.stance ?? 'critical',
     comedicStyle: saved.comedicStyle ?? 'satirical',
     illustrationStyle: saved.illustrationStyle ?? 'default-color',
+    imageModel: (saved.imageModel as ImageModel) ?? 'gemini-3.1-flash-image-preview',
     referenceImages: [],
     brainstormMode: saved.brainstormMode ?? false,
     includeContext: saved.includeContext ?? false,
@@ -410,6 +411,46 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           )}
         </div>
         
+        <div>
+          <Tooltip text="Choose which AI image model renders your panels. Higher quality models produce better results but cost more per image.">
+            <label className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
+              Image Model
+            </label>
+          </Tooltip>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {IMAGE_MODEL_OPTIONS.map((opt) => {
+              const selected = formData.imageModel === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, imageModel: opt.value }))}
+                  className={`flex-1 flex flex-col items-start gap-1 p-3 border-2 text-left transition-colors rounded-lg ${
+                    selected
+                      ? 'border-black bg-black text-white'
+                      : 'border-black bg-white text-black hover:bg-stone-100'
+                  }`}
+                >
+                  <span className="font-bangers text-lg tracking-wide leading-none">{opt.label}</span>
+                  <span className={`text-xs font-special-elite leading-snug ${selected ? 'text-stone-300' : 'text-gray-500'}`}>{opt.note}</span>
+                  <span className={`text-xs font-special-elite mt-1 ${selected ? 'text-yellow-300' : 'text-gray-400'}`}>~${opt.pricePerImage.toFixed(2)} / image</span>
+                </button>
+              );
+            })}
+          </div>
+          {(() => {
+            const opt = IMAGE_MODEL_OPTIONS.find(o => o.value === formData.imageModel);
+            if (!opt) return null;
+            const minCost = (opt.pricePerImage * 2).toFixed(2);
+            const maxCost = (opt.pricePerImage * 4).toFixed(2);
+            return (
+              <p className="mt-2 text-xs font-special-elite text-gray-500 bg-stone-50 border border-stone-200 rounded px-3 py-2">
+                Est. <span className="font-bold text-black">${minCost}–${maxCost}</span> for a 2–4 panel strip &middot; Estimates only, subject to Google AI pricing.
+              </p>
+            );
+          })()}
+        </div>
+
         <div>
           <Tooltip text="Upload reference images for characters, objects, or styles. This is highly encouraged for better results!">
             <label htmlFor="referenceImages" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">

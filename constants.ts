@@ -1,4 +1,4 @@
-import { Stance, ComedicStyle } from './types';
+import { Stance, ComedicStyle, ImageModel } from './types';
 
 export const STANCE_OPTIONS: { value: Stance; label: string }[] = [
   { value: 'supportive', label: 'Supportive (Pro)' },
@@ -51,5 +51,25 @@ export const ILLUSTRATION_STYLE_OPTIONS: { value: string; label: string; descrip
     value: 'underground-comix', 
     label: 'Underground Comix',
     description: 'An exaggerated, psychedelic style inspired by 1960s underground comix. Use a wild, high-saturation color palette, distorted and rubbery character anatomy, and dense, intricate background details.'
+  },
+];
+
+export const IMAGE_MODEL_OPTIONS: {
+  value: ImageModel;
+  label: string;
+  note: string;
+  pricePerImage: number;
+}[] = [
+  {
+    value: 'gemini-3.1-flash-image-preview',
+    label: 'Flash Image 3.1',
+    note: 'Higher quality · natively multimodal',
+    pricePerImage: 0.07,
+  },
+  {
+    value: 'gemini-2.5-flash-preview-image-generation',
+    label: 'Flash Image 2.5',
+    note: 'Fast · cost-effective',
+    pricePerImage: 0.04,
   },
 ];

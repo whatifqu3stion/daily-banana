@@ -55,7 +55,7 @@ export default function useComicGeneration() {
     speculativePanelsRef.current = [];
 
     const { plan, firstPanelImage, userProvidedImages } = reviewData;
-    const { illustrationStyle, comedicStyle } = formDataCache;
+    const { illustrationStyle, comedicStyle, imageModel } = formDataCache;
 
     if (plan.panels.length <= 1) return;
 
@@ -75,7 +75,8 @@ export default function useComicGeneration() {
             panel.consistency_tags,
             illustrationStyle,
             comedicStyle,
-            [...userProvidedImages, prevRef]
+            [...userProvidedImages, prevRef],
+            imageModel
           );
           if (speculativeAbortRef.current) return;
           speculativePanelsRef.current[i - 1] = img;
@@ -161,7 +162,8 @@ export default function useComicGeneration() {
         firstPanelPlan.consistency_tags,
         currentFormData.illustrationStyle,
         currentFormData.comedicStyle,
-        userImages
+        userImages,
+        currentFormData.imageModel
       );
 
       const panelLayouts = layoutAdapter(plan.panels);
@@ -258,7 +260,8 @@ export default function useComicGeneration() {
           panel.consistency_tags,
           formDataCache.illustrationStyle,
           formDataCache.comedicStyle,
-          [...userReferences, previousImageAsRef]
+          [...userReferences, previousImageAsRef],
+          formDataCache.imageModel
         );
         panelImages.push(newImage);
       } catch {
@@ -336,7 +339,8 @@ export default function useComicGeneration() {
         allConsistencyTags,
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
-        activeComicReferences.current
+        activeComicReferences.current,
+        formDataCache.imageModel
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false });
     } catch (err: any) {
@@ -367,7 +371,8 @@ export default function useComicGeneration() {
         refinementPrompt,
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
-        activeComicReferences.current
+        activeComicReferences.current,
+        formDataCache.imageModel
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false });
     } catch (err: any) {
