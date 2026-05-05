@@ -361,14 +361,14 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
 
 const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan> => {
     const contents = constructPlanContents(formData, 1);
+    // Each reference image is preceded by its tag so the model knows which
+    // character/style each image represents (same pattern as image generation).
     const parts = [
         { text: contents },
-        ...userProvidedImages.map(img => ({
-            inlineData: {
-                data: img.base64,
-                mimeType: img.mimeType
-            }
-        }))
+        ...userProvidedImages.flatMap(img => [
+            { text: img.tag },
+            { inlineData: { data: img.base64, mimeType: img.mimeType } }
+        ])
     ];
 
     const result = await ai.models.generateContent({
@@ -400,14 +400,14 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
 
 const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedImages: ProcessedReferenceImage[]): Promise<ComicPlan[]> => {
     const contents = constructPlanContents(formData, 3); // Ask for 3 ideas
+    // Each reference image is preceded by its tag so the model knows which
+    // character/style each image represents (same pattern as image generation).
     const parts = [
         { text: contents },
-        ...userProvidedImages.map(img => ({
-            inlineData: {
-                data: img.base64,
-                mimeType: img.mimeType
-            }
-        }))
+        ...userProvidedImages.flatMap(img => [
+            { text: img.tag },
+            { inlineData: { data: img.base64, mimeType: img.mimeType } }
+        ])
     ];
 
     const result = await ai.models.generateContent({

@@ -111,8 +111,6 @@ export interface PanelData {
   text_elements: TextElementData[];
   consistency_tags: string[];
   user_consistency_tags: string[]; // User-added tags for refinement (now an array)
-  // The final, calculated layout properties are stored here.
-  // FIX: Use the centralized LayoutProps type.
   layoutProps: LayoutProps;
 }
 

@@ -1,11 +1,12 @@
 // components/TextScaler.tsx
 import React, { useState, useRef, useLayoutEffect, ReactElement } from 'react';
 
-// FIX: Define a more specific type for the `children` prop to ensure type safety.
-// This allows accessing `initialText` and `style` from the child's props,
-// and correctly types `React.cloneElement` to accept a `ref`. Although `ref` is
-// not a standard prop, this typing is a pragmatic way to satisfy the type checker
-// for ref-forwarding components.
+/**
+ * Constrains `children` to an element whose props expose `initialText` and
+ * `style`, enabling the binary-search font scaler to measure text length and
+ * attach a ref for live DOM measurement. The explicit `ref` field is a
+ * pragmatic typing shim for `React.cloneElement` with ref-forwarding components.
+ */
 interface TextScalerProps {
   children: ReactElement<{
     initialText: string;
