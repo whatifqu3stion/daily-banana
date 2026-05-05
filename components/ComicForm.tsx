@@ -71,12 +71,27 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
 
-  // Pre-fetch headlines in the background as soon as the form mounts
+  // Pre-fetch headlines in the background, but only once the browser is idle
+  // after the initial paint so we don't compete with page-load resources.
   const newsPrefetchRef = useRef<Promise<NewsStory[]> | null>(null);
   useEffect(() => {
-    const p = getTopStories();
-    p.catch(() => {}); // suppress unhandled-rejection during silent prefetch
-    newsPrefetchRef.current = p;
+    let cancelled = false;
+
+    const startPrefetch = () => {
+      if (cancelled) return;
+      const p = getTopStories();
+      p.catch(() => {}); // suppress unhandled-rejection during silent prefetch
+      newsPrefetchRef.current = p;
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(startPrefetch, { timeout: 4000 });
+      return () => { cancelled = true; window.cancelIdleCallback(id); };
+    } else {
+      // Fallback: short delay so at minimum the first paint finishes first
+      const id = setTimeout(startPrefetch, 300);
+      return () => { cancelled = true; clearTimeout(id); };
+    }
   }, []);
   
   // State for the new confirmation modal
