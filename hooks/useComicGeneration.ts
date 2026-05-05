@@ -21,6 +21,25 @@ interface ReviewData {
   panelLayouts: LayoutProps[];
 }
 
+/**
+ * Collects and deduplicates consistency tags across ALL panels in a plan.
+ * Passing the full cross-panel tag set to every generation call means each
+ * image knows about every recurring character, not just the ones its own
+ * panel happens to mention.
+ */
+const poolConsistencyTags = (plan: ComicPlan): string[] =>
+  [...new Set(plan.panels.flatMap(p => p.consistency_tags ?? []))];
+
+/**
+ * Builds a ProcessedReferenceImage whose tag instructs the model to treat
+ * it as a character/style sheet rather than a vague "previous panel".
+ */
+const makeConsistencyRef = (base64: string, panelNumber: number): ProcessedReferenceImage => ({
+  base64,
+  mimeType: 'image/png',
+  tag: `CHARACTER & STYLE REFERENCE (panel ${panelNumber}): Reproduce the art style, character faces, body types, clothing, and colour palette from this image exactly. Treat it as the authoritative style sheet for all characters.`,
+});
+
 export default function useComicGeneration() {
   const [appStage, setAppStage] = useState<AppStage>('form');
   const [formDataCache, setFormDataCache] = useState<ComicFormData | null>(null);
@@ -59,20 +78,18 @@ export default function useComicGeneration() {
 
     if (plan.panels.length <= 1) return;
 
+    const globalTags = poolConsistencyTags(plan);
+
     (async () => {
       let prevImage = firstPanelImage;
       for (let i = 1; i < plan.panels.length; i++) {
         if (speculativeAbortRef.current) return;
         const panel = plan.panels[i];
-        const prevRef: ProcessedReferenceImage = {
-          base64: prevImage,
-          mimeType: 'image/png',
-          tag: `visual reference from previous panel (${i})`,
-        };
+        const prevRef = makeConsistencyRef(prevImage, i);
         try {
           const img = await geminiService.generatePanelImageWithReferences(
             panel.visual_prompt,
-            panel.consistency_tags,
+            globalTags,
             illustrationStyle,
             comedicStyle,
             [...userProvidedImages, prevRef],
@@ -157,9 +174,10 @@ export default function useComicGeneration() {
       activeComicReferences.current = userImages;
 
       const firstPanelPlan = plan.panels[0];
+      const globalTags = poolConsistencyTags(plan);
       const firstPanelImage = await geminiService.generatePanelImageWithReferences(
         firstPanelPlan.visual_prompt,
-        firstPanelPlan.consistency_tags,
+        globalTags,
         currentFormData.illustrationStyle,
         currentFormData.comedicStyle,
         userImages,
@@ -220,6 +238,7 @@ export default function useComicGeneration() {
     const panelImages: string[] = [reviewData.firstPanelImage];
     const userReferences = [...activeComicReferences.current];
     const remainingPanels = reviewData.plan.panels.slice(1);
+    const globalTags = poolConsistencyTags(reviewData.plan);
 
     // Initial progress
     setProgress({ current: 1, total: totalPanels });
@@ -248,16 +267,12 @@ export default function useComicGeneration() {
       speculativeChainValid = false;
       setLoadingMessages([`Generating panel ${panelNumber} of ${totalPanels}...`]);
 
-      const previousImageAsRef: ProcessedReferenceImage = {
-        base64: panelImages[panelImages.length - 1],
-        mimeType: 'image/png',
-        tag: `visual reference from previous panel (${panelNumber - 1})`,
-      };
+      const previousImageAsRef = makeConsistencyRef(panelImages[panelImages.length - 1], panelNumber - 1);
 
       try {
         const newImage = await geminiService.generatePanelImageWithReferences(
           panel.visual_prompt,
-          panel.consistency_tags,
+          globalTags,
           formDataCache.illustrationStyle,
           formDataCache.comedicStyle,
           [...userReferences, previousImageAsRef],
@@ -332,14 +347,27 @@ export default function useComicGeneration() {
     setPanelLoadingState(prev => new Set(prev).add(panelIndex));
     try {
       const panel = comicStripData.panels[panelIndex];
-      const allConsistencyTags = [...panel.consistency_tags, ...panel.user_consistency_tags];
+
+      // Pool tags from every panel so the regenerated image knows about all
+      // recurring characters, not just the ones this panel's own tags mention.
+      const globalTags = [
+        ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
+      ];
+
+      // Use the nearest successfully-generated neighbour as a style/character reference.
+      const neighbourPanel = panelIndex > 0
+        ? comicStripData.panels[panelIndex - 1]
+        : comicStripData.panels[panelIndex + 1];
+      const neighbourRefs: ProcessedReferenceImage[] = neighbourPanel?.image
+        ? [makeConsistencyRef(neighbourPanel.image, panelIndex > 0 ? panelIndex : panelIndex + 2)]
+        : [];
 
       const newImage = await geminiService.generatePanelImageWithReferences(
         panel.visual_prompt,
-        allConsistencyTags,
+        globalTags,
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
-        activeComicReferences.current,
+        [...activeComicReferences.current, ...neighbourRefs],
         formDataCache.imageModel
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false });

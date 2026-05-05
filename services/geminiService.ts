@@ -244,20 +244,27 @@ const constructImagePrompt = (
     // FIX: Add a defensive check to prevent a crash if the AI omits consistency_tags.
     const safeConsistencyTags = consistencyTags || [];
 
+    const consistencyBlock = safeConsistencyTags.length > 0
+        ? `**CHARACTER & STYLE CONSISTENCY — MANDATORY:**
+If a reference image is provided it shows the exact character designs, faces, body types, clothing, and art style that MUST be reproduced faithfully. Do not drift. Every character listed below must look identical across all panels:
+${safeConsistencyTags.map(t => `• ${t}`).join('\n')}`
+        : '';
+
     return `
 ${mainInstruction}
 
 **Visual Description:**
 ${basePrompt}
 
-**Art Style Guidance:**
+**Art Style:**
 - **Overall Style:** ${styleDescription}
-- **Comedic Tone:** The image should reflect a ${comedicStyle} tone.
-- **Consistency Cues:** Maintain visual consistency for these elements: ${safeConsistencyTags.join(', ')}.
+- **Comedic Tone:** ${comedicStyle}
 
-CRITICAL INSTRUCTION: Generate ARTWORK ONLY. There must be absolutely no legible or illegible text, words, letters, numbers, or symbols of any kind in the generated image. If a sign or object would normally contain text, render it as a blank surface or with a simple abstract pattern instead. This is a strict rule.
+${consistencyBlock}
 
-If reference images are provided, use them as a strong visual guide for characters, objects, and overall style. The final output should be a single comic panel image.
+CRITICAL INSTRUCTION: Generate ARTWORK ONLY. No legible or illegible text, words, letters, numbers, or symbols anywhere in the image. Render any signs or labels as blank surfaces or abstract patterns. This is a strict rule.
+
+If a reference image is provided, treat it as the authoritative style and character sheet — reproduce the art style, character faces, proportions, and colours exactly. Output a single comic panel image.
 `;
 };
 
