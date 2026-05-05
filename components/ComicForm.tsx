@@ -422,35 +422,32 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           <div className="flex flex-col sm:flex-row gap-3">
             {IMAGE_MODEL_OPTIONS.map((opt) => {
               const selected = formData.imageModel === opt.value;
+              const minCost = (opt.pricePerImage * 2).toFixed(2);
+              const maxCost = (opt.pricePerImage * 4).toFixed(2);
               return (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, imageModel: opt.value }))}
-                  className={`flex-1 flex flex-col items-start gap-1 p-3 border-2 text-left transition-colors rounded-lg ${
+                  className={`flex-1 flex items-stretch border-2 text-left transition-colors rounded-lg overflow-hidden ${
                     selected
                       ? 'border-black bg-black text-white'
                       : 'border-black bg-white text-black hover:bg-stone-100'
                   }`}
                 >
-                  <span className="font-bangers text-lg tracking-wide leading-none">{opt.label}</span>
-                  <span className={`text-xs font-special-elite leading-snug ${selected ? 'text-stone-300' : 'text-gray-500'}`}>{opt.note}</span>
-                  <span className={`text-xs font-special-elite mt-1 ${selected ? 'text-yellow-300' : 'text-gray-400'}`}>~${opt.pricePerImage.toFixed(2)} / image</span>
+                  <div className="flex-1 flex flex-col gap-0.5 p-3">
+                    <span className="font-bangers text-lg tracking-wide leading-none">{opt.label}</span>
+                    <span className={`text-xs font-special-elite leading-snug ${selected ? 'text-stone-300' : 'text-gray-500'}`}>{opt.note}</span>
+                  </div>
+                  <div className={`w-px self-stretch ${selected ? 'bg-stone-600' : 'bg-stone-300'}`} />
+                  <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 min-w-[72px]">
+                    <span className={`font-bangers text-base tracking-wide leading-none ${selected ? 'text-yellow-300' : 'text-black'}`}>${minCost}–${maxCost}</span>
+                    <span className={`text-[10px] font-special-elite text-center leading-tight ${selected ? 'text-stone-400' : 'text-gray-400'}`}>2–4 panels est.</span>
+                  </div>
                 </button>
               );
             })}
           </div>
-          {(() => {
-            const opt = IMAGE_MODEL_OPTIONS.find(o => o.value === formData.imageModel);
-            if (!opt) return null;
-            const minCost = (opt.pricePerImage * 2).toFixed(2);
-            const maxCost = (opt.pricePerImage * 4).toFixed(2);
-            return (
-              <p className="mt-2 text-xs font-special-elite text-gray-500 bg-stone-50 border border-stone-200 rounded px-3 py-2">
-                <span className="font-bold text-black">{opt.label}</span> &middot; {opt.note} &middot; Est. <span className="font-bold text-black">${minCost}–${maxCost}</span> for a 2–4 panel strip &middot; Estimates only, subject to Google AI pricing.
-              </p>
-            );
-          })()}
         </div>
 
         <div>
