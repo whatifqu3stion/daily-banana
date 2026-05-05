@@ -454,11 +454,14 @@ const generatePanelImageWithReferences = async (
     imageModel: string = 'gemini-3.1-flash-image-preview'
 ): Promise<string> => {
     const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle);
+    // Each reference image is preceded by its tag text so the model understands
+    // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
         { text: prompt },
-        ...userProvidedImages.map(img => ({
-            inlineData: { data: img.base64, mimeType: img.mimeType }
-        }))
+        ...userProvidedImages.flatMap(img => [
+            { text: img.tag },
+            { inlineData: { data: img.base64, mimeType: img.mimeType } }
+        ])
     ];
 
     const result = await ai.models.generateContent({
@@ -499,9 +502,10 @@ const refinePanelImage = async (
     const parts = [
         { inlineData: { data: baseImage, mimeType: 'image/png' } },
         { text: prompt },
-        ...userProvidedImages.map(img => ({
-            inlineData: { data: img.base64, mimeType: img.mimeType }
-        }))
+        ...userProvidedImages.flatMap(img => [
+            { text: img.tag },
+            { inlineData: { data: img.base64, mimeType: img.mimeType } }
+        ])
     ];
 
     const result = await ai.models.generateContent({

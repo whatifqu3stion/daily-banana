@@ -31,13 +31,25 @@ const poolConsistencyTags = (plan: ComicPlan): string[] =>
   [...new Set(plan.panels.flatMap(p => p.consistency_tags ?? []))];
 
 /**
- * Builds a ProcessedReferenceImage whose tag instructs the model to treat
- * it as a character/style sheet rather than a vague "previous panel".
+ * Builds a ProcessedReferenceImage tagged as the primary, user-approved style
+ * sheet (always panel 0). Passed alongside the preceding-panel reference for
+ * panels 3+ to re-anchor the model to the original character designs.
+ */
+const makePrimaryStyleRef = (base64: string): ProcessedReferenceImage => ({
+  base64,
+  mimeType: 'image/png',
+  tag: `PRIMARY STYLE SHEET (panel 0 — user-approved): This is the definitive character and art reference. Every character's face, body type, hair, clothing, skin tone, and the overall art style MUST match this image exactly. This reference takes priority over all other instructions.`,
+});
+
+/**
+ * Builds a ProcessedReferenceImage tagged as the immediately preceding panel.
+ * Used to maintain local visual continuity (pose, scene, lighting) between
+ * adjacent panels, in addition to the primary style sheet.
  */
 const makeConsistencyRef = (base64: string, panelNumber: number): ProcessedReferenceImage => ({
   base64,
   mimeType: 'image/png',
-  tag: `CHARACTER & STYLE REFERENCE (panel ${panelNumber}): Reproduce the art style, character faces, body types, clothing, and colour palette from this image exactly. Treat it as the authoritative style sheet for all characters.`,
+  tag: `PREVIOUS PANEL REFERENCE (panel ${panelNumber}): Maintain visual continuity of characters, scene, art style, and colour palette from this panel.`,
 });
 
 /**
@@ -103,13 +115,20 @@ export default function useComicGeneration() {
         if (speculativeAbortRef.current) return;
         const panel = plan.panels[i];
         const prevRef = makeConsistencyRef(prevImage, i);
+        // For panels 3+, re-anchor to the user-approved panel 0 as the
+        // primary style sheet, then add the preceding panel for local continuity.
+        const refs: ProcessedReferenceImage[] = [
+          ...userProvidedImages,
+          ...(i > 1 ? [makePrimaryStyleRef(firstPanelImage)] : []),
+          prevRef,
+        ];
         try {
           const img = await geminiService.generatePanelImageWithReferences(
             panel.visual_prompt,
             globalTags,
             illustrationStyle,
             comedicStyle,
-            [...userProvidedImages, prevRef],
+            refs,
             imageModel
           );
           if (speculativeAbortRef.current) return;
@@ -285,6 +304,13 @@ export default function useComicGeneration() {
       setLoadingMessages([`Generating panel ${panelNumber} of ${totalPanels}...`]);
 
       const previousImageAsRef = makeConsistencyRef(panelImages[panelImages.length - 1], panelNumber - 1);
+      // For panels 3+, prepend the user-approved panel 0 as a primary style sheet
+      // so character drift from the immediately preceding panel can't compound.
+      const refs: ProcessedReferenceImage[] = [
+        ...userReferences,
+        ...(panelImages.length > 1 ? [makePrimaryStyleRef(panelImages[0])] : []),
+        previousImageAsRef,
+      ];
 
       try {
         const newImage = await geminiService.generatePanelImageWithReferences(
@@ -292,7 +318,7 @@ export default function useComicGeneration() {
           globalTags,
           formDataCache.illustrationStyle,
           formDataCache.comedicStyle,
-          [...userReferences, previousImageAsRef],
+          refs,
           formDataCache.imageModel
         );
         panelImages.push(newImage);
