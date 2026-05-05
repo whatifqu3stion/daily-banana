@@ -91,24 +91,15 @@
         -webkit-mask-image: linear-gradient(to bottom, transparent 25%, black 100%);
       }
       
-      /* Masthead title: stretch text to match subtitle width + halftone overlay */
+      /* Masthead title: halftone fill clipped to text only + light letter spacing */
       .masthead-title {
-        text-align: justify;
-        text-align-last: justify;
-        text-justify: inter-character;
         display: block;
-        width: 100%;
-        position: relative;
-        isolation: isolate;
-      }
-      .masthead-title::after {
-        content: '';
-        position: absolute;
-        inset: -4px;
-        background-image: radial-gradient(circle, rgba(255,255,255,0.55) 1.5px, transparent 1.5px);
-        background-size: 5px 5px;
-        mix-blend-mode: screen;
-        pointer-events: none;
+        letter-spacing: 0.06em;
+        background-image: radial-gradient(circle, #111 48%, transparent 48%);
+        background-size: 3px 3px;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
       }
 
       /* Custom animation that is not part of Tailwind */
