@@ -123,7 +123,7 @@ const Panel: React.FC<PanelProps> = ({
   };
   
   return (
-    <div className={`relative group flex flex-col border-2 border-black ${gridClass}`}>
+    <div className={`relative group border-2 border-black ${gridClass}`}>
       <div className={`relative w-full ${arClass}`} style={arStyle}>
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
           {panelData.failed ? (
@@ -167,9 +167,7 @@ const Panel: React.FC<PanelProps> = ({
         </div>
       </div>
 
-      <div className="flex-grow"></div>
-
-      <div className="no-export bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
+      <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
         <input
           type="text"
           value={panelData.user_consistency_tags.join(', ')}
