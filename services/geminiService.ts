@@ -266,7 +266,7 @@ ${basePrompt}
 
 ${consistencyBlock}
 
-CRITICAL INSTRUCTION: Generate ARTWORK ONLY. No legible or illegible text, words, letters, numbers, or symbols anywhere in the image. Render any signs or labels as blank surfaces or abstract patterns. This is a strict rule.
+TEXT IN IMAGES: You may render in-world text that naturally belongs in the scene — signs, newspaper headlines, protest placards, labels, billboards, etc. Spell every word correctly and double-check proper nouns. Do NOT render any spoken dialogue or thought text in the artwork itself; those are overlaid as separate speech/thought bubbles and must not appear inside the image.
 
 If a reference image is provided, treat it as the authoritative style and character sheet — reproduce the art style, character faces, proportions, and colours exactly. Output a single comic panel image.
 `;
