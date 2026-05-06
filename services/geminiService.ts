@@ -40,7 +40,7 @@ const comicPlanSchema = {
                             type: Type.OBJECT,
                             properties: {
                                 text: { type: Type.STRING, description: 'The text content. Keep it brief and punchy.' },
-                                role: { type: Type.STRING, description: '"speech" — words SPOKEN by a specific visible character (renders as a speech bubble with a tail). "thought" — a character\'s internal monologue (thought cloud). "sfx" — a sound effect like BANG or CRASH. "caption" — narrator box, scene label, punchline text, or any text NOT attributed to a specific speaking character. IMPORTANT: punchline panels and final-beat commentary must use "caption", not "speech". When in doubt, prefer "caption".' },
+                                role: { type: Type.STRING, description: 'Exactly one of: "speech" | "thought" | "sfx" | "caption". Use this decision tree:\n1. Is a SPECIFIC character visible in the panel SAYING THIS ALOUD? → "speech" (renders as speech bubble with tail). Only valid when you can name who is speaking.\n2. Is this a character\'s INTERNAL thought, not spoken aloud? → "thought" (renders as thought cloud with dots).\n3. Is this a SOUND EFFECT produced by the action — not words, just sound? → "sfx" (e.g., BANG, CRASH, KA-CHING, SQUEAK).\n4. Everything else → "caption": narrator commentary, scene labels (LATER..., MEANWHILE...), punchline text not spoken by any character, ironic observations, time/place stamps. WHEN IN DOUBT USE CAPTION, NOT SPEECH. Punchline panels almost always end with a caption or silence — not a speech bubble.' },
                             },
                             required: ['text', 'role'],
                         },
@@ -291,6 +291,37 @@ const assertNotSafetyBlocked = (result: any, context: string): void => {
     }
 };
 
+const VALID_ROLES = new Set(['speech', 'thought', 'sfx', 'caption']);
+
+// Unambiguous bracket label: [Later...] / [Meanwhile, in Congress]
+const BRACKET_RE = /^\[.*\]$/;
+// Unambiguous internal-monologue marker: *sighs* / *internally screaming*
+const ASTERISK_RE = /^\*[^*]+\*$/;
+
+/**
+ * Applies deterministic heuristics to catch the most common AI role
+ * misclassifications before the plan reaches the renderer.
+ *
+ * Rules (in priority order):
+ *  1. Unknown role string → "caption" (safe fallback)
+ *  2. [Bracket] text → always "caption" (scene/time label)
+ *  3. *Asterisk* text → always "thought" (internal monologue marker)
+ *  4. Otherwise keep what the AI chose
+ */
+const coerceRole = (
+    text: string,
+    rawRole: string
+): 'speech' | 'thought' | 'sfx' | 'caption' => {
+    const role = VALID_ROLES.has(rawRole)
+        ? (rawRole as 'speech' | 'thought' | 'sfx' | 'caption')
+        : 'caption';
+
+    const trimmed = text.trim();
+    if (BRACKET_RE.test(trimmed)) return 'caption';
+    if (ASTERISK_RE.test(trimmed)) return 'thought';
+    return role;
+};
+
 /**
  * Constructs a guaranteed-valid ComicPlan from raw AI output.
  * Builds a fresh object rather than spreading the raw response so every field
@@ -336,8 +367,10 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
 
       if (Array.isArray(p.text_elements)) {
           for (const el of p.text_elements) {
-              if (typeof el === 'object' && el !== null && typeof el.text === 'string' && typeof el.role === 'string') {
-                  newPanel.text_elements.push({ text: el.text, role: el.role as any });
+              if (typeof el === 'object' && el !== null && typeof el.text === 'string') {
+                  const text = el.text.trim();
+                  const role = coerceRole(text, typeof el.role === 'string' ? el.role : '');
+                  newPanel.text_elements.push({ text, role });
               }
           }
       }
