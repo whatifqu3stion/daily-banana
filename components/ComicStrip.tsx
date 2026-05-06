@@ -126,6 +126,9 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         <h2 className="text-4xl md:text-5xl font-bangers text-center tracking-wider mb-8 text-black">
           {comicData.title}
         </h2>
+        <p className="text-center text-xs font-special-elite text-gray-400 mb-4 no-export">
+          Drag speech bubbles &amp; captions to arrange your comic. Hover a panel to edit or regenerate it.
+        </p>
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
         <div className="grid grid-cols-6 gap-4 items-stretch min-w-[560px]">
           {comicData.panels.map((panel, index) => (
