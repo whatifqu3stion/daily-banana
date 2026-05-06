@@ -109,7 +109,7 @@ const App: React.FC = () => {
               direct flex children of the outer row so they flank the title. */}
           <div className="flex md:contents items-center gap-3">
             <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
-            <img src="/price-tag.png" alt="Only 10 cents per copy" className="h-[41px] sm:h-[51px] md:h-[69px] lg:h-[84px] w-auto flex-shrink-0 md:order-last" />
+            <img src="/price-tag.png" alt="Only 10 cents per copy" className="h-[41px] sm:h-[51px] md:h-[69px] lg:h-[84px] w-auto flex-shrink-0 md:order-last" style={{ filter: 'brightness(1.4) saturate(1.9)' }} />
           </div>
           <div className="text-center min-w-0">
             <p className="text-xs sm:text-lg md:text-2xl font-special-elite text-gray-800 tracking-wide md:tracking-extrawidest">
