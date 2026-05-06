@@ -67,7 +67,7 @@ const App: React.FC = () => {
           />
         );
       case 'review':
-        if (!reviewData) return <div>Error: No review data available.</div>;
+        if (!reviewData) return <ErrorState error="No review data available. Please start over." onStartOver={handleStartNew} />;
         return (
           <ReviewPlan
             reviewData={reviewData}
@@ -79,7 +79,7 @@ const App: React.FC = () => {
           />
         );
       case 'strip':
-        if (!comicStripData) return <div>Error: No comic data available.</div>;
+        if (!comicStripData) return <ErrorState error="No comic data available. Please start over." onStartOver={handleStartNew} />;
         return (
           <ComicStrip
             comicData={comicStripData}
@@ -104,13 +104,7 @@ const App: React.FC = () => {
       <header className="text-center mb-16">
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
         <div className="flex flex-col md:flex-row items-center justify-center gap-2 max-w-6xl mx-auto">
-          {/* On mobile both images share a side-by-side row above the text.
-              `md:contents` dissolves the wrapper at md+, making both images
-              direct flex children of the outer row so they flank the title. */}
-          <div className="flex md:contents items-center gap-3">
-            <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
-            <img src="/price-tag.svg" alt="Only 10 cents per copy" className="h-[41px] sm:h-[51px] md:h-[69px] lg:h-[84px] w-auto flex-shrink-0 md:order-last" />
-          </div>
+          <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
           <div className="text-center min-w-0">
             <p className="text-xs sm:text-lg md:text-2xl font-special-elite text-gray-800 tracking-wide md:tracking-extrawidest">
               {today}
