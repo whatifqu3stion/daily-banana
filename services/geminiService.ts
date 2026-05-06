@@ -478,6 +478,9 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
     }
 };
 
+const IMAGE_GENERATION_ATTEMPTS = 3;
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const generatePanelImageWithReferences = async (
     visual_prompt: string,
     consistency_tags: string[],
@@ -497,23 +500,29 @@ const generatePanelImageWithReferences = async (
         ])
     ];
 
-    const result = await ai.models.generateContent({
-        model: imageModel,
-        contents: { parts },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT]
-        }
-    });
+    for (let attempt = 1; attempt <= IMAGE_GENERATION_ATTEMPTS; attempt++) {
+        if (attempt > 1) await sleep(1000 * (attempt - 1));
 
-    assertNotSafetyBlocked(result, 'generatePanelImageWithReferences');
+        const result = await ai.models.generateContent({
+            model: imageModel,
+            contents: { parts },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT]
+            }
+        });
 
-    const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        // Safety blocks are definitive — do not retry.
+        assertNotSafetyBlocked(result, 'generatePanelImageWithReferences');
 
-    if (imagePart?.inlineData) {
-        return imagePart.inlineData.data;
+        const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (imagePart?.inlineData) return imagePart.inlineData.data;
+
+        // Log what the model said instead of the image — helps diagnose soft refusals.
+        const textPart = result.candidates?.[0]?.content?.parts?.find(p => p.text);
+        console.error(`generatePanelImageWithReferences attempt ${attempt}/${IMAGE_GENERATION_ATTEMPTS}: no image returned. Model text: "${textPart?.text ?? '(none)'}"`);
     }
-    
-    throw new Error('Image generation failed: The AI did not return an image.');
+
+    throw new Error('Image generation failed: The AI did not return an image after multiple attempts. Please try regenerating.');
 };
 
 const refinePanelImage = async (
@@ -541,23 +550,27 @@ const refinePanelImage = async (
         ])
     ];
 
-    const result = await ai.models.generateContent({
-        model: imageModel,
-        contents: { parts },
-        config: {
-            responseModalities: [Modality.IMAGE, Modality.TEXT]
-        }
-    });
+    for (let attempt = 1; attempt <= IMAGE_GENERATION_ATTEMPTS; attempt++) {
+        if (attempt > 1) await sleep(1000 * (attempt - 1));
 
-    assertNotSafetyBlocked(result, 'refinePanelImage');
+        const result = await ai.models.generateContent({
+            model: imageModel,
+            contents: { parts },
+            config: {
+                responseModalities: [Modality.IMAGE, Modality.TEXT]
+            }
+        });
 
-    const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        assertNotSafetyBlocked(result, 'refinePanelImage');
 
-    if (imagePart?.inlineData) {
-        return imagePart.inlineData.data;
+        const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (imagePart?.inlineData) return imagePart.inlineData.data;
+
+        const textPart = result.candidates?.[0]?.content?.parts?.find(p => p.text);
+        console.error(`refinePanelImage attempt ${attempt}/${IMAGE_GENERATION_ATTEMPTS}: no image returned. Model text: "${textPart?.text ?? '(none)'}"`);
     }
-    
-    throw new Error('Image refinement failed: The AI did not return an image.');
+
+    throw new Error('Image refinement failed: The AI did not return an image after multiple attempts. Please try again.');
 };
 
 const generateContextExplainer = async (title: string, summary: string): Promise<string> => {
