@@ -9,7 +9,7 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 - **Styling:** Tailwind CSS (via CDN in dev, CDN in prod)
 - **AI:** Google Gemini (`gemini-2.5-flash` for text, `gemini-3.1-flash-image-preview` for images)
 - **Image Export:** html-to-image
-- **News:** NPR RSS feed via CORS proxies
+- **News:** Google Search grounding via Gemini API (cached in localStorage per day)
 
 ## Project Structure
 ```
@@ -32,16 +32,12 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 ## Running the App
 ```bash
 npm install
-npm run dev          # Starts on http://0.0.0.0:5000
-npm run check-prices # Verify image model prices against Google AI pricing page
+npm run dev   # Starts on http://0.0.0.0:5000
+npm run build # Vite production build → dist/
 ```
 
-## Pricing Verification
-`scripts/check-pricing.mjs` fetches the Google AI pricing page and compares the
-`pricePerImage` values in `constants.ts` against the live "Output price" rows.
-- Runs automatically as part of `npm run build` (gates the build on success).
-- Soft-warns (exit 0) when the page is unreachable; fails the build (exit 1) only on confirmed mismatches.
-- If Google renames a pricing section, update `MODEL_PAGE_HEADING_IDS` in the script.
+## Image Pricing
+Hard-coded in `constants.ts` (`pricePerImage`). Estimates shown in the UI are based on Google's published rates as of May 2026 — verify at https://ai.google.dev/gemini-api/docs/pricing if needed.
 
 ## Deployment
 - **Type:** Static site

@@ -451,6 +451,9 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               );
             })}
           </div>
+          <p className="text-[10px] font-special-elite text-gray-400 mt-1.5">
+            Prices are estimates based on Google's published rates as of May 2026 and may have changed. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Check current pricing.</a>
+          </p>
         </div>
 
         <div>
