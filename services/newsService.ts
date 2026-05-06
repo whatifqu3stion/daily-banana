@@ -4,12 +4,49 @@ import { NewsStory } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+const CACHE_KEY = 'dailyBanana_news';
+
+interface NewsCache {
+    date: string;
+    stories: NewsStory[];
+}
+
+function todayKey(): string {
+    return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
+
+function loadCache(): NewsStory[] | null {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const cache: NewsCache = JSON.parse(raw);
+        if (cache.date === todayKey() && Array.isArray(cache.stories) && cache.stories.length > 0) {
+            return cache.stories;
+        }
+    } catch {
+        // ignore corrupt cache
+    }
+    return null;
+}
+
+function saveCache(stories: NewsStory[]): void {
+    try {
+        const cache: NewsCache = { date: todayKey(), stories };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+    } catch {
+        // ignore storage errors (e.g. private mode quota)
+    }
+}
+
 /**
  * Fetches today's top news headlines using the Gemini API with Google Search grounding.
- * This approach is far more reliable than CORS proxies since the search happens
- * server-side via the Gemini API, with no third-party proxy dependencies.
+ * Results are cached in localStorage for the rest of the calendar day to avoid
+ * redundant API calls.
  */
 export const getTopStories = async (): Promise<NewsStory[]> => {
+    const cached = loadCache();
+    if (cached) return cached;
+
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const prompt = `Today is ${today}. Use Google Search to find the top 10 news headlines from today.
@@ -66,5 +103,6 @@ Example format:
         throw new Error("No usable news stories were returned. Please try again.");
     }
 
+    saveCache(stories);
     return stories;
 };
