@@ -126,7 +126,8 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         <h2 className="text-4xl md:text-5xl font-bangers text-center tracking-wider mb-8 text-black">
           {comicData.title}
         </h2>
-        <div className="grid grid-cols-6 gap-4 items-stretch">
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="grid grid-cols-6 gap-4 items-stretch min-w-[560px]">
           {comicData.panels.map((panel, index) => (
             <Panel
               key={panel.id}
@@ -138,6 +139,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
               isLoading={isPanelLoading(index)}
             />
           ))}
+        </div>
         </div>
         {comicData.context && (
           <div className="mt-6 pt-4 border-t-2 border-dashed border-black">

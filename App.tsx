@@ -103,20 +103,25 @@ const App: React.FC = () => {
     <div className="min-h-screen p-4 sm:p-8 font-sans">
       <header className="text-center mb-16">
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
-        <div className="flex items-center justify-center gap-2 max-w-6xl mx-auto">
-          <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-36 md:h-44 w-auto flex-shrink-0" />
+        <div className="flex flex-col md:flex-row items-center justify-center gap-2 max-w-6xl mx-auto">
+          {/* On mobile both images share a side-by-side row above the text.
+              `md:contents` dissolves the wrapper at md+, making both images
+              direct flex children of the outer row so they flank the title. */}
+          <div className="flex md:contents items-center gap-3">
+            <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
+            <img src="/price-tag.png" alt="Only 10 cents per copy" className="h-[48px] sm:h-[60px] md:h-[81px] lg:h-[99px] w-auto flex-shrink-0 md:order-last" />
+          </div>
           <div className="text-center min-w-0">
-            <p className="text-2xl font-special-elite text-gray-800 tracking-extrawidest">
+            <p className="text-xs sm:text-lg md:text-2xl font-special-elite text-gray-800 tracking-wide md:tracking-extrawidest">
               {today}
             </p>
             <h1 className="masthead-title font-masthead font-black mt-1" data-text="The Daily Banana">
               The Daily Banana
             </h1>
-            <p className="text-xl font-special-elite text-gray-800 mt-2">
+            <p className="text-xs sm:text-base md:text-xl font-special-elite text-gray-800 mt-1 md:mt-2">
               The news makes us want to cry, but we choose to laugh.
             </p>
           </div>
-          <img src="/price-tag.png" alt="Only 10 cents per copy" className="h-[81px] md:h-[99px] w-auto flex-shrink-0" />
         </div>
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mt-2"></div>
       </header>

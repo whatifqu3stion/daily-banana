@@ -98,11 +98,17 @@
       .masthead-title {
         position: relative;
         display: inline-block;
-        font-size: 5.5rem;
+        font-size: 2rem;
         line-height: 1;
         letter-spacing: 0.04em;
         white-space: nowrap;
         color: #333;
+      }
+      @media (min-width: 640px) {
+        .masthead-title { font-size: 3.5rem; }
+      }
+      @media (min-width: 768px) {
+        .masthead-title { font-size: 5.5rem; }
       }
       .masthead-title::after {
         content: attr(data-text);
