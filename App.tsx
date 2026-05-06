@@ -123,7 +123,7 @@ const App: React.FC = () => {
             </p>
           </div>
         </div>
-        <div className="w-full max-w-6xl mx-auto h-1 bg-black mt-2"></div>
+        <div className="w-full max-w-6xl mx-auto h-0.5 bg-black mt-2"></div>
       </header>
       <main>
         {renderContent()}
