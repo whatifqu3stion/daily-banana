@@ -26,11 +26,13 @@ const Panel: React.FC<PanelProps> = ({
   isLoading,
 }) => {
   const boundaryRef = useRef<HTMLDivElement>(null);
-  const [tagsInput, setTagsInput] = useState(panelData.user_consistency_tags.join(', '));
+  const committedTags = panelData.user_consistency_tags.join(', ');
+  const [tagsInput, setTagsInput] = useState(committedTags);
 
   useEffect(() => {
-    setTagsInput(panelData.user_consistency_tags.join(', '));
-  }, [panelData.user_consistency_tags]);
+    setTagsInput(committedTags);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [committedTags]);
 
   const handleUpdateTextElement = (elementId: string, updatedData: Partial<TextElementData>) => {
     const updatedElements = panelData.text_elements.map(el =>
