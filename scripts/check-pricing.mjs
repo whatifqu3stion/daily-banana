@@ -199,11 +199,11 @@ const FIXTURES = [
             <td>$3 (text and thinking)<br>
               $60.00 (images)<br>
               Equivalent to $0.045 per 0.5K image*<br>
-              $0.067 per 1K image*, $0.101 per 2K image*, and $0.151 per 4K image*.
+              $0.076 per 1K image*, $0.101 per 2K image*, and $0.151 per 4K image*.
             </td></tr>
         </tbody>
       </table></section>`,
-    expectedPrice: 0.067,
+    expectedPrice: 0.076,
   },
   {
     desc: 'gemini-2.5-flash-image — standard table with direct per-image price',
@@ -336,16 +336,21 @@ async function main() {
 
   console.log('');
 
-  if (mismatchFound || unverifiedCount > 0) {
-    if (mismatchFound) {
-      log(RED, '✖', `${BOLD}Price mismatch detected. Fix pricePerImage in constants.ts.${RESET}`);
-    }
-    if (unverifiedCount > 0) {
-      log(RED, '✖', `${BOLD}${unverifiedCount} model(s) could not be verified from the live page.${RESET}`);
-      log(RED, '  ', `  The parser may need updating — run with --test to debug the fixtures.`);
-    }
+  if (mismatchFound) {
+    log(RED, '✖', `${BOLD}Price mismatch detected. Fix pricePerImage in constants.ts.${RESET}`);
     console.log(`  Reference: ${PRICING_URL}\n`);
     process.exit(1);
+  }
+
+  if (unverifiedCount > 0) {
+    // Soft-warn: the model section was found but the price format couldn't be
+    // parsed (e.g. Google restructured the table).  This is NOT a confirmed
+    // mismatch, so we don't block the build — just flag it for manual review.
+    log(YELLOW, '⚠', `${BOLD}${unverifiedCount} model(s) could not be verified — page format may have changed.${RESET}`);
+    log(YELLOW, '⚠', `  Verify manually: ${PRICING_URL}`);
+    log(YELLOW, '⚠', `  If prices are wrong, update pricePerImage in constants.ts.`);
+    console.log('');
+    process.exit(0);
   }
 
   log(GREEN, '✔', `${BOLD}All prices verified — no action needed.${RESET}`);

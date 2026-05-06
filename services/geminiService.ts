@@ -251,7 +251,8 @@ const constructImagePrompt = (
     const consistencyBlock = safeConsistencyTags.length > 0
         ? `**CHARACTER & STYLE CONSISTENCY — MANDATORY:**
 If a reference image is provided it shows the exact character designs, faces, body types, clothing, and art style that MUST be reproduced faithfully. Do not drift. Every character listed below must look identical across all panels:
-${safeConsistencyTags.map(t => `• ${t}`).join('\n')}`
+${safeConsistencyTags.map(t => `• ${t}`).join('\n')}
+Key props, vehicles, buildings, and set pieces must maintain consistent spatial orientation across panels — if an object faces left in one panel it must face left in all panels unless the description explicitly calls for a different angle.`
         : '';
 
     return `
@@ -266,7 +267,7 @@ ${basePrompt}
 
 ${consistencyBlock}
 
-TEXT IN IMAGES: You may render in-world text that naturally belongs in the scene — signs, newspaper headlines, protest placards, labels, billboards, etc. Spell every word correctly and double-check proper nouns. Do NOT render any spoken dialogue or thought text in the artwork itself; those are overlaid as separate speech/thought bubbles and must not appear inside the image.
+TEXT IN IMAGES: You may render in-world text that naturally belongs in the scene — signs, newspaper headlines, protest placards, labels, billboards, etc. Spell every word correctly and double-check proper nouns. Do NOT render spoken dialogue, thought text, or sound effects (BANG, SPLORT, CRASH, etc.) inside the image — those are all rendered as separate overlays and must not appear in the artwork.
 
 If a reference image is provided, treat it as the authoritative style and character sheet — reproduce the art style, character faces, proportions, and colours exactly. Output a single comic panel image.
 `;
