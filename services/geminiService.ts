@@ -243,7 +243,7 @@ const constructImagePrompt = (
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
 
     const mainInstruction = refinementPrompt
-        ? `Refine the provided image based on these instructions: "${refinementPrompt}".`
+        ? `You are refining an existing comic panel image. Apply ONLY these visual modifications to the artwork: [${refinementPrompt}]. These are editing instructions — do NOT render them as text, labels, or words anywhere in the image.`
         : `Generate a comic panel image based on the following description.`;
 
     const safeConsistencyTags = consistencyTags || [];
@@ -267,7 +267,7 @@ ${basePrompt}
 
 ${consistencyBlock}
 
-TEXT IN IMAGES: You may render in-world text that naturally belongs in the scene — signs, newspaper headlines, protest placards, labels, billboards, etc. Spell every word correctly and double-check proper nouns. Do NOT render spoken dialogue, thought text, or sound effects (BANG, SPLORT, CRASH, etc.) inside the image — those are all rendered as separate overlays and must not appear in the artwork.
+NO TEXT IN IMAGES: Do not render any text, words, letters, numbers, typography, signs, labels, speech, thought text, sound effects, onomatopoeia, captions, or any other written content inside the image — not even on props, signs, newspapers, or billboards. All text is handled by the overlay system. The artwork must be completely text-free.
 
 FILL THE PANEL EDGE-TO-EDGE: Artwork must bleed to all four edges of the image. Do not add any white margins, gutters, padding, borders, or empty space around the artwork. The image frame is the panel border — there is no inner frame inside it.
 
