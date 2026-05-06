@@ -103,9 +103,10 @@ const App: React.FC = () => {
     <div className="min-h-screen p-4 sm:p-8 font-sans">
       <header className="text-center mb-16">
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
-        <div className="flex flex-col md:flex-row items-center justify-center gap-3 max-w-6xl mx-auto">
+        <div className="flex justify-center max-w-6xl mx-auto">
+          <div className="inline-flex flex-col md:flex-row items-center gap-1 md:gap-2">
           <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
-          <div className="text-center md:text-left min-w-0">
+          <div className="text-center min-w-0">
             <p className="text-xs sm:text-lg md:text-2xl font-special-elite text-gray-800 tracking-wide md:tracking-extrawidest">
               {today}
             </p>
@@ -115,6 +116,7 @@ const App: React.FC = () => {
             <p className="text-xs sm:text-base md:text-xl font-special-elite text-gray-800 mt-1 md:mt-2">
               The news makes us want to cry, but we choose to laugh.
             </p>
+          </div>
           </div>
         </div>
         <div className="w-full max-w-6xl mx-auto h-0.5 bg-black mt-2"></div>
