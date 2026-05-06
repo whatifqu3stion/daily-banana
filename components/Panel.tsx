@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
 import Draggable from './Draggable';
 import Bubble from './Bubble';
@@ -26,6 +26,11 @@ const Panel: React.FC<PanelProps> = ({
   isLoading,
 }) => {
   const boundaryRef = useRef<HTMLDivElement>(null);
+  const [tagsInput, setTagsInput] = useState(panelData.user_consistency_tags.join(', '));
+
+  useEffect(() => {
+    setTagsInput(panelData.user_consistency_tags.join(', '));
+  }, [panelData.user_consistency_tags]);
 
   const handleUpdateTextElement = (elementId: string, updatedData: Partial<TextElementData>) => {
     const updatedElements = panelData.text_elements.map(el =>
@@ -35,7 +40,11 @@ const Panel: React.FC<PanelProps> = ({
   };
   
   const handleUserTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+    setTagsInput(e.target.value);
+  };
+
+  const handleUserTagsBlur = () => {
+    const tags = tagsInput.split(',').map(tag => tag.trim()).filter(Boolean);
     onUpdatePanel(panelIndex, { user_consistency_tags: tags });
   };
   
@@ -170,8 +179,9 @@ const Panel: React.FC<PanelProps> = ({
       <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
         <input
           type="text"
-          value={panelData.user_consistency_tags.join(', ')}
+          value={tagsInput}
           onChange={handleUserTagsChange}
+          onBlur={handleUserTagsBlur}
           placeholder="e.g., 'wearing a red hat', 'add a dog'"
           className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
         />

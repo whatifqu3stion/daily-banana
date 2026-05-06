@@ -269,6 +269,8 @@ ${consistencyBlock}
 
 TEXT IN IMAGES: You may render in-world text that naturally belongs in the scene — signs, newspaper headlines, protest placards, labels, billboards, etc. Spell every word correctly and double-check proper nouns. Do NOT render spoken dialogue, thought text, or sound effects (BANG, SPLORT, CRASH, etc.) inside the image — those are all rendered as separate overlays and must not appear in the artwork.
 
+FILL THE PANEL EDGE-TO-EDGE: Artwork must bleed to all four edges of the image. Do not add any white margins, gutters, padding, borders, or empty space around the artwork. The image frame is the panel border — there is no inner frame inside it.
+
 If a reference image is provided, treat it as the authoritative style and character sheet — reproduce the art style, character faces, proportions, and colours exactly. Output a single comic panel image.
 `;
 };
