@@ -84,8 +84,11 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
   }, [initialPosition, initialSize, boundaryRef]);
 
 
-  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!elementRef.current || disableDrag) return;
+    // Capture the pointer so move/up events keep firing even outside the element.
+    // This is what makes touch dragging work correctly on mobile.
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     const rect = elementRef.current.getBoundingClientRect();
     dragStartPos.current = {
@@ -96,7 +99,8 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
     e.stopPropagation();
   };
 
-  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleResizeStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsResizing(true);
     resizeStartInfo.current = {
       x: e.clientX,
@@ -108,7 +112,7 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
     e.stopPropagation();
   };
   
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!isDragging && !isResizing) return;
 
     if (isDragging) {
@@ -154,44 +158,46 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
     }
   }, [isDragging, isResizing, boundaryRef, onPositionChange, onSizeChange, size, position]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     setIsDragging(false);
     setIsResizing(false);
   }, []);
 
   useEffect(() => {
     if (isDragging || isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('pointermove', handlePointerMove);
+      document.addEventListener('pointerup', handlePointerUp);
     } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
+  }, [isDragging, isResizing, handlePointerMove, handlePointerUp]);
 
   return (
     <div
       ref={elementRef}
-      onMouseDown={handleDragStart}
+      onPointerDown={handleDragStart}
       className="absolute z-10 group"
       style={{ 
         left: `${position.x}px`, 
         top: `${position.y}px`,
         width: `${size.width}px`,
         height: `${size.height}px`,
+        touchAction: 'none', // Prevent browser scroll/zoom from stealing touch events
       }}
     >
       <div className="w-full h-full cursor-move">
         {children}
       </div>
       <div
-        onMouseDown={handleResizeStart}
+        onPointerDown={handleResizeStart}
         className="absolute -right-1.5 -bottom-1.5 w-5 h-5 bg-black border-2 border-white rounded-full cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ touchAction: 'none' }}
       />
     </div>
   );

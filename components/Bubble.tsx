@@ -42,8 +42,10 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     return { x: resolve(pos.x, w), y: resolve(pos.y, h) };
   }, []);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<SVGCircleElement>) => {
     if (!tailPosition) return;
+    // Capture so pointermove/pointerup keep firing even outside the SVG element.
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
@@ -57,7 +59,7 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     e.stopPropagation();
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!isDragging) return;
     const { width, height } = dimensions;
     if (width === 0 || height === 0) return;
@@ -85,21 +87,21 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
     onUpdate({ tailPosition: { x: `${(newX / width) * 100}%`, y: `${(newY / height) * 100}%` } });
   }, [isDragging, onUpdate, dimensions]);
 
-  const handleMouseUp = useCallback(() => setIsDragging(false), []);
+  const handlePointerUp = useCallback(() => setIsDragging(false), []);
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('pointermove', handlePointerMove);
+      document.addEventListener('pointerup', handlePointerUp);
     } else {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
     }
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('pointermove', handlePointerMove);
+      document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, handlePointerMove, handlePointerUp]);
 
   const handleInvertColors = () => onUpdate({ invertedColors: !invertedColors });
 
@@ -248,16 +250,17 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
       const path = getSpeechBubblePath(width, height, resolvedTailPos.x, resolvedTailPos.y);
       return (
         <>
-          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
+          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible" style={{ touchAction: 'none' }}>
             <path d={path} strokeWidth={4} stroke={stroke} fill={fill} />
-            {/* Drag handle — visible on hover */}
+            {/* Drag handle — visible on hover; pointer events enabled for mouse and touch */}
             <circle
               cx={resolvedTailPos.x}
               cy={resolvedTailPos.y}
               r="10"
               fill="rgba(0,0,0,0.45)"
-              onMouseDown={handleMouseDown}
+              onPointerDown={handlePointerDown}
               className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ touchAction: 'none' }}
             />
           </svg>
           <Tooltip text="Invert Colors">
