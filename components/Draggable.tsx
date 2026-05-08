@@ -20,7 +20,15 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
   const dragStartPos = useRef({ x: 0, y: 0 });
   const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const elementRef = useRef<HTMLDivElement>(null);
-  
+
+  // Keep callback refs current without adding them to the effect dep array.
+  // This prevents the sync effect from re-firing on every parent re-render
+  // just because inline arrow functions were recreated.
+  const onPositionChangeRef = useRef(onPositionChange);
+  const onSizeChangeRef = useRef(onSizeChange);
+  useEffect(() => { onPositionChangeRef.current = onPositionChange; });
+  useEffect(() => { onSizeChangeRef.current = onSizeChange; });
+
   // This effect syncs, resolves, and clamps the element's position and size.
   useEffect(() => {
     // A timeout is used to ensure the boundary element has been rendered and has a valid size.
@@ -61,15 +69,19 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
         const needsSizeUpdate = clampedWidth !== initialSize.width || clampedHeight !== initialSize.height;
 
         if (needsSizeUpdate) {
-            onSizeChange({ width: clampedWidth, height: clampedHeight });
+            onSizeChangeRef.current({ width: clampedWidth, height: clampedHeight });
         }
         if (needsPositionUpdate) {
-            onPositionChange({ x: clampedX, y: clampedY });
+            onPositionChangeRef.current({ x: clampedX, y: clampedY });
         }
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [initialPosition, initialSize, boundaryRef, onPositionChange, onSizeChange]);
+  // Intentionally omit onPositionChangeRef/onSizeChangeRef — they are stable
+  // refs whose .current is kept up-to-date above. Only re-run when the actual
+  // initial values or boundary change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPosition, initialSize, boundaryRef]);
 
 
   const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
