@@ -584,12 +584,15 @@ const refinePanelImage = async (
     throw new Error('Image refinement failed: The AI did not return an image after multiple attempts. Please try again.');
 };
 
-const generateContextExplainer = async (title: string, summary: string): Promise<string> => {
+const generateContextExplainer = async (title: string, summary: string, newsContext?: string): Promise<string> => {
+    const contextSection = newsContext
+        ? `\n    **Actual news story this comic is based on:** "${newsContext}"\n`
+        : '';
     const contents = `
-    The following is the title and summary of a satirical comic strip. Write a brief, neutral, one-paragraph explanation (2-3 sentences) of the real-world context or news event that this comic is likely referencing. Be concise and informative, like an archivist's note.
+    The following is a satirical comic strip. Write a brief, neutral, one-paragraph explanation (2-3 sentences) of the real-world context or news event that this comic references. Be concise and informative, like an archivist's note.
     
-    **Title:** "${title}"
-    **Summary:** "${summary}"
+    **Comic Title:** "${title}"
+    **Comic Summary:** "${summary}"${contextSection}
     
     **Context Explanation:**
     `;

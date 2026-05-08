@@ -12,7 +12,7 @@ interface ComicStripProps {
   comicData: ComicStripData;
   onUpdatePanel: (panelIndex: number, updatedData: Partial<PanelData>) => void;
   onRegeneratePanelImage: (panelIndex: number) => void;
-  onRefinePanelImage: (panelIndex: number) => void;
+  onRefinePanelImage: (panelIndex: number, refinementPrompt: string) => void;
   onStartNew: () => void;
   onRegenerateComic: () => void;
   isPanelLoading: (panelIndex: number) => boolean;

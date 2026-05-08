@@ -13,7 +13,7 @@ interface PanelProps {
   panelIndex: number;
   onUpdatePanel: (panelIndex: number, updatedData: Partial<PanelData>) => void;
   onRegenerateImage: (panelIndex: number) => void;
-  onRefineImage: (panelIndex: number) => void;
+  onRefineImage: (panelIndex: number, refinementPrompt: string) => void;
   isLoading: boolean;
 }
 
@@ -188,7 +188,16 @@ const Panel: React.FC<PanelProps> = ({
           className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
         />
         <Tooltip text="Refine image (small changes)" position="top-left">
-            <button onClick={() => onRefineImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
+            <button
+              onClick={() => {
+                // Commit the live input value immediately — don't rely on blur firing first
+                const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+                onUpdatePanel(panelIndex, { user_consistency_tags: committed });
+                onRefineImage(panelIndex, tagsInput);
+              }}
+              disabled={isLoading}
+              className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+            >
               <SparklesIcon className="w-4 h-4 text-black" />
             </button>
         </Tooltip>

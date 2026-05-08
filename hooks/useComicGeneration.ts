@@ -335,7 +335,8 @@ export default function useComicGeneration() {
       setLoadingMessages(["Checking the archives for context..."]);
       contextText = await geminiService.generateContextExplainer(
         reviewData.plan.title,
-        reviewData.plan.summary
+        reviewData.plan.summary,
+        formDataCache.newsContext
       );
     }
 
@@ -459,15 +460,14 @@ export default function useComicGeneration() {
     }
   }, [comicStripData, formDataCache, handleUpdatePanel, _setError]);
 
-  const handleRefinePanelImage = useCallback(async (panelIndex: number) => {
+  const handleRefinePanelImage = useCallback(async (panelIndex: number, refinementPrompt: string) => {
     if (!comicStripData || !formDataCache) return;
 
     setPanelLoadingState(prev => new Set(prev).add(panelIndex));
     try {
       const panel = comicStripData.panels[panelIndex];
-      const refinementPrompt = panel.user_consistency_tags.join(', ');
 
-      if (!refinementPrompt) {
+      if (!refinementPrompt.trim()) {
         throw new Error("Please add tags to describe the change you want to make.");
       }
 
