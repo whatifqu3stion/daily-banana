@@ -45,10 +45,14 @@ const makePrimaryStyleRef = (base64: string): ProcessedReferenceImage => ({
  * Builds a ProcessedReferenceImage tagged as the immediately preceding panel.
  * Used to maintain art-style and character-design continuity only — not scene composition.
  */
-const makeConsistencyRef = (base64: string, panelNumber: number): ProcessedReferenceImage => ({
+const makeConsistencyRef = (
+  base64: string,
+  panelNumber: number,
+  position: 'PREVIOUS' | 'NEXT' = 'PREVIOUS'
+): ProcessedReferenceImage => ({
   base64,
   mimeType: 'image/png',
-  tag: `PREVIOUS PANEL REFERENCE (panel ${panelNumber}): Use this image solely to match the art style, character designs, and colour palette. Do NOT copy or carry over the scene composition, camera angle, background layout, or specific poses/positions from this panel — each panel has its own unique visual description that must be followed independently.`,
+  tag: `${position} PANEL REFERENCE (panel ${panelNumber}): Use this image solely to match the art style, character designs, and colour palette. Do NOT copy or carry over the scene composition, camera angle, background layout, or specific poses/positions from this panel — each panel has its own unique visual description that must be followed independently.`,
 });
 
 /**
@@ -437,7 +441,11 @@ export default function useComicGeneration() {
         ? comicStripData.panels[panelIndex - 1]
         : comicStripData.panels[panelIndex + 1];
       const neighbourRefs: ProcessedReferenceImage[] = neighbourPanel?.image
-        ? [makeConsistencyRef(neighbourPanel.image, panelIndex > 0 ? panelIndex : panelIndex + 2)]
+        ? [makeConsistencyRef(
+            neighbourPanel.image,
+            panelIndex > 0 ? panelIndex : panelIndex + 2,
+            panelIndex > 0 ? 'PREVIOUS' : 'NEXT'
+          )]
         : [];
 
       const newImage = await geminiService.generatePanelImageWithReferences(
