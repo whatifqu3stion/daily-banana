@@ -38,18 +38,17 @@ const poolConsistencyTags = (plan: ComicPlan): string[] =>
 const makePrimaryStyleRef = (base64: string): ProcessedReferenceImage => ({
   base64,
   mimeType: 'image/png',
-  tag: `PRIMARY STYLE SHEET (panel 0 — user-approved): This is the definitive character and art reference. Every character's face, body type, hair, clothing, skin tone, and the overall art style MUST match this image exactly. This reference takes priority over all other instructions.`,
+  tag: `PRIMARY STYLE SHEET (panel 0 — user-approved): Use this image solely as a character design and art style reference. Match the art style, character faces, body types, hair, clothing, and colour palette exactly for any characters that appear in the new panel. Do NOT copy the scene composition, camera framing, props, or background from this image — each panel has its own unique description.`,
 });
 
 /**
  * Builds a ProcessedReferenceImage tagged as the immediately preceding panel.
- * Used to maintain local visual continuity (pose, scene, lighting) between
- * adjacent panels, in addition to the primary style sheet.
+ * Used to maintain art-style and character-design continuity only — not scene composition.
  */
 const makeConsistencyRef = (base64: string, panelNumber: number): ProcessedReferenceImage => ({
   base64,
   mimeType: 'image/png',
-  tag: `PREVIOUS PANEL REFERENCE (panel ${panelNumber}): Maintain visual continuity of characters, scene, art style, and colour palette from this panel.`,
+  tag: `PREVIOUS PANEL REFERENCE (panel ${panelNumber}): Use this image solely to match the art style, character designs, and colour palette. Do NOT copy or carry over the scene composition, camera angle, background layout, or specific poses/positions from this panel — each panel has its own unique visual description that must be followed independently.`,
 });
 
 /**

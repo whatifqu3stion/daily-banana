@@ -249,8 +249,8 @@ const constructImagePrompt = (
     const safeConsistencyTags = consistencyTags || [];
 
     const consistencyBlock = safeConsistencyTags.length > 0
-        ? `**CHARACTER & STYLE CONSISTENCY — MANDATORY:**
-If a reference image is provided it shows the exact character designs, faces, body types, clothing, and art style that MUST be reproduced faithfully. Do not drift. Every character listed below must look identical across all panels:
+        ? `**CHARACTER DESIGN REFERENCE — apply only to characters present in this panel:**
+The following are design descriptions for recurring characters. If a character listed below appears in this panel's visual description, reproduce them exactly as described. Do NOT include a character simply because they are listed here — only draw characters that are explicitly called for in this panel's description. Do NOT add body parts, props, or scene elements from other panels.
 ${safeConsistencyTags.map(t => `• ${t}`).join('\n')}
 Key props, vehicles, buildings, and set pieces must maintain consistent spatial orientation across panels — if an object faces left in one panel it must face left in all panels unless the description explicitly calls for a different angle.`
         : '';
