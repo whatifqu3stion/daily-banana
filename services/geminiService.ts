@@ -184,10 +184,16 @@ const getIllustrationStyleDescription = (styleValue?: string): string => {
 
 // Constructs the user's specific request to be sent as the main content.
 const constructPlanContents = (formData: ComicFormData, numPlans: number): string => {
-    const { topic, stance, comedicStyle, illustrationStyle, referenceImages } = formData;
+    const { topic, newsContext, stance, comedicStyle, illustrationStyle, referenceImages } = formData;
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     const stanceGuidance = getStanceGuidance(stance);
     const styleCraftNote = getStyleCraftNote(comedicStyle);
+
+    // If the topic came from the news picker, inject the full description so the
+    // AI has real factual grounding instead of having to invent details from a headline.
+    const topicBlock = newsContext
+        ? `- **Topic:** ${topic}\n- **Background context (use these real facts to ground the story):** ${newsContext}`
+        : `- **Topic:** ${topic}`;
 
     let referenceImageInfo = '';
     if (referenceImages && referenceImages.length > 0) {
@@ -205,7 +211,7 @@ Generate exactly 3 comic strip concepts about the topic below. Each concept MUST
 - Concept 3 — ABSURD ESCALATION: One impossible or surreal premise, followed ruthlessly to its logical extreme. Each panel the situation gets more ridiculous but remains internally consistent. No one in the strip finds this strange.
 
 **Creative Brief:**
-- **Topic:** ${topic}
+${topicBlock}
 - **Angle:** ${stanceGuidance}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
@@ -218,7 +224,7 @@ Remember: write the "premise" field first for each concept before designing pane
 Generate a single comic strip plan about the topic below.
 
 **Creative Brief:**
-- **Topic:** ${topic}
+${topicBlock}
 - **Angle:** ${stanceGuidance}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}

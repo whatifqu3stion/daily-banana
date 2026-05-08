@@ -163,7 +163,12 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         const { checked } = e.target as HTMLInputElement;
         setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        // Clear newsContext when the user manually edits the topic field
+        if (name === 'topic') {
+            setFormData((prev) => ({ ...prev, topic: value, newsContext: undefined }));
+        } else {
+            setFormData((prev) => ({ ...prev, [name]: value }));
+        }
     }
   };
 
@@ -237,8 +242,8 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
 
-  const handleSelectStory = (title: string) => {
-    setFormData(prev => ({...prev, topic: title }));
+  const handleSelectStory = (title: string, description?: string) => {
+    setFormData(prev => ({ ...prev, topic: title, newsContext: description ?? '' }));
     setIsNewsModalOpen(false);
   };
 

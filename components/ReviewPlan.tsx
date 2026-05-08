@@ -50,6 +50,8 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
             const newImage = await geminiService.refinePanelImage(
                 reviewData.firstPanelImage,
                 refinementTags,
+                firstPanelPlan.visual_prompt,
+                globalTags,
                 formData.illustrationStyle,
                 formData.comedicStyle,
                 reviewData.userProvidedImages,

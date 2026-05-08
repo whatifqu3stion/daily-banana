@@ -28,6 +28,7 @@ export interface ProcessedReferenceImage {
 // Interface for the comic generation form data.
 export interface ComicFormData {
   topic: string;
+  newsContext?: string; // Full description of the news story, if one was selected from the picker
   stance: Stance;
   comedicStyle: ComedicStyle;
   illustrationStyle?: string;
