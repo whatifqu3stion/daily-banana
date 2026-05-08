@@ -1,17 +1,13 @@
+// components/ReviewPlan.tsx
+// Shown after panel 0 has been generated. Lets the user inspect the comic plan,
+// refine or regenerate the first panel image, then continue generating the rest.
 import React, { useState } from 'react';
-import { ComicPlan, ComicFormData, ProcessedReferenceImage, LayoutProps } from '../types';
+import { ComicFormData, ReviewData } from '../types';
 import { geminiService } from '../services/geminiService';
 import RefreshIcon from './icons/RefreshIcon';
 import SparklesIcon from './icons/SparklesIcon';
 import NewComicIcon from './icons/NewComicIcon';
 import Tooltip from './Tooltip';
-
-interface ReviewData {
-    plan: ComicPlan;
-    firstPanelImage: string; // base64
-    userProvidedImages: ProcessedReferenceImage[];
-    panelLayouts: LayoutProps[];
-}
 
 interface ReviewPlanProps {
     reviewData: ReviewData;

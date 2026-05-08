@@ -120,11 +120,21 @@ export interface PanelData {
 export interface ComicStripData {
   title: string;
   panels: PanelData[];
-  context?: string; // New feature: Optional context explainer text
+  context?: string; // Optional AI-generated archivist note about the real-world context.
 }
 
 // Interface for a single news story fetched from an RSS feed.
 export interface NewsStory {
   title: string;
   description: string;
+}
+
+// Data passed from useComicGeneration to ReviewPlan after the first panel has
+// been generated and approved. Kept here so both sides share the same type.
+export interface ReviewData {
+  plan: ComicPlan;
+  /** Base64 PNG of the generated panel 0 image. */
+  firstPanelImage: string;
+  userProvidedImages: ProcessedReferenceImage[];
+  panelLayouts: LayoutProps[];
 }

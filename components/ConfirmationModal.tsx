@@ -1,5 +1,7 @@
 // components/ConfirmationModal.tsx
-import React from 'react';
+// A generic, accessible confirmation dialog.
+// Rendered as a fixed overlay; clicking the backdrop or pressing Escape cancels.
+import React, { useEffect } from 'react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -20,9 +22,17 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmText = 'Continue',
   cancelText = 'Cancel',
 }) => {
-  if (!isOpen) {
-    return null;
-  }
+  // Close on Escape key for keyboard accessibility.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onCancel]);
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -41,7 +51,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           {title}
         </h3>
         <div className="text-base font-lora text-black space-y-3 text-center">
-            {message}
+          {message}
         </div>
         <div className="mt-8 flex justify-center gap-4">
           <button

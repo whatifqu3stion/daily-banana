@@ -8,18 +8,11 @@ import {
   PanelData,
   ProcessedReferenceImage,
   ReferenceImage,
-  LayoutProps,
+  ReviewData,
 } from '../types';
 import { geminiService } from '../services/geminiService';
 import { toBase64 } from '../utils/fileUtils';
 import { layoutAdapter } from '../utils/layoutAdapter';
-
-interface ReviewData {
-  plan: ComicPlan;
-  firstPanelImage: string;
-  userProvidedImages: ProcessedReferenceImage[];
-  panelLayouts: LayoutProps[];
-}
 
 /**
  * Collects and deduplicates consistency tags across ALL panels in a plan.

@@ -1,3 +1,7 @@
+// components/StorySwiper.tsx
+// Card-swipe UI shown when brainstorm mode generates multiple story concepts.
+// The user can page through each plan, read the synopsis, and choose one to
+// develop — or ask the AI to generate a fresh batch of ideas.
 import React, { useState, useCallback } from 'react';
 import { ComicPlan } from '../types';
 import Tooltip from './Tooltip';

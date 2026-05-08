@@ -1,3 +1,6 @@
+// components/Panel.tsx
+// Renders a single comic panel: AI image, draggable speech/thought bubbles,
+// draggable caption, per-panel regenerate and refine controls, and tag editing.
 import React, { useRef, useState, useEffect } from 'react';
 import { PanelData, TextElementData, BubbleData } from '../types';
 import Draggable from './Draggable';

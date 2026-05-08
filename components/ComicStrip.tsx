@@ -1,6 +1,11 @@
-import React, { useRef } from 'react';
+// components/ComicStrip.tsx
+// The fully-generated comic strip. Renders all panels in a CSS-grid layout,
+// provides per-panel editing controls (regenerate / refine / drag bubbles),
+// and handles PNG export and Twitter sharing.
+import React, { useRef, useState } from 'react';
 import * as htmlToImage from 'html-to-image';
 import { ComicStripData, PanelData } from '../types';
+import { embedGoogleFonts } from '../utils/fontUtils';
 import Panel from './Panel';
 import NewComicIcon from './icons/NewComicIcon';
 import DownloadIcon from './icons/DownloadIcon';
@@ -16,57 +21,9 @@ interface ComicStripProps {
   onStartNew: () => void;
   onRegenerateComic: () => void;
   isPanelLoading: (panelIndex: number) => boolean;
+  /** Displayed in the comic's printed footer — rendered into the exported PNG. */
   footerDisclaimer: string;
 }
-
-/**
- * Fetches Google Fonts CSS, parses it, fetches the font files,
- * and embeds them as Base64 data URLs.
- * @param fontUrl The URL of the Google Fonts CSS file.
- * @returns A CSS string with embedded fonts.
- */
-async function embedGoogleFonts(fontUrl: string): Promise<string> {
-  try {
-    const cssResponse = await fetch(fontUrl);
-    if (!cssResponse.ok) {
-      throw new Error(`Failed to fetch font CSS: ${cssResponse.statusText}`);
-    }
-    let cssText = await cssResponse.text();
-
-    const fontUrlRegex = /url\((https?:\/\/[^)]+)\)/g;
-    const fontUrls = Array.from(cssText.matchAll(fontUrlRegex), m => m[1]);
-
-    const fontPromises = fontUrls.map(async (url) => {
-      const fontResponse = await fetch(url);
-      if (!fontResponse.ok) {
-        console.warn(`Failed to fetch font file: ${url}`);
-        return { originalUrl: url, dataUrl: url }; // Fallback
-      }
-      const blob = await fontResponse.blob();
-      return new Promise<{ originalUrl: string; dataUrl: string }>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({ originalUrl: url, dataUrl: reader.result as string });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    });
-
-    const fontDataUrls = await Promise.all(fontPromises);
-
-    for (const { originalUrl, dataUrl } of fontDataUrls) {
-      cssText = cssText.replace(originalUrl, dataUrl);
-    }
-
-    return cssText;
-  } catch (error) {
-      console.error("Error embedding Google Fonts:", error);
-      // Return an empty string or the original (likely failing) CSS as a fallback.
-      return '';
-  }
-}
-
 
 const ComicStrip: React.FC<ComicStripProps> = ({
   comicData,
@@ -79,7 +36,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   footerDisclaimer,
 }) => {
   const comicRef = useRef<HTMLDivElement>(null);
-  const [downloadError, setDownloadError] = React.useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleDownload = async () => {
     if (!comicRef.current) return;

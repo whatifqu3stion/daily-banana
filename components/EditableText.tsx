@@ -1,3 +1,7 @@
+// components/EditableText.tsx
+// A contentEditable <p> that exposes its text through an onSave callback on
+// blur. The `key={initialText}` prop forces a full remount when the parent
+// updates the text externally, keeping the DOM and React state in sync.
 import React, { forwardRef } from 'react';
 
 interface EditableTextProps {

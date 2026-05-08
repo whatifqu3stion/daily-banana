@@ -1,14 +1,14 @@
 // App.tsx — root layout component.
 // Owns the masthead, footer, and top-level stage rendering.
 // All comic generation state and logic lives in useComicGeneration().
-import React from 'react';
+import React, { useEffect } from 'react';
 import useComicGeneration from './hooks/useComicGeneration';
 import ComicForm from './components/ComicForm';
 import LoadingState from './components/LoadingState';
 import StorySwiper from './components/StorySwiper';
 import ReviewPlan from './components/ReviewPlan';
 import ComicStrip from './components/ComicStrip';
-import ErrorState from './components/ErrorState'; // Import the new error component
+import ErrorState from './components/ErrorState';
 
 const App: React.FC = () => {
   const {
@@ -35,6 +35,15 @@ const App: React.FC = () => {
     onReturnFromSwiper,
     onReturnFromReview,
   } = useComicGeneration();
+
+  // Safety net: if appStage ever reaches an unexpected value, reset to form.
+  // Done in an effect rather than as a render side-effect to keep renderContent pure.
+  useEffect(() => {
+    const validStages = ['form', 'story-swipe', 'review', 'strip'];
+    if (!validStages.includes(appStage)) {
+      handleStartNew();
+    }
+  }, [appStage, handleStartNew]);
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -93,8 +102,7 @@ const App: React.FC = () => {
           />
         );
       default:
-        // Fallback for an invalid stage
-        handleStartNew();
+        // The useEffect above will call handleStartNew() on the next tick.
         return <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} />;
     }
   };

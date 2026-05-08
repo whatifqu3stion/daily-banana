@@ -1,3 +1,7 @@
+// components/ErrorState.tsx
+// Shown when an unrecoverable error occurs during generation.
+// Attempts to parse JSON API error bodies for friendlier messages;
+// falls back to displaying the raw error string.
 import React from 'react';
 
 interface ErrorStateProps {

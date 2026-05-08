@@ -1,3 +1,7 @@
+// components/LoadingState.tsx
+// Animated loading screen shown during multi-step AI generation.
+// Cycles through a list of status messages with a typewriter effect and
+// optionally renders a per-panel progress bar during image generation.
 import React, { useState, useEffect } from 'react';
 
 interface LoadingStateProps {
