@@ -1,93 +1,125 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { ElementPosition, ElementSize } from '../types';
 
 interface DraggableProps {
   children: React.ReactNode;
   initialPosition: ElementPosition;
   initialSize: ElementSize;
-  onPositionChange: (position: { x: number; y: number; }) => void;
-  onSizeChange: (size: { width: number; height: number; }) => void;
+  onPositionChange: (position: ElementPosition) => void;
+  onSizeChange: (size: ElementSize) => void;
   boundaryRef: React.RefObject<HTMLElement>;
   disableDrag?: boolean;
 }
 
-const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initialSize, onPositionChange, onSizeChange, boundaryRef, disableDrag = false }) => {
+const resolveValue = (value: number | string, max: number): number => {
+  if (typeof value === 'string' && value.endsWith('%')) {
+    return (parseFloat(value) / 100) * max;
+  }
+  return Number(value);
+};
+
+const toPct = (n: number, max: number): string =>
+  `${Math.round((n / max) * 10000) / 100}%`;
+
+const isPct = (v: number | string): boolean =>
+  typeof v === 'string' && (v as string).endsWith('%');
+
+const Draggable: React.FC<DraggableProps> = ({
+  children,
+  initialPosition,
+  initialSize,
+  onPositionChange,
+  onSizeChange,
+  boundaryRef,
+  disableDrag = false,
+}) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  
+  const [boundarySize, setBoundarySize] = useState({ width: 0, height: 0 });
+
   const dragStartPos = useRef({ x: 0, y: 0 });
   const resizeStartInfo = useRef({ x: 0, y: 0, width: 0, height: 0 });
   const elementRef = useRef<HTMLDivElement>(null);
 
   // Keep callback refs current without adding them to the effect dep array.
-  // This prevents the sync effect from re-firing on every parent re-render
-  // just because inline arrow functions were recreated.
   const onPositionChangeRef = useRef(onPositionChange);
   const onSizeChangeRef = useRef(onSizeChange);
   useEffect(() => { onPositionChangeRef.current = onPositionChange; });
   useEffect(() => { onSizeChangeRef.current = onSizeChange; });
 
-  // This effect syncs, resolves, and clamps the element's position and size.
+  // Track boundary element dimensions via ResizeObserver.
+  // This fires on first layout (replacing the old setTimeout hack) and again
+  // any time the panel resizes — e.g. when the browser window is resized.
+  useLayoutEffect(() => {
+    const boundary = boundaryRef.current;
+    if (!boundary) return;
+    let rafId: number;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      rafId = requestAnimationFrame(() => {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) setBoundarySize({ width, height });
+      });
+    });
+    observer.observe(boundary);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(rafId);
+    };
+  }, [boundaryRef]);
+
+  // Resolve and clamp position/size whenever initial values or boundary dimensions change.
+  // Positions are always stored and reported as percentage strings so they remain
+  // correct across panel resizes — the next ResizeObserver tick re-resolves them
+  // to the new pixel values automatically.
   useEffect(() => {
-    // A timeout is used to ensure the boundary element has been rendered and has a valid size.
-    const timer = setTimeout(() => {
-        if (!boundaryRef.current) return;
+    const { width, height } = boundarySize;
+    if (width === 0 || height === 0) return;
 
-        const boundaryRect = boundaryRef.current.getBoundingClientRect();
-        if (boundaryRect.width === 0 || boundaryRect.height === 0) return;
+    const resolvedW = resolveValue(initialSize.width, width);
+    const resolvedH = resolveValue(initialSize.height, height);
+    const clampedWidth = Math.min(resolvedW, width);
+    const clampedHeight = Math.min(resolvedH, height);
 
-        const resolveValue = (value: number | string, max: number): number => {
-            if (typeof value === 'string' && value.endsWith('%')) {
-                return (parseFloat(value) / 100) * max;
-            }
-            return Number(value); // Coerce to handle string numbers without '%'
-        };
-        
-        const resolvedPos = {
-            x: resolveValue(initialPosition.x, boundaryRect.width),
-            y: resolveValue(initialPosition.y, boundaryRect.height),
-        };
-        const resolvedSize = {
-            width: resolveValue(initialSize.width, boundaryRect.width),
-            height: resolveValue(initialSize.height, boundaryRect.height),
-        };
+    const resolvedX = resolveValue(initialPosition.x, width);
+    const resolvedY = resolveValue(initialPosition.y, height);
+    const clampedX = Math.max(0, Math.min(resolvedX, width - clampedWidth));
+    const clampedY = Math.max(0, Math.min(resolvedY, height - clampedHeight));
 
-        let clampedWidth = Math.min(resolvedSize.width, boundaryRect.width);
-        let clampedHeight = Math.min(resolvedSize.height, boundaryRect.height);
+    setPosition({ x: clampedX, y: clampedY });
+    setSize({ width: clampedWidth, height: clampedHeight });
 
-        let clampedX = Math.max(0, Math.min(resolvedPos.x, boundaryRect.width - clampedWidth));
-        let clampedY = Math.max(0, Math.min(resolvedPos.y, boundaryRect.height - clampedHeight));
-        
-        // Update local state for rendering
-        setPosition({ x: clampedX, y: clampedY });
-        setSize({ width: clampedWidth, height: clampedHeight });
+    // Only notify parent if:
+    //   (a) the stored values were raw pixels (not %) — convert them to %, or
+    //   (b) clamping actually moved the element — report the corrected position.
+    // This prevents a cascade of spurious state updates on every resize event
+    // when positions are already stored as percentages and nothing changed.
+    const xClamped = Math.abs(resolvedX - clampedX) > 0.5;
+    const yClamped = Math.abs(resolvedY - clampedY) > 0.5;
+    const wClamped = Math.abs(resolvedW - clampedWidth) > 0.5;
+    const hClamped = Math.abs(resolvedH - clampedHeight) > 0.5;
 
-        // If the initial values were percentages or clamping was needed, we must update the parent state with pixel values.
-        const needsPositionUpdate = clampedX !== initialPosition.x || clampedY !== initialPosition.y;
-        const needsSizeUpdate = clampedWidth !== initialSize.width || clampedHeight !== initialSize.height;
-
-        if (needsSizeUpdate) {
-            onSizeChangeRef.current({ width: clampedWidth, height: clampedHeight });
-        }
-        if (needsPositionUpdate) {
-            onPositionChangeRef.current({ x: clampedX, y: clampedY });
-        }
-    }, 0);
-
-    return () => clearTimeout(timer);
-  // Intentionally omit onPositionChangeRef/onSizeChangeRef — they are stable
-  // refs whose .current is kept up-to-date above. Only re-run when the actual
-  // initial values or boundary change.
+    if (!isPct(initialPosition.x) || !isPct(initialPosition.y) || xClamped || yClamped) {
+      onPositionChangeRef.current({
+        x: toPct(clampedX, width),
+        y: toPct(clampedY, height),
+      });
+    }
+    if (!isPct(initialSize.width) || !isPct(initialSize.height) || wClamped || hClamped) {
+      onSizeChangeRef.current({
+        width: toPct(clampedWidth, width),
+        height: toPct(clampedHeight, height),
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialPosition, initialSize, boundaryRef]);
+  }, [initialPosition, initialSize, boundarySize]);
 
 
   const handleDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!elementRef.current || disableDrag) return;
-    // Capture the pointer so move/up events keep firing even outside the element.
-    // This is what makes touch dragging work correctly on mobile.
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     const rect = elementRef.current.getBoundingClientRect();
@@ -111,7 +143,7 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
     e.preventDefault();
     e.stopPropagation();
   };
-  
+
   const handlePointerMove = useCallback((e: PointerEvent) => {
     if (!isDragging && !isResizing) return;
 
@@ -121,9 +153,7 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
       const boundaryRect = boundaryRef.current.getBoundingClientRect();
       let newX = e.clientX - boundaryRect.left - dragStartPos.current.x;
       let newY = e.clientY - boundaryRect.top - dragStartPos.current.y;
-      
-      // Allow element to be dragged partially outside its container.
-      // The element can go up to half its own size outside the boundary on any side.
+
       const overlapFactor = 0.5;
       const minX = -size.width * overlapFactor;
       const maxX = boundaryRect.width - size.width * (1 - overlapFactor);
@@ -133,33 +163,34 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
       newX = Math.max(minX, Math.min(newX, maxX));
       newY = Math.max(minY, Math.min(newY, maxY));
 
-      const newPosition = { x: newX, y: newY };
-      setPosition(newPosition);
-      onPositionChangeRef.current(newPosition);
+      setPosition({ x: newX, y: newY });
+      // Report as percentages so positions survive panel resizes.
+      onPositionChangeRef.current({
+        x: toPct(newX, boundaryRect.width),
+        y: toPct(newY, boundaryRect.height),
+      });
     }
 
     if (isResizing) {
-       if (!boundaryRef.current) return;
+      if (!boundaryRef.current) return;
 
-       const boundaryRect = boundaryRef.current.getBoundingClientRect();
-       const dx = e.clientX - resizeStartInfo.current.x;
-       const dy = e.clientY - resizeStartInfo.current.y;
+      const boundaryRect = boundaryRef.current.getBoundingClientRect();
+      const dx = e.clientX - resizeStartInfo.current.x;
+      const dy = e.clientY - resizeStartInfo.current.y;
 
-       let newWidth = resizeStartInfo.current.width + dx;
-       let newHeight = resizeStartInfo.current.height + dy;
+      let newWidth = resizeStartInfo.current.width + dx;
+      let newHeight = resizeStartInfo.current.height + dy;
 
-       // Clamp size
-       newWidth = Math.max(50, Math.min(newWidth, boundaryRect.width - position.x));
-       newHeight = Math.max(40, Math.min(newHeight, boundaryRect.height - position.y));
+      newWidth = Math.max(50, Math.min(newWidth, boundaryRect.width - position.x));
+      newHeight = Math.max(40, Math.min(newHeight, boundaryRect.height - position.y));
 
-       const newSize = { width: newWidth, height: newHeight };
-       setSize(newSize);
-       onSizeChangeRef.current(newSize);
+      setSize({ width: newWidth, height: newHeight });
+      // Report as percentages so sizes survive panel resizes.
+      onSizeChangeRef.current({
+        width: toPct(newWidth, boundaryRect.width),
+        height: toPct(newHeight, boundaryRect.height),
+      });
     }
-  // onPositionChangeRef and onSizeChangeRef are stable refs — kept current above.
-  // Removing them from deps prevents handlePointerMove from being recreated on
-  // every parent re-render during drag, which was re-attaching the document
-  // listener on every pointermove event.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDragging, isResizing, boundaryRef, size, position]);
 
@@ -188,12 +219,12 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
       ref={elementRef}
       onPointerDown={handleDragStart}
       className="absolute z-10 group"
-      style={{ 
-        left: `${position.x}px`, 
+      style={{
+        left: `${position.x}px`,
         top: `${position.y}px`,
         width: `${size.width}px`,
         height: `${size.height}px`,
-        touchAction: 'none', // Prevent browser scroll/zoom from stealing touch events
+        touchAction: 'none',
       }}
     >
       <div className="w-full h-full cursor-move">

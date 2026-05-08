@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ComicPlan } from '../types';
 import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
@@ -25,8 +25,8 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
     const [currentIndex, setCurrentIndex] = useState(0);
     const currentPlan = storyPlans[currentIndex];
 
-    const handleNext = () => setCurrentIndex(prev => Math.min(prev + 1, storyPlans.length - 1));
-    const handlePrev = () => setCurrentIndex(prev => Math.max(prev - 1, 0));
+    const handleNext = useCallback(() => setCurrentIndex(prev => Math.min(prev + 1, storyPlans.length - 1)), [storyPlans.length]);
+    const handlePrev = useCallback(() => setCurrentIndex(prev => Math.max(prev - 1, 0)), [storyPlans.length]);
 
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,7 +35,7 @@ const StorySwiper: React.FC<StorySwiperProps> = ({ storyPlans, onSelectStory, on
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [storyPlans.length]);
+    }, [handleNext, handlePrev]);
 
     return (
         <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-6">
