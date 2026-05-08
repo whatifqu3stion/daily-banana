@@ -69,6 +69,8 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [showFreeTextStance, setShowFreeTextStance] = useState(false);
   const [showFreeTextComedicStyle, setShowFreeTextComedicStyle] = useState(false);
   const [showFreeTextIllustrationStyle, setShowFreeTextIllustrationStyle] = useState(false);
+  const [customStanceError, setCustomStanceError] = useState<string | null>(null);
+  const [customStyleError, setCustomStyleError] = useState<string | null>(null);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -174,6 +176,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleStanceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target;
+    setCustomStanceError(null);
     if (value === 'custom') {
       setShowFreeTextStance(true);
       setFormData((prev) => ({ ...prev, stance: '' }));
@@ -185,6 +188,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   
   const handleComedicStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target;
+    setCustomStyleError(null);
     if (value === 'custom') {
       setShowFreeTextComedicStyle(true);
       setFormData((prev) => ({ ...prev, comedicStyle: '' }));
@@ -207,6 +211,15 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate custom free-text fields before proceeding
+    if (showFreeTextStance && !formData.stance.trim()) {
+      setCustomStanceError('Please describe your custom stance.');
+      return;
+    }
+    if (showFreeTextComedicStyle && !formData.comedicStyle.trim()) {
+      setCustomStyleError('Please describe your custom comedic style.');
+      return;
+    }
     if (checkForSensitiveContent(formData.topic)) {
       setIsConfirmationModalOpen(true);
     } else {
@@ -331,17 +344,22 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               <option value="custom">Write my own...</option>
             </select>
             {showFreeTextStance && (
-              <input
-                type="text"
-                id="stance-custom"
-                name="stance"
-                value={typeof formData.stance === 'string' ? formData.stance : ''}
-                onChange={handleChange}
-                className="w-full p-3 mt-2 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
-                placeholder="Your custom stance..."
-                maxLength={160}
-                autoFocus
-              />
+              <>
+                <input
+                  type="text"
+                  id="stance-custom"
+                  name="stance"
+                  value={typeof formData.stance === 'string' ? formData.stance : ''}
+                  onChange={(e) => { setCustomStanceError(null); handleChange(e); }}
+                  className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStanceError ? 'border-red-500' : 'border-black'}`}
+                  placeholder="Your custom stance..."
+                  maxLength={160}
+                  autoFocus
+                />
+                {customStanceError && (
+                  <p className="mt-1 text-xs font-special-elite text-red-600">{customStanceError}</p>
+                )}
+              </>
             )}
           </div>
           
@@ -366,17 +384,22 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               <option value="custom">Write my own...</option>
             </select>
             {showFreeTextComedicStyle && (
-              <input
-                type="text"
-                id="comedicStyle-custom"
-                name="comedicStyle"
-                value={formData.comedicStyle}
-                onChange={handleChange}
-                className="w-full p-3 mt-2 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
-                placeholder="Your custom comedic style..."
-                maxLength={160}
-                autoFocus
-              />
+              <>
+                <input
+                  type="text"
+                  id="comedicStyle-custom"
+                  name="comedicStyle"
+                  value={formData.comedicStyle}
+                  onChange={(e) => { setCustomStyleError(null); handleChange(e); }}
+                  className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStyleError ? 'border-red-500' : 'border-black'}`}
+                  placeholder="Your custom comedic style..."
+                  maxLength={160}
+                  autoFocus
+                />
+                {customStyleError && (
+                  <p className="mt-1 text-xs font-special-elite text-red-600">{customStyleError}</p>
+                )}
+              </>
             )}
             {formData.comedicStyle === 'dark-comedy' && !showFreeTextComedicStyle && (
               <p className="mt-2 text-xs font-special-elite text-amber-800 bg-amber-50 border border-amber-300 rounded px-3 py-2">

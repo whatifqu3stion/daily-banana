@@ -173,6 +173,17 @@ const getStyleCraftNote = (style: string): string =>
     STYLE_CRAFT_NOTES[style.toLowerCase()] ??
     `CUSTOM STYLE — "${style}": Before designing panels, analyse what this comedic register implies: What is the emotional tone (warm, cold, angry, bewildered)? What pacing does it demand (slow build or rapid fire)? What kind of punchline does it favour (a twist, a visual gag, a bleak non-resolution, a triumphant reversal)? What should characters sound like in their dialogue? Apply all of these inferred qualities consistently across every panel. Commit fully to this register — never break it.`;
 
+// Stance → image-level visual framing note
+const STANCE_VISUAL_NOTES: Record<string, string> = {
+    supportive: `Visual framing — SUPPORTIVE stance: The protagonist or subject should appear earnest, competent, and sympathetic. Portray critics or obstacles as petty, bumbling, or misguided through body language and expression. Use warm, approachable framing for the subject of support.`,
+    critical: `Visual framing — CRITICAL stance: Characters representing the target of critique should appear self-important, oblivious, or hypocritical through their posture, expression, and props. Let the image convey the irony visually — show what words won't say.`,
+    neutral: `Visual framing — NEUTRAL/OBSERVATIONAL stance: Balanced framing throughout. No character should appear more heroic or villainous than another through pose, lighting, or composition. The comedy lives in the absurdity of the situation itself.`,
+};
+
+const getStanceVisualNote = (stance: string): string =>
+    STANCE_VISUAL_NOTES[stance.toLowerCase()] ??
+    `Visual framing — editorial stance: "${stance}". Let this perspective subtly inform how characters are framed, posed, and lit — without being heavy-handed about it.`;
+
 
 // Helper to get illustration style description
 const getIllustrationStyleDescription = (styleValue?: string): string => {
@@ -201,14 +212,14 @@ const constructPlanContents = (formData: ComicFormData, numPlans: number): strin
     }
 
     if (numPlans > 1) {
-        // Brainstorm mode: force three structurally distinct comedic approaches
+        // Brainstorm mode: three structurally distinct delivery mechanisms, all within the user's chosen comedic register
         return `
-Generate exactly 3 comic strip concepts about the topic below. Each concept MUST use a fundamentally different comedic approach — do not let them feel like variations of the same idea.
+Generate exactly 3 comic strip concepts about the topic below. Each concept MUST deliver the user's chosen comedic register through a fundamentally different structural mechanism — they should feel like three different species of the same style, not three variations of the same idea.
 
-**Mandatory structural variety:**
-- Concept 1 — VISUAL/PHYSICAL: The comedy lives almost entirely in the image. Minimal or no dialogue. A sight gag, visual absurdity, or slapstick mishap carries the punchline. Think Buster Keaton, not a stand-up comedian.
-- Concept 2 — IRONIC REVERSAL: Build the strip around a strong dramatic or verbal irony. The reader knows something characters don't, or characters say the exact opposite of what they mean. Dialogue is central but kept short.
-- Concept 3 — ABSURD ESCALATION: One impossible or surreal premise, followed ruthlessly to its logical extreme. Each panel the situation gets more ridiculous but remains internally consistent. No one in the strip finds this strange.
+**Mandatory structural variety — express the "${comedicStyle}" register via each of these three delivery mechanisms:**
+- Concept 1 — VISUAL/PHYSICAL delivery: The comedy lives almost entirely in the image. Minimal or no dialogue. A sight gag, visual absurdity, or physical mishap carries the punchline. Think Buster Keaton — the chosen register expressed through bodies and objects, not words.
+- Concept 2 — IRONIC REVERSAL delivery: Build the strip around strong dramatic or verbal irony. The reader knows something characters don't, or characters say the opposite of what they mean. Dialogue is central but kept short. The chosen register expressed through the gap between what is said and what is true.
+- Concept 3 — ABSURD ESCALATION delivery: One impossible or surreal premise, followed ruthlessly to its logical extreme. Each panel the situation compounds, but all characters treat it as routine. The chosen register expressed through internal consistency of a broken universe.
 
 **Creative Brief:**
 ${topicBlock}
@@ -243,10 +254,15 @@ const constructImagePrompt = (
     basePrompt: string,
     consistencyTags: string[],
     illustrationStyle?: string,
-    comedicStyle?: ComedicStyle,
-    refinementPrompt?: string
+    comedicStyle?: string,
+    refinementPrompt?: string,
+    stance?: string,
 ): string => {
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
+    // Use the full craft note so the image model gets the same rich guidance
+    // that the plan model received — not just the raw style name.
+    const styleCraftNote = comedicStyle ? getStyleCraftNote(comedicStyle) : '';
+    const stanceVisualNote = stance ? getStanceVisualNote(stance) : '';
 
     const mainInstruction = refinementPrompt
         ? `You are refining an existing comic panel image. Apply ONLY these visual modifications to the artwork: [${refinementPrompt}]. These are editing instructions — do NOT render them as text, labels, or words anywhere in the image.`
@@ -269,7 +285,8 @@ ${basePrompt}
 
 **Art Style:**
 - **Overall Style:** ${styleDescription}
-- **Comedic Tone:** ${comedicStyle}
+- **Comedic Register:** ${styleCraftNote}
+${stanceVisualNote ? `- **Editorial Framing:** ${stanceVisualNote}` : ''}
 
 ${consistencyBlock}
 
@@ -494,11 +511,12 @@ const generatePanelImageWithReferences = async (
     visual_prompt: string,
     consistency_tags: string[],
     illustrationStyle?: string,
-    comedicStyle?: ComedicStyle,
+    comedicStyle?: string,
     userProvidedImages: ProcessedReferenceImage[] = [],
-    imageModel: string = 'gemini-3.1-flash-image-preview'
+    imageModel: string = 'gemini-3.1-flash-image-preview',
+    stance?: string,
 ): Promise<string> => {
-    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle);
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance);
     // Each reference image is preceded by its tag text so the model understands
     // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
@@ -540,16 +558,18 @@ const refinePanelImage = async (
     visualPrompt: string,
     consistencyTags: string[],
     illustrationStyle?: string,
-    comedicStyle?: ComedicStyle,
+    comedicStyle?: string,
     userProvidedImages: ProcessedReferenceImage[] = [],
-    imageModel: string = 'gemini-3.1-flash-image-preview'
+    imageModel: string = 'gemini-3.1-flash-image-preview',
+    stance?: string,
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         visualPrompt,
         consistencyTags,
         illustrationStyle,
         comedicStyle,
-        refinementPrompt
+        refinementPrompt,
+        stance,
     );
 
     const parts = [

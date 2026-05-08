@@ -132,7 +132,8 @@ export default function useComicGeneration() {
             illustrationStyle,
             comedicStyle,
             refs,
-            imageModel
+            imageModel,
+            formDataCache.stance,
           );
           if (speculativeAbortRef.current) return;
           speculativePanelsRef.current[i - 1] = img;
@@ -220,7 +221,8 @@ export default function useComicGeneration() {
         currentFormData.illustrationStyle,
         currentFormData.comedicStyle,
         userImages,
-        currentFormData.imageModel
+        currentFormData.imageModel,
+        currentFormData.stance,
       );
 
       const panelLayouts = layoutAdapter(plan.panels);
@@ -322,7 +324,8 @@ export default function useComicGeneration() {
           formDataCache.illustrationStyle,
           formDataCache.comedicStyle,
           refs,
-          formDataCache.imageModel
+          formDataCache.imageModel,
+          formDataCache.stance,
         );
         panelImages.push(newImage);
       } catch {
@@ -454,7 +457,8 @@ export default function useComicGeneration() {
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
         [...activeComicReferences.current, ...primaryRef, ...neighbourRefs],
-        formDataCache.imageModel
+        formDataCache.imageModel,
+        formDataCache.stance,
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false });
     } catch (err: any) {
@@ -495,7 +499,8 @@ export default function useComicGeneration() {
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
         activeComicReferences.current,
-        formDataCache.imageModel
+        formDataCache.imageModel,
+        formDataCache.stance,
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false });
     } catch (err: any) {
