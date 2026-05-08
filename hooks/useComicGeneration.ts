@@ -475,9 +475,15 @@ export default function useComicGeneration() {
         throw new Error("This panel has no image to refine. Try regenerating it first.");
       }
 
+      const globalTags = [
+        ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
+      ];
+
       const newImage = await geminiService.refinePanelImage(
         panel.image,
         refinementPrompt,
+        panel.visual_prompt,
+        globalTags,
         formDataCache.illustrationStyle,
         formDataCache.comedicStyle,
         activeComicReferences.current,

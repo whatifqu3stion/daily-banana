@@ -271,7 +271,7 @@ NO TEXT IN IMAGES: Do not render any text, words, letters, numbers, typography, 
 
 FILL THE PANEL EDGE-TO-EDGE: Artwork must bleed to all four edges of the image. Do not add any white margins, gutters, padding, borders, or empty space around the artwork. The image frame is the panel border — there is no inner frame inside it.
 
-If a reference image is provided, treat it as the authoritative style and character sheet — reproduce the art style, character faces, proportions, and colours exactly. Output a single comic panel image.
+If a reference image is provided, use it only to match the art style, character designs, and colour palette. Do not copy its scene composition, background layout, camera framing, or specific poses. Output a single comic panel image.
 `;
 };
 
@@ -531,14 +531,16 @@ const generatePanelImageWithReferences = async (
 const refinePanelImage = async (
     baseImage: string, // base64
     refinementPrompt: string,
+    visualPrompt: string,
+    consistencyTags: string[],
     illustrationStyle?: string,
     comedicStyle?: ComedicStyle,
     userProvidedImages: ProcessedReferenceImage[] = [],
     imageModel: string = 'gemini-3.1-flash-image-preview'
 ): Promise<string> => {
     const prompt = constructImagePrompt(
-        "The user wants to modify the provided image.",
-        [], // Consistency tags are less relevant for a direct refinement prompt
+        visualPrompt,
+        consistencyTags,
         illustrationStyle,
         comedicStyle,
         refinementPrompt
