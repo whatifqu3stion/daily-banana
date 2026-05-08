@@ -3,7 +3,7 @@
 //   • Panel image generation and refinement
 //   • News context explainer
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ComicFormData, ComicPlan, ProcessedReferenceImage, ComedicStyle, PlanPanel } from '../types';
+import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel } from '../types';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -308,12 +308,20 @@ If a reference image is provided, use it only to match the art style, character 
 const assertNotSafetyBlocked = (result: any, context: string): void => {
     const candidate = result.candidates?.[0];
     const finishReason = candidate?.finishReason as string | undefined;
-    if (!candidate || finishReason === 'SAFETY' || finishReason === 'RECITATION') {
+    // Only throw definitively for confirmed content-policy blocks.
+    // Empty candidates (no candidate at all) are treated as transient API failures —
+    // the retry loop will handle them. Throwing here would abort all retries with
+    // a misleading "content filters" message when the real cause is a model hiccup.
+    if (finishReason === 'SAFETY' || finishReason === 'RECITATION') {
         console.warn(`Safety block detected (${context}). finishReason: ${finishReason}`);
         throw new Error(
             "The AI's content filters blocked this request. Try rephrasing your topic or choosing a different comedic style. " +
             "If using Dark Comedy, keep the subject matter within editorial-cartoon bounds — avoid explicit references to harm, violence, or tragedy."
         );
+    }
+    if (!candidate) {
+        // Log for debugging but let the retry loop continue.
+        console.warn(`${context}: empty candidates array (transient failure, will retry if attempts remain).`);
     }
 };
 

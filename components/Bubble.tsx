@@ -17,6 +17,12 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
   const dragStart = useRef({ x: 0, y: 0 });
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
+  // Stable ref to the latest onUpdate callback — prevents handlePointerMove from
+  // being recreated (and the document listener from being re-attached) on every
+  // parent re-render during an active tail drag.
+  const onUpdateRef = useRef(onUpdate);
+  useEffect(() => { onUpdateRef.current = onUpdate; });
+
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -84,8 +90,12 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
       else                 newY = height + overshoot;
     }
 
-    onUpdate({ tailPosition: { x: `${(newX / width) * 100}%`, y: `${(newY / height) * 100}%` } });
-  }, [isDragging, onUpdate, dimensions]);
+    onUpdateRef.current({ tailPosition: { x: `${(newX / width) * 100}%`, y: `${(newY / height) * 100}%` } });
+  // onUpdateRef is a stable ref — removing it from deps prevents handlePointerMove
+  // from being recreated on every drag-induced re-render (which was re-attaching the
+  // document listener on every pointermove event).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging, dimensions]);
 
   const handlePointerUp = useCallback(() => setIsDragging(false), []);
 

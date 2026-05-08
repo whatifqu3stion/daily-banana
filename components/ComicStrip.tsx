@@ -79,9 +79,11 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   footerDisclaimer,
 }) => {
   const comicRef = useRef<HTMLDivElement>(null);
+  const [downloadError, setDownloadError] = React.useState<string | null>(null);
 
   const handleDownload = async () => {
     if (!comicRef.current) return;
+    setDownloadError(null);
 
     try {
       const fontCssUrl = 'https://fonts.googleapis.com/css2?family=Bangers&family=Lora:wght@400;700&family=Special+Elite&display=swap';
@@ -105,7 +107,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
       link.click();
     } catch (error) {
       console.error('Download failed:', error);
-      alert('Could not download the comic. Font embedding might have failed. Please check the console.');
+      setDownloadError('Download failed — the image could not be exported. Try again in a moment.');
     }
   };
   
@@ -157,6 +159,11 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         </footer>
       </div>
       
+      {downloadError && (
+        <p className="w-full text-center text-sm font-special-elite text-red-800 bg-red-50 border border-red-300 rounded-md px-4 py-2">
+          ⚠ {downloadError}
+        </p>
+      )}
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
         <Tooltip text="Start a new comic from scratch">
           <button
@@ -167,13 +174,13 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             Create New
           </button>
         </Tooltip>
-        <Tooltip text="Generate a new comic with the same prompt">
+        <Tooltip text="Write a brand-new story from scratch (same topic, new script and panels)">
           <button
             onClick={onRegenerateComic}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
           >
             <RefreshIcon className="w-5 h-5" />
-            Regenerate
+            New Story
           </button>
         </Tooltip>
         <Tooltip text="Download comic as a PNG image">

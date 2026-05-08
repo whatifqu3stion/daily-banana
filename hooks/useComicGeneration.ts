@@ -271,6 +271,9 @@ export default function useComicGeneration() {
       return;
     }
 
+    // Stop any still-running speculative generation — results are no longer needed.
+    speculativeAbortRef.current = true;
+
     setIsLoading(true);
     setError(null);
     setProgress(null);
@@ -420,6 +423,8 @@ export default function useComicGeneration() {
   const handleRegeneratePanelImage = useCallback(async (panelIndex: number) => {
     if (!comicStripData || !formDataCache) return;
 
+    // Clear any previous per-panel error and start loading.
+    handleUpdatePanel(panelIndex, { panelError: undefined });
     setPanelLoadingState(prev => new Set(prev).add(panelIndex));
     try {
       const panel = comicStripData.panels[panelIndex];
@@ -460,9 +465,13 @@ export default function useComicGeneration() {
         formDataCache.imageModel,
         formDataCache.stance,
       );
-      handleUpdatePanel(panelIndex, { image: newImage, failed: false });
+      handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
-      _setError(err.message || `Failed to regenerate panel ${panelIndex + 1}.`);
+      // Surface as a per-panel error — do NOT use _setError which would destroy the
+      // entire comic strip with a global ErrorState and force the user to start over.
+      handleUpdatePanel(panelIndex, {
+        panelError: err.message || `Failed to regenerate panel ${panelIndex + 1}.`,
+      });
     } finally {
       setPanelLoadingState(prev => {
         const newSet = new Set(prev);
@@ -470,23 +479,27 @@ export default function useComicGeneration() {
         return newSet;
       });
     }
-  }, [comicStripData, formDataCache, handleUpdatePanel, _setError]);
+  }, [comicStripData, formDataCache, handleUpdatePanel]);
 
   const handleRefinePanelImage = useCallback(async (panelIndex: number, refinementPrompt: string) => {
     if (!comicStripData || !formDataCache) return;
 
+    const panel = comicStripData.panels[panelIndex];
+
+    // Validate BEFORE entering loading state so we don't flash a spinner for input errors.
+    // These are per-panel errors — never global ErrorState.
+    if (!refinementPrompt.trim()) {
+      handleUpdatePanel(panelIndex, { panelError: 'Add some details in the field above first.' });
+      return;
+    }
+    if (!panel.image || panel.failed) {
+      handleUpdatePanel(panelIndex, { panelError: 'No image to refine — use the Regenerate button instead.' });
+      return;
+    }
+
+    handleUpdatePanel(panelIndex, { panelError: undefined });
     setPanelLoadingState(prev => new Set(prev).add(panelIndex));
     try {
-      const panel = comicStripData.panels[panelIndex];
-
-      if (!refinementPrompt.trim()) {
-        throw new Error("Please add tags to describe the change you want to make.");
-      }
-
-      if (!panel.image) {
-        throw new Error("This panel has no image to refine. Try regenerating it first.");
-      }
-
       const globalTags = [
         ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
       ];
@@ -502,9 +515,12 @@ export default function useComicGeneration() {
         formDataCache.imageModel,
         formDataCache.stance,
       );
-      handleUpdatePanel(panelIndex, { image: newImage, failed: false });
+      handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
-      _setError(err.message || `Failed to refine panel ${panelIndex + 1}.`);
+      // Per-panel error — do NOT use _setError (would destroy the comic strip).
+      handleUpdatePanel(panelIndex, {
+        panelError: err.message || `Failed to refine panel ${panelIndex + 1}.`,
+      });
     } finally {
       setPanelLoadingState(prev => {
         const newSet = new Set(prev);
@@ -512,7 +528,7 @@ export default function useComicGeneration() {
         return newSet;
       });
     }
-  }, [comicStripData, formDataCache, handleUpdatePanel, _setError]);
+  }, [comicStripData, formDataCache, handleUpdatePanel]);
 
   const onRegenerateConcept = useCallback(() => {
     if (formDataCache) {

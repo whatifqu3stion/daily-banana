@@ -140,7 +140,9 @@ const Panel: React.FC<PanelProps> = ({
           {panelData.failed ? (
             <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-3 p-4"
               style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(0,0,0,0.05) 8px, rgba(0,0,0,0.05) 16px)' }}>
-              <p className="font-special-elite text-sm text-center text-gray-700">Generation failed</p>
+              <p className="font-special-elite text-sm text-center text-gray-700 px-2">
+                {panelData.panelError || 'Generation failed'}
+              </p>
               <button
                 onClick={() => onRegenerateImage(panelIndex)}
                 disabled={isLoading}
@@ -151,11 +153,22 @@ const Panel: React.FC<PanelProps> = ({
               </button>
             </div>
           ) : (
-            <img
-              src={`data:image/png;base64,${panelData.image}`}
-              alt={panelData.visual_prompt}
-              className="w-full h-full object-cover"
-            />
+            <>
+              <img
+                src={`data:image/png;base64,${panelData.image}`}
+                alt={panelData.visual_prompt}
+                className="w-full h-full object-cover"
+              />
+              {/* Per-panel error from a failed regenerate/refine attempt on an existing image.
+                  Anchored at the TOP of the panel so it is never covered by the hover
+                  toolbar which lives at bottom-0. Always visible without hovering. */}
+              {panelData.panelError && (
+                <div className="no-export absolute top-0 left-0 right-0 bg-red-700/90 text-white text-xs font-special-elite px-2 py-1.5 z-30 flex items-start gap-1.5">
+                  <span className="flex-shrink-0 mt-px">⚠</span>
+                  <span>{panelData.panelError}</span>
+                </div>
+              )}
+            </>
           )}
           {isLoading && (
             <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-20">
@@ -187,20 +200,23 @@ const Panel: React.FC<PanelProps> = ({
           placeholder="e.g., 'wearing a red hat', 'add a dog'"
           className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
         />
-        <Tooltip text="Refine image (small changes)" position="top-left">
-            <button
-              onClick={() => {
-                // Commit the live input value immediately — don't rely on blur firing first
-                const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-                onUpdatePanel(panelIndex, { user_consistency_tags: committed });
-                onRefineImage(panelIndex, tagsInput);
-              }}
-              disabled={isLoading}
-              className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
-            >
-              <SparklesIcon className="w-4 h-4 text-black" />
-            </button>
-        </Tooltip>
+        {/* Refine is only meaningful when there is an existing image to build on */}
+        {!panelData.failed && (
+          <Tooltip text="Refine image (small changes)" position="top-left">
+              <button
+                onClick={() => {
+                  // Commit the live input value immediately — don't rely on blur firing first
+                  const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+                  onUpdatePanel(panelIndex, { user_consistency_tags: committed });
+                  onRefineImage(panelIndex, tagsInput);
+                }}
+                disabled={isLoading}
+                className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+              >
+                <SparklesIcon className="w-4 h-4 text-black" />
+              </button>
+          </Tooltip>
+        )}
         <Tooltip text="Regenerate image (major changes)" position="top-right">
             <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
               <RefreshIcon className="w-4 h-4 text-black" />

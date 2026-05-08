@@ -108,6 +108,7 @@ export interface PanelData {
   id: string;
   image: string; // base64 encoded image
   failed?: boolean; // true if image generation failed for this panel
+  panelError?: string; // Human-readable error from the last failed operation on this panel
   visual_prompt: string;
   text_elements: TextElementData[];
   consistency_tags: string[];

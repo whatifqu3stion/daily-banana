@@ -53,18 +53,20 @@ const loadSavedForm = (): Partial<ComicFormData> => {
 };
 
 const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
-  const saved = loadSavedForm();
-  const [formData, setFormData] = useState<ComicFormData>({
-    topic: saved.topic ?? '',
-    stance: saved.stance ?? 'critical',
-    comedicStyle: saved.comedicStyle ?? 'satirical',
-    illustrationStyle: saved.illustrationStyle ?? 'default-color',
-    imageModel: (IMAGE_MODEL_OPTIONS.some(o => o.value === saved.imageModel)
-      ? saved.imageModel
-      : 'gemini-3.1-flash-image-preview') as ImageModel,
-    referenceImages: [],
-    brainstormMode: saved.brainstormMode ?? false,
-    includeContext: saved.includeContext ?? false,
+  const [formData, setFormData] = useState<ComicFormData>(() => {
+    const saved = loadSavedForm();
+    return {
+      topic: saved.topic ?? '',
+      stance: saved.stance ?? 'critical',
+      comedicStyle: saved.comedicStyle ?? 'satirical',
+      illustrationStyle: saved.illustrationStyle ?? 'default-color',
+      imageModel: (IMAGE_MODEL_OPTIONS.some(o => o.value === saved.imageModel)
+        ? saved.imageModel
+        : 'gemini-3.1-flash-image-preview') as ImageModel,
+      referenceImages: [],
+      brainstormMode: saved.brainstormMode ?? false,
+      includeContext: saved.includeContext ?? false,
+    };
   });
   const [showFreeTextStance, setShowFreeTextStance] = useState(false);
   const [showFreeTextComedicStyle, setShowFreeTextComedicStyle] = useState(false);
