@@ -1,4 +1,8 @@
 // hooks/useComicGeneration.ts
+// The single source of truth for all comic generation state and logic.
+// Drives a four-stage state machine: form → [story-swipe] → review → strip.
+// Exposes stable callbacks (all wrapped in useCallback) so child components
+// that receive them as props never cause unnecessary re-renders.
 import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   AppStage,

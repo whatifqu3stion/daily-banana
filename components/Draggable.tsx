@@ -1,3 +1,9 @@
+// components/Draggable.tsx
+// A pointer-event-based drag-and-resize wrapper used for speech bubbles and
+// captions inside each comic panel. Positions are stored as percentage strings
+// (e.g. "42.5%") so they survive panel resizes without drift. A ResizeObserver
+// on the boundary element re-clamps positions whenever the panel dimensions
+// change (e.g. on window resize or layout shift).
 import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { ElementPosition, ElementSize } from '../types';
 

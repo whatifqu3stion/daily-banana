@@ -1,4 +1,7 @@
 // components/NewsSelector.tsx
+// Modal overlay that displays today's top headlines fetched via newsService.
+// The user can select a story to pre-fill the Topic and News Context fields
+// in ComicForm, or close the modal to continue with a custom topic.
 import React from 'react';
 import { NewsStory } from '../types';
 

@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
+        // Expose the secret under both names:
+        //   • process.env.API_KEY        — used by geminiService.ts / newsService.ts
+        //   • process.env.GEMINI_API_KEY — kept as a conventional alias
+        // Both resolve to the same GEMINI_API_KEY environment secret.
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
       },

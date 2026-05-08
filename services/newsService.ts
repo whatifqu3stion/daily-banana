@@ -1,4 +1,8 @@
 // services/newsService.ts
+// Fetches today's top news headlines using Gemini with Google Search grounding.
+// Results are cached in localStorage keyed by calendar date so repeated opens
+// of the NewsSelector within the same day reuse one API call. Concurrent
+// callers share a single in-flight promise (inflightRequest deduplication).
 import { GoogleGenAI } from "@google/genai";
 import { NewsStory } from '../types';
 

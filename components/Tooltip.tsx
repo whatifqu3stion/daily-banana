@@ -1,3 +1,7 @@
+// components/Tooltip.tsx
+// A lightweight CSS-only tooltip that wraps any child in a `group` div and
+// shows a dark label above it on hover. Supports top, top-left, and top-right
+// positioning via the optional `position` prop.
 import React from 'react';
 
 type TooltipPosition = 'top' | 'top-left' | 'top-right';

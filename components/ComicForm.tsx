@@ -1,3 +1,8 @@
+// components/ComicForm.tsx
+// The primary input form. Collects topic, stance, comedic style, illustration
+// style, image model, optional reference images, and an optional news context
+// string sourced from the NewsSelector modal. Handles a sensitive-topic
+// gate (ConfirmationModal) before submitting to the parent's onSubmit handler.
 import React, { useState, useRef, useEffect } from 'react';
 import { ComicFormData, Stance, ComedicStyle, ImageModel, ReferenceImage, NewsStory } from '../types';
 import { STANCE_OPTIONS, COMEDIC_STYLE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS, IMAGE_MODEL_OPTIONS } from '../constants';

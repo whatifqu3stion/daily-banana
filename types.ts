@@ -1,4 +1,7 @@
-// types.ts
+// types.ts — shared TypeScript interfaces and union types used across the app.
+// Primitive types (Stance, ComedicStyle, ImageModel) use open-ended string
+// unions (`string & {}`) so freetext custom values pass type-checking without
+// widening to `string`.
 
 // Defines the comic's message or argument about the topic.
 export type Stance = 'supportive' | 'critical' | 'neutral' | (string & {});
