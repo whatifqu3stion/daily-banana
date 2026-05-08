@@ -135,7 +135,7 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
 
       const newPosition = { x: newX, y: newY };
       setPosition(newPosition);
-      onPositionChange(newPosition);
+      onPositionChangeRef.current(newPosition);
     }
 
     if (isResizing) {
@@ -154,9 +154,14 @@ const Draggable: React.FC<DraggableProps> = ({ children, initialPosition, initia
 
        const newSize = { width: newWidth, height: newHeight };
        setSize(newSize);
-       onSizeChange(newSize);
+       onSizeChangeRef.current(newSize);
     }
-  }, [isDragging, isResizing, boundaryRef, onPositionChange, onSizeChange, size, position]);
+  // onPositionChangeRef and onSizeChangeRef are stable refs — kept current above.
+  // Removing them from deps prevents handlePointerMove from being recreated on
+  // every parent re-render during drag, which was re-attaching the document
+  // listener on every pointermove event.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging, isResizing, boundaryRef, size, position]);
 
   const handlePointerUp = useCallback(() => {
     setIsDragging(false);
