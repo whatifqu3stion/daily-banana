@@ -68,6 +68,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
       imageModel: (IMAGE_MODEL_OPTIONS.some(o => o.value === saved.imageModel)
         ? saved.imageModel
         : 'gemini-3.1-flash-image-preview') as ImageModel,
+      newsContext: saved.newsContext,
       referenceImages: [],
       brainstormMode: saved.brainstormMode ?? false,
       includeContext: saved.includeContext ?? false,
