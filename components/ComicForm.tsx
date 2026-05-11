@@ -85,6 +85,12 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [newsStories, setNewsStories] = useState<NewsStory[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
+  // Whether the Background Context textarea is expanded. Auto-true if context
+  // was previously saved (e.g. loaded from localStorage or set by news picker).
+  const [showContextField, setShowContextField] = useState<boolean>(() => {
+    const saved = loadSavedForm();
+    return !!(saved.newsContext);
+  });
 
   // Pre-fetch headlines in the background, but only once the browser is idle
   // after the initial paint so we don't compete with page-load resources.
@@ -167,17 +173,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-    
     if (type === 'checkbox') {
         const { checked } = e.target as HTMLInputElement;
         setFormData((prev) => ({ ...prev, [name]: checked }));
     } else {
-        // Clear newsContext when the user manually edits the topic field
-        if (name === 'topic') {
-            setFormData((prev) => ({ ...prev, topic: value, newsContext: undefined }));
-        } else {
-            setFormData((prev) => ({ ...prev, [name]: value }));
-        }
+        setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -264,6 +264,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleSelectStory = (title: string, description?: string) => {
     setFormData(prev => ({ ...prev, topic: title, newsContext: description ?? '' }));
+    setShowContextField(true);
     setIsNewsModalOpen(false);
   };
 
@@ -298,35 +299,99 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
       <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-3 border-black bg-paper-light shadow-xl rounded-lg">
         
-        <div>
-          <Tooltip text="Describe the main subject, characters, or event for your comic strip.">
-            <label htmlFor="topic" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
-              Topic
-            </label>
-          </Tooltip>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="text"
+        {/* ── Topic: two-path entry point ─────────────────────────────── */}
+        <div className="space-y-0">
+          {/* Path A — type / paste your own */}
+          <div>
+            <Tooltip text="Describe the main subject, characters, or event for your comic strip. Keep it concise — use the Background Context field below for longer notes.">
+              <label htmlFor="topic" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
+                Topic
+              </label>
+            </Tooltip>
+            <textarea
               id="topic"
               name="topic"
               value={formData.topic}
               onChange={handleChange}
-              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
+              className="w-full p-3 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-none"
               placeholder="e.g., A senator questioning an AI"
               required
               minLength={5}
-              maxLength={120}
+              maxLength={300}
+              rows={2}
             />
-            <Tooltip text="Get ideas from the latest news">
-              <button 
-                type="button" 
-                onClick={handleFetchNewsClick}
-                className="flex-shrink-0 inline-flex items-center justify-center p-2 h-14 w-14 bg-white text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-lg"
-              >
-                <NewspaperIcon className="w-6 h-6" />
-              </button>
-            </Tooltip>
+            <p className="text-right text-xs font-special-elite text-gray-400 mt-1">
+              {formData.topic.length}/300
+            </p>
           </div>
+
+          {/* "or" divider */}
+          <div className="relative flex items-center py-3">
+            <div className="flex-grow border-t border-gray-300" />
+            <span className="flex-shrink mx-3 text-xs font-special-elite text-gray-500 tracking-wider uppercase">
+              or pull from today's headlines
+            </span>
+            <div className="flex-grow border-t border-gray-300" />
+          </div>
+
+          {/* Path B — news picker */}
+          <button
+            type="button"
+            onClick={handleFetchNewsClick}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-white text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-lg font-special-elite text-base"
+          >
+            <NewspaperIcon className="w-5 h-5 flex-shrink-0" />
+            Get ideas from recent news
+          </button>
+        </div>
+
+        {/* ── Background Context (collapsible) ────────────────────────── */}
+        <div>
+          {!showContextField ? (
+            <button
+              type="button"
+              onClick={() => setShowContextField(true)}
+              className="text-sm font-special-elite text-gray-500 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
+            >
+              + Add background context
+            </button>
+          ) : (
+            <>
+              <Tooltip text="Paste an article, quote, or key details. The AI draws on these facts to enrich the story without changing your topic or angle.">
+                <label htmlFor="newsContext" className="block text-base font-bold mb-1 tracking-wide font-special-elite text-black">
+                  Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
+                </label>
+              </Tooltip>
+              <p className="text-xs font-special-elite text-gray-500 mb-2">
+                Paste an article, quotes, or key facts. The AI will use these details to enrich the story — your topic and angle stay in control.
+              </p>
+              <textarea
+                id="newsContext"
+                name="newsContext"
+                value={formData.newsContext ?? ''}
+                onChange={handleChange}
+                className="w-full p-3 bg-white border-2 border-black text-base font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
+                placeholder="Paste article text, quotes, key facts, or anything the AI should know..."
+                maxLength={3000}
+                rows={4}
+              />
+              <div className="flex justify-between items-center mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowContextField(false);
+                    setFormData(prev => ({ ...prev, newsContext: undefined }));
+                  }}
+                  className="text-xs font-special-elite text-gray-400 hover:text-black transition-colors"
+                >
+                  Remove
+                </button>
+                <p className="text-xs font-special-elite text-gray-400">
+                  {(formData.newsContext?.length ?? 0)}/3000
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

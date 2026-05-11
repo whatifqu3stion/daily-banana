@@ -200,10 +200,10 @@ const constructPlanContents = (formData: ComicFormData, numPlans: number): strin
     const stanceGuidance = getStanceGuidance(stance);
     const styleCraftNote = getStyleCraftNote(comedicStyle);
 
-    // If the topic came from the news picker, inject the full description so the
-    // AI has real factual grounding instead of having to invent details from a headline.
+    // Topic is the user's protected intent anchor. Background context is reference
+    // material only — it may not redirect the subject or override the user's stance.
     const topicBlock = newsContext
-        ? `- **Topic:** ${topic}\n- **Background context (use these real facts to ground the story):** ${newsContext}`
+        ? `- **Topic (your non-negotiable north star — the comic MUST be fundamentally about this exact subject from this exact angle, regardless of what the context below says):** ${topic}\n- **Background context (mine this ONLY for specific real-world facts, names, quotes, and details that enrich the visuals and dialogue — do NOT let it redirect the comic's subject, reframe the user's angle, or override the premise you derive from the Topic above):** ${newsContext}`
         : `- **Topic:** ${topic}`;
 
     let referenceImageInfo = '';
@@ -228,6 +228,7 @@ ${topicBlock}
 - **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
 Remember: write the "premise" field first for each concept before designing panels. That one sentence is your anchor.
+CRITICAL: No matter how much background context is provided, every concept's core premise must remain faithful to the user's stated Topic and Angle above. Background context is reference material only — never the subject.
 `;
     }
 
@@ -241,6 +242,7 @@ ${topicBlock}
 - **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
 Remember: write the "premise" field first before designing panels. That one sentence anchors the entire strip.
+CRITICAL: No matter how much background context is provided, the comic's premise must remain faithful to the user's stated Topic and Angle above. Background context is reference material only — never the subject.
 `;
 };
 
