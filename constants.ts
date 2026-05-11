@@ -1,10 +1,10 @@
 // constants.ts — static option lists shared by the form UI and the AI prompt builders.
 import { Stance, ComedicStyle, ImageModel } from './types';
 
-export const STANCE_OPTIONS: { value: Stance; label: string }[] = [
-  { value: 'supportive', label: 'Supportive (Pro)' },
-  { value: 'critical', label: 'Critical' },
-  { value: 'neutral', label: 'Neutral / Observational' },
+export const STANCE_OPTIONS: { value: Stance; label: string; tooltip: string }[] = [
+  { value: 'supportive', label: 'Supportive (Pro)',        tooltip: 'Comic champions the subject — critics look petty or misguided.' },
+  { value: 'critical',   label: 'Critical',               tooltip: 'Comic exposes flaws, hypocrisy, or failure in the subject.' },
+  { value: 'neutral',    label: 'Neutral / Observational', tooltip: 'No side taken — the absurdity of the situation is the joke.' },
 ];
 
 export const COMEDIC_STYLE_OPTIONS: { value: ComedicStyle; label: string; tooltip: string }[] = [

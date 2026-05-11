@@ -195,8 +195,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
 
-  const handleStanceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
+  const handleStanceChange = (value: string) => {
     setCustomStanceError(null);
     if (value === 'custom') {
       setShowFreeTextStance(true);
@@ -425,20 +424,13 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 Stance
               </label>
             </Tooltip>
-            <select
+            <CustomSelect
               id="stance"
-              name="stance-select"
               value={showFreeTextStance ? 'custom' : formData.stance}
+              options={STANCE_OPTIONS}
+              extraOption={{ value: 'custom', label: 'Write my own…' }}
               onChange={handleStanceChange}
-              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
-            >
-              {STANCE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-              <option value="custom">Write my own...</option>
-            </select>
+            />
             {showFreeTextStance && (
               <>
                 <input
