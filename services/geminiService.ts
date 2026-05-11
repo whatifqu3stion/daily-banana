@@ -190,7 +190,8 @@ const getStanceVisualNote = (stance: string): string =>
 const getIllustrationStyleDescription = (styleValue?: string): string => {
     if (!styleValue) return 'A standard full-color retro newspaper comic panel style.';
     const selectedOption = ILLUSTRATION_STYLE_OPTIONS.find(opt => opt.value === styleValue);
-    return selectedOption ? selectedOption.description : styleValue;
+    if (selectedOption) return selectedOption.description;
+    return `CUSTOM ILLUSTRATION STYLE — "${styleValue}": Analyse what this visual style implies: what line weight and rendering technique does it suggest? What colour palette (saturated, muted, monochrome, limited)? What level of detail in backgrounds vs. characters? What mood does the style evoke? Apply all inferred visual qualities consistently across every panel — never break the style.`;
 };
 
 

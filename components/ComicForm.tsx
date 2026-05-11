@@ -79,6 +79,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [showFreeTextIllustrationStyle, setShowFreeTextIllustrationStyle] = useState(false);
   const [customStanceError, setCustomStanceError] = useState<string | null>(null);
   const [customStyleError, setCustomStyleError] = useState<string | null>(null);
+  const [customIllustrationError, setCustomIllustrationError] = useState<string | null>(null);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -219,6 +220,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleIllustrationStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { value } = e.target;
+    setCustomIllustrationError(null);
     if (value === 'custom') {
       setShowFreeTextIllustrationStyle(true);
       setFormData((prev) => ({ ...prev, illustrationStyle: '' }));
@@ -237,6 +239,10 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
     if (showFreeTextComedicStyle && !formData.comedicStyle.trim()) {
       setCustomStyleError('Please describe your custom comedic style.');
+      return;
+    }
+    if (showFreeTextIllustrationStyle && !formData.illustrationStyle?.trim()) {
+      setCustomIllustrationError('Please describe your custom illustration style.');
       return;
     }
     if (checkForSensitiveContent(formData.topic)) {
@@ -516,32 +522,47 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               Illustration Style
             </label>
           </Tooltip>
-          <select
-            id="illustrationStyle"
-            name="illustrationStyle"
-            value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
-            onChange={handleIllustrationStyleChange}
-            className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
+          <Tooltip
+            text={
+              showFreeTextIllustrationStyle
+                ? 'Describe the visual style you want — the AI will interpret and apply it.'
+                : (ILLUSTRATION_STYLE_OPTIONS.find(o => o.value === formData.illustrationStyle)?.tooltip ?? '')
+            }
+            wrapperClassName="w-full"
+            position="top-right"
           >
-            {ILLUSTRATION_STYLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-            <option value="custom">Write my own...</option>
-          </select>
-          {showFreeTextIllustrationStyle && (
-            <input
-              type="text"
-              id="illustrationStyle-custom"
+            <select
+              id="illustrationStyle"
               name="illustrationStyle"
-              value={formData.illustrationStyle || ''}
-              onChange={handleChange}
-              className="w-full p-3 mt-2 h-14 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
-              placeholder="Describe your custom style..."
-              maxLength={160}
-              autoFocus
-            />
+              value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
+              onChange={handleIllustrationStyleChange}
+              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
+            >
+              {ILLUSTRATION_STYLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+              <option value="custom">Write my own...</option>
+            </select>
+          </Tooltip>
+          {showFreeTextIllustrationStyle && (
+            <>
+              <input
+                type="text"
+                id="illustrationStyle-custom"
+                name="illustrationStyle"
+                value={formData.illustrationStyle || ''}
+                onChange={(e) => { setCustomIllustrationError(null); handleChange(e); }}
+                className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customIllustrationError ? 'border-red-500' : 'border-black'}`}
+                placeholder="Describe your custom illustration style..."
+                maxLength={160}
+                autoFocus
+              />
+              {customIllustrationError && (
+                <p className="mt-1 text-xs font-special-elite text-red-600">{customIllustrationError}</p>
+              )}
+            </>
           )}
         </div>
         
