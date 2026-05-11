@@ -363,34 +363,31 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                   Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
                 </label>
               </Tooltip>
-                <p className="text-xs font-special-elite text-gray-500 mb-2">
-                  Paste an article, quotes, or key facts. The AI will use these details to enrich the story — your topic and angle stay in control.
+              <textarea
+                id="newsContext"
+                name="newsContext"
+                value={formData.newsContext ?? ''}
+                onChange={handleChange}
+                className="w-full p-3 bg-white border-2 border-black text-base font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
+                placeholder="Paste article text, quotes, key facts, or anything the AI should know..."
+                maxLength={3000}
+                rows={4}
+              />
+              <div className="flex justify-between items-center mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowContextField(false);
+                    setFormData(prev => ({ ...prev, newsContext: undefined }));
+                  }}
+                  className="text-xs font-special-elite text-gray-400 hover:text-black transition-colors"
+                >
+                  Remove
+                </button>
+                <p className="text-xs font-special-elite text-gray-400">
+                  {(formData.newsContext?.length ?? 0)}/3000
                 </p>
-                <textarea
-                  id="newsContext"
-                  name="newsContext"
-                  value={formData.newsContext ?? ''}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-white border-2 border-black text-base font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
-                  placeholder="Paste article text, quotes, key facts, or anything the AI should know..."
-                  maxLength={3000}
-                  rows={4}
-                />
-                <div className="flex justify-between items-center mt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowContextField(false);
-                      setFormData(prev => ({ ...prev, newsContext: undefined }));
-                    }}
-                    className="text-xs font-special-elite text-gray-400 hover:text-black transition-colors"
-                  >
-                    Remove
-                  </button>
-                  <p className="text-xs font-special-elite text-gray-400">
-                    {(formData.newsContext?.length ?? 0)}/3000
-                  </p>
-                </div>
+              </div>
             </div>
           )}
 
@@ -657,7 +654,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 onChange={handleChange}
                 className="h-5 w-5 accent-black"
               />
-              <span className="text-lg font-bold tracking-wide font-special-elite text-black">Add Context</span>
+              <span className="text-lg font-bold tracking-wide font-special-elite text-black">Add Explainer</span>
             </label>
           </Tooltip>
         </div>
