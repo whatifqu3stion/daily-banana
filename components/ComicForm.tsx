@@ -460,20 +460,30 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 Comedic Style
               </label>
             </Tooltip>
-            <select
-              id="comedicStyle"
-              name="comedicStyle-select"
-              value={showFreeTextComedicStyle ? 'custom' : formData.comedicStyle}
-              onChange={handleComedicStyleChange}
-              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
+            <Tooltip
+              text={
+                showFreeTextComedicStyle
+                  ? 'Describe the comedic register you want — the AI will interpret and apply it.'
+                  : (COMEDIC_STYLE_OPTIONS.find(o => o.value === formData.comedicStyle)?.tooltip ?? '')
+              }
+              wrapperClassName="w-full"
+              position="top-right"
             >
-              {COMEDIC_STYLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-              <option value="custom">Write my own...</option>
-            </select>
+              <select
+                id="comedicStyle"
+                name="comedicStyle-select"
+                value={showFreeTextComedicStyle ? 'custom' : formData.comedicStyle}
+                onChange={handleComedicStyleChange}
+                className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
+              >
+                {COMEDIC_STYLE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+                <option value="custom">Write my own...</option>
+              </select>
+            </Tooltip>
             {showFreeTextComedicStyle && (
               <>
                 <input
@@ -490,15 +500,8 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 {customStyleError && (
                   <p className="mt-1 text-xs font-special-elite text-red-600">{customStyleError}</p>
                 )}
-                <p className="mt-1 text-xs font-special-elite text-gray-400">Describe the register you want — the AI will interpret and apply it fully.</p>
               </>
             )}
-            {!showFreeTextComedicStyle && (() => {
-              const opt = COMEDIC_STYLE_OPTIONS.find(o => o.value === formData.comedicStyle);
-              return opt ? (
-                <p className="mt-1 text-xs font-special-elite text-gray-500">{opt.tooltip}</p>
-              ) : null;
-            })()}
             {formData.comedicStyle === 'dark-comedy' && !showFreeTextComedicStyle && (
               <p className="mt-2 text-xs font-special-elite text-amber-800 bg-amber-50 border border-amber-300 rounded px-3 py-2">
                 Stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence or tragedy may be blocked by content filters.
