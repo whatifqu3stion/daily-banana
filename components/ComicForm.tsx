@@ -335,13 +335,10 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               maxLength={150}
               rows={2}
             />
-            <p className="text-right text-xs font-special-elite text-gray-400 mt-1">
-              {formData.topic.length}/150
-            </p>
           </div>
 
-          {/* ── Background Context (collapsible) — grouped with topic ── */}
-          <div className="pt-1">
+          {/* ── Counter row + Background Context toggle ── */}
+          <div className="flex items-center justify-between mt-1">
             {!showContextField ? (
               <button
                 type="button"
@@ -351,12 +348,21 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 + Add background context
               </button>
             ) : (
-              <>
-                <Tooltip text="Paste an article, quote, or key details. The AI draws on these facts to enrich the story without changing your topic or angle.">
-                  <label htmlFor="newsContext" className="block text-base font-bold mb-1 tracking-wide font-special-elite text-black">
-                    Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
-                  </label>
-                </Tooltip>
+              <span />
+            )}
+            <p className="text-xs font-special-elite text-gray-400">
+              {formData.topic.length}/150
+            </p>
+          </div>
+
+          {/* ── Background Context (collapsible) — grouped with topic ── */}
+          {showContextField && (
+            <div className="pt-1">
+              <Tooltip text="Paste an article, quote, or key details. The AI draws on these facts to enrich the story without changing your topic or angle.">
+                <label htmlFor="newsContext" className="block text-base font-bold mb-1 tracking-wide font-special-elite text-black">
+                  Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
+                </label>
+              </Tooltip>
                 <p className="text-xs font-special-elite text-gray-500 mb-2">
                   Paste an article, quotes, or key facts. The AI will use these details to enrich the story — your topic and angle stay in control.
                 </p>
@@ -385,9 +391,8 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                     {(formData.newsContext?.length ?? 0)}/3000
                   </p>
                 </div>
-              </>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* "or" divider */}
           <div className="relative flex items-center py-3">
