@@ -11,6 +11,7 @@ import SparklesIcon from './icons/SparklesIcon';
 import NewspaperIcon from './icons/NewspaperIcon';
 import NewsSelector from './NewsSelector';
 import Tooltip from './Tooltip';
+import CustomSelect from './CustomSelect';
 import UploadIcon from './icons/UploadIcon';
 import ConfirmationModal from './ConfirmationModal'; // Import the new modal
 
@@ -206,8 +207,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
   
-  const handleComedicStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
+  const handleComedicStyleChange = (value: string) => {
     setCustomStyleError(null);
     if (value === 'custom') {
       setShowFreeTextComedicStyle(true);
@@ -218,8 +218,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     }
   };
 
-  const handleIllustrationStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { value } = e.target;
+  const handleIllustrationStyleChange = (value: string) => {
     setCustomIllustrationError(null);
     if (value === 'custom') {
       setShowFreeTextIllustrationStyle(true);
@@ -466,30 +465,13 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 Comedic Style
               </label>
             </Tooltip>
-            <Tooltip
-              text={
-                showFreeTextComedicStyle
-                  ? 'Describe the comedic register you want — the AI will interpret and apply it.'
-                  : (COMEDIC_STYLE_OPTIONS.find(o => o.value === formData.comedicStyle)?.tooltip ?? '')
-              }
-              wrapperClassName="w-full"
-              position="top-right"
-            >
-              <select
-                id="comedicStyle"
-                name="comedicStyle-select"
-                value={showFreeTextComedicStyle ? 'custom' : formData.comedicStyle}
-                onChange={handleComedicStyleChange}
-                className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
-              >
-                {COMEDIC_STYLE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-                <option value="custom">Write my own...</option>
-              </select>
-            </Tooltip>
+            <CustomSelect
+              id="comedicStyle"
+              value={showFreeTextComedicStyle ? 'custom' : formData.comedicStyle}
+              options={COMEDIC_STYLE_OPTIONS}
+              extraOption={{ value: 'custom', label: 'Write my own…' }}
+              onChange={handleComedicStyleChange}
+            />
             {showFreeTextComedicStyle && (
               <>
                 <input
@@ -522,30 +504,13 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               Illustration Style
             </label>
           </Tooltip>
-          <Tooltip
-            text={
-              showFreeTextIllustrationStyle
-                ? 'Describe the visual style you want — the AI will interpret and apply it.'
-                : (ILLUSTRATION_STYLE_OPTIONS.find(o => o.value === formData.illustrationStyle)?.tooltip ?? '')
-            }
-            wrapperClassName="w-full"
-            position="top-right"
-          >
-            <select
-              id="illustrationStyle"
-              name="illustrationStyle"
-              value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
-              onChange={handleIllustrationStyleChange}
-              className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite text-gray-500 focus:text-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors"
-            >
-              {ILLUSTRATION_STYLE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-              <option value="custom">Write my own...</option>
-            </select>
-          </Tooltip>
+          <CustomSelect
+            id="illustrationStyle"
+            value={showFreeTextIllustrationStyle ? 'custom' : formData.illustrationStyle}
+            options={ILLUSTRATION_STYLE_OPTIONS}
+            extraOption={{ value: 'custom', label: 'Write my own…' }}
+            onChange={handleIllustrationStyleChange}
+          />
           {showFreeTextIllustrationStyle && (
             <>
               <input
