@@ -2,7 +2,7 @@
 // Modal overlay that displays today's top headlines fetched via newsService.
 // The user can select a story to pre-fill the Topic and News Context fields
 // in ComicForm, or close the modal to continue with a custom topic.
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NewsStory } from '../types';
 
 interface NewsSelectorProps {
@@ -12,6 +12,97 @@ interface NewsSelectorProps {
   onSelectStory: (title: string, description?: string) => void;
   onClose: () => void;
 }
+
+// Funny half-finished headlines the "correspondent" keeps abandoning.
+const ATTEMPTS = [
+  "Senator Accepts Bribe From Big Ban",
+  "Scientists Confirm Mondays Are Technically",
+  "Local Man Discovers Everything Is Fin",
+  "Breaking: Sources Say It Was Actuall",
+  "Area Politician Still Somehow Winn",
+  "World Leaders Agree To Just Kind Of",
+  "CEO Insists Layoffs Are Actually a Gif",
+  "Study Finds That Most People Are Just",
+];
+
+type Phase = 'typing' | 'holding' | 'deleting' | 'idle';
+
+const TypingLoader: React.FC = () => {
+  const [text, setText] = useState('');
+  const [phase, setPhase] = useState<Phase>('typing');
+  const [attemptIndex, setAttemptIndex] = useState(0);
+
+  useEffect(() => {
+    const target = ATTEMPTS[attemptIndex % ATTEMPTS.length];
+
+    if (phase === 'typing') {
+      if (text.length < target.length) {
+        // Type one character at a time, slightly variable speed for realism
+        const delay = 65 + Math.random() * 40;
+        const t = setTimeout(() => setText(target.slice(0, text.length + 1)), delay);
+        return () => clearTimeout(t);
+      } else {
+        // Fully typed — pause as if reconsidering
+        const t = setTimeout(() => setPhase('holding'), 900);
+        return () => clearTimeout(t);
+      }
+    }
+
+    if (phase === 'holding') {
+      // Moment of doubt, then rage-delete
+      const t = setTimeout(() => setPhase('deleting'), 0);
+      return () => clearTimeout(t);
+    }
+
+    if (phase === 'deleting') {
+      if (text.length > 0) {
+        // Fast delete — frustrated journalist energy
+        const t = setTimeout(() => setText(prev => prev.slice(0, -1)), 28);
+        return () => clearTimeout(t);
+      } else {
+        const t = setTimeout(() => setPhase('idle'), 500);
+        return () => clearTimeout(t);
+      }
+    }
+
+    if (phase === 'idle') {
+      // Brief pause before the next attempt
+      const t = setTimeout(() => {
+        setAttemptIndex(i => i + 1);
+        setPhase('typing');
+      }, 350);
+      return () => clearTimeout(t);
+    }
+  }, [text, phase, attemptIndex]);
+
+  const attemptNumber = (attemptIndex % ATTEMPTS.length) + 1;
+
+  return (
+    <div className="flex flex-col items-center justify-center py-8 px-4">
+      <p className="text-sm font-special-elite text-gray-500 mb-1 tracking-wide">
+        Our correspondent is filing the story...
+      </p>
+      <p className="text-xs font-special-elite text-gray-400 mb-4">
+        Attempt #{attemptNumber}
+      </p>
+
+      {/* Fake notepad / terminal */}
+      <div className="w-full max-w-sm bg-white border-2 border-black rounded-md p-4 shadow-inner min-h-[3.5rem] flex items-center">
+        <span className="font-special-elite text-black text-base leading-snug">
+          {text}
+        </span>
+        <span className="blinking-cursor font-special-elite text-black text-base">|</span>
+      </div>
+
+      <p className="mt-4 text-xs font-special-elite text-gray-400 italic">
+        {phase === 'deleting' ? 'Hmm. No, that\'s not right...' :
+         phase === 'holding'  ? 'Actually wait—' :
+         phase === 'idle'     ? 'OK. New angle.' :
+                                'Scanning today\'s headlines...'}
+      </p>
+    </div>
+  );
+};
 
 const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, onSelectStory, onClose }) => {
   return (
@@ -30,12 +121,7 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, 
         </button>
         <h3 className="text-2xl font-bold mb-6 font-special-elite text-center text-gray-900">Suggest from Today's Headlines</h3>
         
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center p-8">
-            <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black"></div>
-            <p className="mt-4 font-medium text-black">Fetching today's top stories...</p>
-          </div>
-        )}
+        {isLoading && <TypingLoader />}
 
         {error && (
           <div className="text-center my-4 p-4 bg-red-50 rounded-md border border-red-200">
