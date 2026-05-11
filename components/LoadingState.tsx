@@ -50,8 +50,6 @@ const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
   return (
     <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center justify-center min-h-[200px] shadow-xl rounded-lg">
       <div className="w-full max-w-xl text-center">
-        <div className="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-black mx-auto mb-6" />
-
         <p className="text-lg font-special-elite text-black break-words min-h-[1.75rem]">
           {displayedText}
           <span className="blinking-cursor align-bottom">|</span>
