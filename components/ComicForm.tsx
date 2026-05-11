@@ -332,12 +332,61 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               placeholder="e.g., A senator questioning an AI"
               required
               minLength={5}
-              maxLength={300}
+              maxLength={150}
               rows={2}
             />
             <p className="text-right text-xs font-special-elite text-gray-400 mt-1">
-              {formData.topic.length}/300
+              {formData.topic.length}/150
             </p>
+          </div>
+
+          {/* ── Background Context (collapsible) — grouped with topic ── */}
+          <div className="pt-1">
+            {!showContextField ? (
+              <button
+                type="button"
+                onClick={() => setShowContextField(true)}
+                className="text-sm font-special-elite text-gray-500 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
+              >
+                + Add background context
+              </button>
+            ) : (
+              <>
+                <Tooltip text="Paste an article, quote, or key details. The AI draws on these facts to enrich the story without changing your topic or angle.">
+                  <label htmlFor="newsContext" className="block text-base font-bold mb-1 tracking-wide font-special-elite text-black">
+                    Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
+                  </label>
+                </Tooltip>
+                <p className="text-xs font-special-elite text-gray-500 mb-2">
+                  Paste an article, quotes, or key facts. The AI will use these details to enrich the story — your topic and angle stay in control.
+                </p>
+                <textarea
+                  id="newsContext"
+                  name="newsContext"
+                  value={formData.newsContext ?? ''}
+                  onChange={handleChange}
+                  className="w-full p-3 bg-white border-2 border-black text-base font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
+                  placeholder="Paste article text, quotes, key facts, or anything the AI should know..."
+                  maxLength={3000}
+                  rows={4}
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowContextField(false);
+                      setFormData(prev => ({ ...prev, newsContext: undefined }));
+                    }}
+                    className="text-xs font-special-elite text-gray-400 hover:text-black transition-colors"
+                  >
+                    Remove
+                  </button>
+                  <p className="text-xs font-special-elite text-gray-400">
+                    {(formData.newsContext?.length ?? 0)}/3000
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* "or" divider */}
@@ -358,55 +407,6 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             <NewspaperIcon className="w-5 h-5 flex-shrink-0" />
             Get ideas from recent news
           </button>
-        </div>
-
-        {/* ── Background Context (collapsible) ────────────────────────── */}
-        <div>
-          {!showContextField ? (
-            <button
-              type="button"
-              onClick={() => setShowContextField(true)}
-              className="text-sm font-special-elite text-gray-500 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
-            >
-              + Add background context
-            </button>
-          ) : (
-            <>
-              <Tooltip text="Paste an article, quote, or key details. The AI draws on these facts to enrich the story without changing your topic or angle.">
-                <label htmlFor="newsContext" className="block text-base font-bold mb-1 tracking-wide font-special-elite text-black">
-                  Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
-                </label>
-              </Tooltip>
-              <p className="text-xs font-special-elite text-gray-500 mb-2">
-                Paste an article, quotes, or key facts. The AI will use these details to enrich the story — your topic and angle stay in control.
-              </p>
-              <textarea
-                id="newsContext"
-                name="newsContext"
-                value={formData.newsContext ?? ''}
-                onChange={handleChange}
-                className="w-full p-3 bg-white border-2 border-black text-base font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
-                placeholder="Paste article text, quotes, key facts, or anything the AI should know..."
-                maxLength={3000}
-                rows={4}
-              />
-              <div className="flex justify-between items-center mt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowContextField(false);
-                    setFormData(prev => ({ ...prev, newsContext: undefined }));
-                  }}
-                  className="text-xs font-special-elite text-gray-400 hover:text-black transition-colors"
-                >
-                  Remove
-                </button>
-                <p className="text-xs font-special-elite text-gray-400">
-                  {(formData.newsContext?.length ?? 0)}/3000
-                </p>
-              </div>
-            </>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
