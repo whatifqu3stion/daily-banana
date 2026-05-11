@@ -7,14 +7,14 @@ export const STANCE_OPTIONS: { value: Stance; label: string }[] = [
   { value: 'neutral', label: 'Neutral / Observational' },
 ];
 
-export const COMEDIC_STYLE_OPTIONS: { value: ComedicStyle; label: string }[] = [
-  { value: 'satirical', label: 'Satirical' },
-  { value: 'ironic', label: 'Ironic' },
-  { value: 'deadpan', label: 'Deadpan' },
-  { value: 'absurdist', label: 'Absurdist / Surreal' },
-  { value: 'slapstick', label: 'Slapstick / Exaggerated' },
-  { value: 'dark-comedy', label: 'Dark Comedy' },
-  { value: 'parody', label: 'Parody / Pastiche' },
+export const COMEDIC_STYLE_OPTIONS: { value: ComedicStyle; label: string; tooltip: string }[] = [
+  { value: 'satirical',   label: 'Satirical',              tooltip: 'Exposes real hypocrisy through sharp, specific exaggeration.' },
+  { value: 'ironic',      label: 'Ironic',                 tooltip: 'Characters say or do the opposite of what they actually mean.' },
+  { value: 'deadpan',     label: 'Deadpan',                tooltip: 'Everyone treats the completely absurd as totally routine.' },
+  { value: 'absurdist',   label: 'Absurdist / Surreal',    tooltip: 'One impossible premise, followed ruthlessly to its logical conclusion.' },
+  { value: 'slapstick',   label: 'Slapstick / Exaggerated',tooltip: 'Escalating physical chaos — bodies and objects misbehave.' },
+  { value: 'dark-comedy', label: 'Dark Comedy',            tooltip: 'Bleakly funny — the comedy lives in nihilism and quiet resignation.' },
+  { value: 'parody',      label: 'Parody / Pastiche',      tooltip: 'Imitates a specific real-world format (memo, ad, documentary) to make its point.' },
 ];
 
 export const ILLUSTRATION_STYLE_OPTIONS: { value: string; label: string; description: string }[] = [

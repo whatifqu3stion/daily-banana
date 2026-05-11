@@ -340,13 +340,15 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           {/* ── Counter row + Background Context toggle ── */}
           <div className="flex items-center justify-between mt-1">
             {!showContextField ? (
-              <button
-                type="button"
-                onClick={() => setShowContextField(true)}
-                className="text-sm font-special-elite text-gray-500 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
-              >
-                + Add background context
-              </button>
+              <Tooltip text="Paste an article, quotes, or key facts you want the AI to reference — without redirecting your topic or angle.">
+                <button
+                  type="button"
+                  onClick={() => setShowContextField(true)}
+                  className="text-sm font-special-elite text-gray-500 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
+                >
+                  + Add background context
+                </button>
+              </Tooltip>
             ) : (
               <span />
             )}
@@ -488,11 +490,18 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 {customStyleError && (
                   <p className="mt-1 text-xs font-special-elite text-red-600">{customStyleError}</p>
                 )}
+                <p className="mt-1 text-xs font-special-elite text-gray-400">Describe the register you want — the AI will interpret and apply it fully.</p>
               </>
             )}
+            {!showFreeTextComedicStyle && (() => {
+              const opt = COMEDIC_STYLE_OPTIONS.find(o => o.value === formData.comedicStyle);
+              return opt ? (
+                <p className="mt-1 text-xs font-special-elite text-gray-500">{opt.tooltip}</p>
+              ) : null;
+            })()}
             {formData.comedicStyle === 'dark-comedy' && !showFreeTextComedicStyle && (
               <p className="mt-2 text-xs font-special-elite text-amber-800 bg-amber-50 border border-amber-300 rounded px-3 py-2">
-                Dark Comedy stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence, tragedy, or explicit harm may be blocked by the AI's content filters.
+                Stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence or tragedy may be blocked by content filters.
               </p>
             )}
           </div>
