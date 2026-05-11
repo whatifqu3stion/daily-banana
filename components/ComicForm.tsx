@@ -86,11 +86,15 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const [newsStories, setNewsStories] = useState<NewsStory[]>([]);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
-  // Whether the Background Context textarea is expanded. Auto-true if context
-  // was previously saved (e.g. loaded from localStorage or set by news picker).
+  // Whether the Background Context textarea is expanded.
+  // Persisted independently so "expanded but empty" survives reload.
   const [showContextField, setShowContextField] = useState<boolean>(() => {
-    const saved = loadSavedForm();
-    return !!(saved.newsContext);
+    try {
+      const v = localStorage.getItem('dailyBanana_showContext');
+      if (v !== null) return JSON.parse(v) as boolean;
+    } catch { /* ignore */ }
+    // Fall back: auto-expand if there is saved context
+    return !!(loadSavedForm().newsContext);
   });
 
   // Pre-fetch headlines in the background, but only once the browser is idle
@@ -126,6 +130,13 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saveable));
     } catch { /* ignore storage errors */ }
   }, [formData]);
+
+  // Persist showContextField so "expanded but empty" state survives reload
+  useEffect(() => {
+    try {
+      localStorage.setItem('dailyBanana_showContext', JSON.stringify(showContextField));
+    } catch { /* ignore storage errors */ }
+  }, [showContextField]);
 
   // Effect to revoke object URLs on unmount to prevent memory leaks
   useEffect(() => {
@@ -305,10 +316,13 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           {/* Path A — type / paste your own */}
           <div>
             <Tooltip text="Describe the main subject, characters, or event for your comic strip. Keep it concise — use the Background Context field below for longer notes.">
-              <label htmlFor="topic" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
+              <label htmlFor="topic" className="block text-lg font-bold mb-1 tracking-wide font-special-elite text-black">
                 Topic
               </label>
             </Tooltip>
+            <p className="text-xs font-special-elite text-gray-500 mb-2">
+              Start with your own idea, or pull from today's headlines below.
+            </p>
             <textarea
               id="topic"
               name="topic"
