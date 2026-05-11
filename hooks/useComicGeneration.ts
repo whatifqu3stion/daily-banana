@@ -9,6 +9,7 @@ import {
   ComicFormData,
   ComicPlan,
   ComicStripData,
+  ExplainerSource,
   PanelData,
   ProcessedReferenceImage,
   ReferenceImage,
@@ -338,13 +339,16 @@ export default function useComicGeneration() {
 
     // Build context explainer in parallel with the last panel if needed
     let contextText: string | undefined = undefined;
+    let contextSources: ExplainerSource[] = [];
     if (formDataCache.includeContext) {
       setLoadingMessages(["Checking the archives for context..."]);
-      contextText = await geminiService.generateContextExplainer(
+      const explainerResult = await geminiService.generateContextExplainer(
         reviewData.plan.title,
         reviewData.plan.summary,
-        formDataCache.newsContext
+        formDataCache.newsContext,
       );
+      contextText = explainerResult.text;
+      contextSources = explainerResult.sources;
     }
 
     const finalPanels: PanelData[] = reviewData.plan.panels.map((planPanel, index) => {
@@ -402,6 +406,7 @@ export default function useComicGeneration() {
       title: reviewData.plan.title,
       panels: finalPanels,
       context: contextText,
+      contextSources: contextSources.length > 0 ? contextSources : undefined,
     });
     setAppStage('strip');
     setIsLoading(false);

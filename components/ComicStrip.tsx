@@ -6,6 +6,7 @@ import React, { useRef, useState } from 'react';
 import * as htmlToImage from 'html-to-image';
 import { ComicStripData, PanelData } from '../types';
 import { embedGoogleFonts } from '../utils/fontUtils';
+import { extractDomain } from '../utils/urlUtils';
 import Panel from './Panel';
 import NewComicIcon from './icons/NewComicIcon';
 import DownloadIcon from './icons/DownloadIcon';
@@ -107,6 +108,25 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           <div className="mt-6 pt-4 border-t-2 border-dashed border-black">
             <h4 className="font-special-elite text-lg font-bold text-black">A Note from the Archives:</h4>
             <p className="font-lora text-base text-gray-800 mt-2">{comicData.context}</p>
+            {comicData.contextSources && comicData.contextSources.length > 0 && (
+              <p className="mt-2 text-xs font-special-elite text-gray-500">
+                {'Sources: '}
+                {comicData.contextSources.map((s, i) => (
+                  <React.Fragment key={s.url}>
+                    {i > 0 && ' · '}
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-500 hover:text-black transition-colors"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      {extractDomain(s.url)}
+                    </a>
+                  </React.Fragment>
+                ))}
+              </p>
+            )}
           </div>
         )}
         <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite">

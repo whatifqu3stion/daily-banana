@@ -3,7 +3,8 @@
 //   • Panel image generation and refinement
 //   • News context explainer
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel } from '../types';
+import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource } from '../types';
+import { extractDomain } from '../utils/urlUtils';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -614,31 +615,51 @@ const refinePanelImage = async (
     throw new Error('Image refinement failed: The AI did not return an image after multiple attempts. Please try again.');
 };
 
-const generateContextExplainer = async (title: string, summary: string, newsContext?: string): Promise<string> => {
+const generateContextExplainer = async (
+    title: string,
+    summary: string,
+    newsContext?: string,
+): Promise<{ text: string; sources: ExplainerSource[] }> => {
     const contextSection = newsContext
-        ? `\n    **Actual news story this comic is based on:** "${newsContext}"\n`
+        ? `\n**Background provided by user:** "${newsContext}"\n`
         : '';
     const contents = `
-    The following is a satirical comic strip. Write a brief, neutral, one-paragraph explanation (2-3 sentences) of the real-world context or news event that this comic references. Be concise and informative, like an archivist's note.
-    
-    **Comic Title:** "${title}"
-    **Comic Summary:** "${summary}"${contextSection}
-    
-    **Context Explanation:**
-    `;
+The following is a satirical comic strip. Use Google Search to find the real-world news event or context this comic references, then write a 1–2 sentence factual explanation of it. Tone: dry, neutral, and informational — like a newspaper footnote. Do not editorialize or take sides.
+
+**Comic Title:** "${title}"
+**Comic Summary:** "${summary}"${contextSection}
+
+**Context Explanation:**
+`;
 
     try {
         const result = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents,
-            // Low temperature for factual, non-creative response
-            config: { temperature: 0.1 }
+            config: {
+                temperature: 0.1,
+                tools: [{ googleSearch: {} }],
+            },
         });
-        return result.text;
+
+        const text = result.text?.trim() || 'Could not generate context at this time.';
+
+        // Extract cited sources from grounding metadata
+        const chunks: any[] = (result as any).candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+        const sources: ExplainerSource[] = chunks
+            .filter((c: any) => c.web?.uri)
+            .map((c: any) => ({
+                url: c.web.uri as string,
+                title: (c.web.title as string) || extractDomain(c.web.uri as string),
+            }))
+            // Deduplicate by domain so "reuters.com" doesn't appear twice
+            .filter((s, i, arr) => arr.findIndex(x => extractDomain(x.url) === extractDomain(s.url)) === i)
+            .slice(0, 5);
+
+        return { text, sources };
     } catch (error) {
-        console.error("Failed to generate context explainer:", error);
-        // Return a fallback message instead of throwing an error to avoid breaking the main flow
-        return "Could not generate context at this time.";
+        console.error('Failed to generate context explainer:', error);
+        return { text: 'Could not generate context at this time.', sources: [] };
     }
 };
 

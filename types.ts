@@ -124,6 +124,13 @@ export interface ComicStripData {
   title: string;
   panels: PanelData[];
   context?: string; // Optional AI-generated archivist note about the real-world context.
+  contextSources?: ExplainerSource[]; // Sources cited in the grounded context explainer.
+}
+
+// A cited source returned alongside a grounded AI response.
+export interface ExplainerSource {
+  url: string;
+  title: string;
 }
 
 // Interface for a single news story fetched from an RSS feed.
