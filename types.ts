@@ -106,6 +106,15 @@ export interface LayoutProps {
   aspectRatio: AspectRatio;
 }
 
+// Narrative context passed to the image model so it understands each panel's
+// role in the overall comic arc — not just its isolated visual description.
+export interface PanelContext {
+  premise?: string;
+  comedicRole?: string;
+  panelIndex: number;
+  totalPanels: number;
+}
+
 // Enriched data for a panel within the application state.
 export interface PanelData {
   id: string;
@@ -117,11 +126,13 @@ export interface PanelData {
   consistency_tags: string[];
   user_consistency_tags: string[]; // User-added tags for refinement (now an array)
   layoutProps: LayoutProps;
+  comedic_role?: string; // Narrative role — passed to image model for compositional guidance
 }
 
 // Interface for the complete comic strip data used in the app.
 export interface ComicStripData {
   title: string;
+  premise?: string; // The core comedic premise — passed to image model for narrative context.
   panels: PanelData[];
   context?: string; // Optional AI-generated archivist note about the real-world context.
   contextSources?: ExplainerSource[]; // Sources cited in the grounded context explainer.

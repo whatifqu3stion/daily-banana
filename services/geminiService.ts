@@ -3,7 +3,7 @@
 //   • Panel image generation and refinement
 //   • News context explainer
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource, AspectRatio } from '../types';
+import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource, AspectRatio, PanelContext } from '../types';
 import { extractDomain } from '../utils/urlUtils';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
@@ -263,6 +263,7 @@ const constructImagePrompt = (
     stance?: string,
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
+    panelContext?: PanelContext,
 ): string => {
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     // Use the full craft note so the image model gets the same rich guidance
@@ -288,12 +289,22 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
         ? `\nOVERLAY TEXT BLACKLIST — These exact strings will be rendered on screen by the app. Do NOT paint them into the artwork — not in speech bubbles, captions, SFX bursts, signs, screens, or any other element. If a prop in the scene would naturally carry one of these strings, render that prop with blank, illegible, or placeholder markings instead:\n${safeOverlayTexts.map(t => `• "${t}"`).join('\n')}`
         : '';
 
+    const roleGuidance: Record<string, string> = {
+        establish: 'ESTABLISH — Opening panel. Introduce the characters and situation with clarity. Prefer a wide or medium establishing shot so the reader grasps the premise at a glance.',
+        escalate: 'ESCALATE — The absurdity is intensifying. Composition should feel more pressured and dynamic than the opener — raise the stakes visually, build dread or comic tension.',
+        punchline: 'PUNCHLINE — The payoff. Compose for maximum visual impact: a sight gag, a reveal, or a juxtaposition that recontextualises everything before it. Choose the framing that makes the joke land hardest — go wide for a grand reveal or tight for a reaction shot.',
+        button: 'BUTTON — A brief coda after the punchline. Keep the composition tight and punchy.',
+    };
+    const narrativeContextBlock = panelContext
+        ? `\nNARRATIVE CONTEXT — You are drawing panel ${panelContext.panelIndex + 1} of ${panelContext.totalPanels} in a comic strip.${panelContext.premise ? `\nCore premise: "${panelContext.premise}"` : ''}${panelContext.comedicRole && roleGuidance[panelContext.comedicRole] ? `\nThis panel's role: ${roleGuidance[panelContext.comedicRole]}` : ''}\nLet this context guide your compositional choices — camera distance, visual energy, framing — beyond what the scene description says literally.\n`
+        : '';
+
     const shapeLabel = aspectRatio === '16:9' ? 'widescreen 16:9 landscape'
         : aspectRatio === '9:16' ? 'portrait 9:16 vertical'
         : aspectRatio === '4:3'  ? 'landscape 4:3'
         : 'square 1:1';
 
-    return `
+    return `${narrativeContextBlock}
 OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.${overlayBlacklistBlock}
 
 PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
@@ -549,8 +560,9 @@ const generatePanelImageWithReferences = async (
     stance?: string,
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
+    panelContext?: PanelContext,
 ): Promise<string> => {
-    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts);
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts, panelContext);
     // Each reference image is preceded by its tag text so the model understands
     // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
@@ -602,6 +614,7 @@ const refinePanelImage = async (
     stance?: string,
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
+    panelContext?: PanelContext,
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         visualPrompt,
@@ -612,6 +625,7 @@ const refinePanelImage = async (
         stance,
         aspectRatio,
         overlayTexts,
+        panelContext,
     );
 
     const parts = [

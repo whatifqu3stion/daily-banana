@@ -134,6 +134,7 @@ export default function useComicGeneration() {
             formDataCache.stance,
             panelLayouts[i]?.aspectRatio,
             panel.text_elements?.map(el => el.text) ?? [],
+            { premise: plan.premise, comedicRole: panel.comedic_role, panelIndex: i, totalPanels: plan.panels.length },
           );
           if (speculativeAbortRef.current) return;
           speculativePanelsRef.current[i - 1] = img;
@@ -226,6 +227,7 @@ export default function useComicGeneration() {
         currentFormData.stance,
         panelLayouts[0]?.aspectRatio,
         firstPanelPlan.text_elements?.map(el => el.text) ?? [],
+        { premise: plan.premise, comedicRole: firstPanelPlan.comedic_role, panelIndex: 0, totalPanels: plan.panels.length },
       );
 
       setReviewData({ plan, firstPanelImage, userProvidedImages: userImages, panelLayouts });
@@ -333,6 +335,7 @@ export default function useComicGeneration() {
           formDataCache.stance,
           reviewData.panelLayouts[index + 1]?.aspectRatio,
           panel.text_elements?.map(el => el.text) ?? [],
+          { premise: reviewData.plan.premise, comedicRole: panel.comedic_role, panelIndex: index + 1, totalPanels: reviewData.plan.panels.length },
         );
         panelImages.push(newImage);
       } catch {
@@ -405,11 +408,13 @@ export default function useComicGeneration() {
         consistency_tags: planPanel.consistency_tags || [],
         user_consistency_tags: [],
         layoutProps: reviewData.panelLayouts[index],
+        comedic_role: planPanel.comedic_role,
       };
     });
 
     setComicStripData({
       title: reviewData.plan.title,
+      premise: reviewData.plan.premise,
       panels: finalPanels,
       context: contextText,
       contextSources: contextSources.length > 0 ? contextSources : undefined,
@@ -474,6 +479,7 @@ export default function useComicGeneration() {
         formDataCache.stance,
         panel.layoutProps.aspectRatio,
         panel.text_elements?.map(el => el.text) ?? [],
+        { premise: comicStripData.premise, comedicRole: panel.comedic_role, panelIndex, totalPanels: comicStripData.panels.length },
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
@@ -526,6 +532,7 @@ export default function useComicGeneration() {
         formDataCache.stance,
         panel.layoutProps.aspectRatio,
         panel.text_elements?.map(el => el.text) ?? [],
+        { premise: comicStripData.premise, comedicRole: panel.comedic_role, panelIndex, totalPanels: comicStripData.panels.length },
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
