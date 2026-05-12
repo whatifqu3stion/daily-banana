@@ -52,7 +52,8 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 formData.comedicStyle,
                 reviewData.userProvidedImages,
                 formData.imageModel,
-                formData.stance
+                formData.stance,
+                reviewData.panelLayouts[0]?.aspectRatio,
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {
@@ -75,7 +76,8 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 formData.comedicStyle,
                 reviewData.userProvidedImages,
                 formData.imageModel,
-                formData.stance
+                formData.stance,
+                reviewData.panelLayouts[0]?.aspectRatio,
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {
