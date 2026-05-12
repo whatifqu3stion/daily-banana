@@ -137,7 +137,7 @@ const Panel: React.FC<PanelProps> = ({
   };
   
   return (
-    <div className={`relative group border-2 border-black ${gridClass}`}>
+    <div className={`relative group border-2 border-black hover:z-10 ${gridClass}`}>
       <div className={`relative w-full ${arClass}`} style={arStyle}>
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
           {panelData.failed ? (
@@ -160,7 +160,7 @@ const Panel: React.FC<PanelProps> = ({
               <img
                 src={`data:image/png;base64,${panelData.image}`}
                 alt={panelData.visual_prompt}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain bg-black"
               />
               {/* Per-panel error from a failed regenerate/refine attempt on an existing image.
                   Anchored at the TOP of the panel so it is never covered by the hover
