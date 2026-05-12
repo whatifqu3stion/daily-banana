@@ -32,7 +32,7 @@ const comicPlanSchema = {
                     },
                     visual_prompt: {
                         type: Type.STRING,
-                        description: 'Rich scene description for an image-generation model. Include: specific character appearance and expression, body language, setting details, camera framing (close-up / wide shot / over-shoulder), and any physical comedy or sight gag. The image must be able to carry the joke on its own. DO NOT include any text, speech bubbles, or captions here.'
+                        description: 'Rich scene description for an image-generation model. Include: specific character appearance and expression, body language, setting details, camera framing (close-up / wide shot / over-shoulder), and any physical comedy or sight gag. The image must be able to carry the joke on its own. PROP TEXT (signs, screens, banners, newspapers, whiteboards): describe exactly what they say — e.g. "a whiteboard reading \'SYNERGY\' underlined three times" — the model renders prop text accurately. NEVER include speech bubbles, thought text, captions, or SFX here — those belong in text_elements only.'
                     },
                     text_elements: {
                         type: Type.ARRAY,
@@ -141,7 +141,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 1. **Never explain the joke** — in dialogue, captions, or the summary.
 2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
 3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
-4. **visual_prompt contains zero text, zero speech, zero captions.** Describe only what is seen.
+4. **`visual_prompt` — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in `text_elements` — never mention them in `visual_prompt`. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker".
 5. **Panel count: 2–4.** Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 `;
@@ -282,6 +282,12 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
         : '';
 
     return `
+OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.
+
+PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
+
+---
+
 ${mainInstruction}
 
 **Visual Description:**
@@ -294,9 +300,9 @@ ${stanceVisualNote ? `- **Editorial Framing:** ${stanceVisualNote}` : ''}
 
 ${consistencyBlock}
 
-NO TEXT IN IMAGES: Do not render any text, words, letters, numbers, typography, signs, labels, speech, thought text, sound effects, onomatopoeia, captions, or any other written content inside the image — not even on props, signs, newspapers, or billboards. All text is handled by the overlay system. The artwork must be completely text-free.
-
 FILL THE PANEL EDGE-TO-EDGE: Artwork must bleed to all four edges of the image. Do not add any white margins, gutters, padding, borders, or empty space around the artwork. The image frame is the panel border — there is no inner frame inside it.
+
+Reminder: no speech bubbles, thought clouds, captions, or SFX text in the image. Prop text (signs, screens, banners) render exactly as described.
 
 If a reference image is provided, use it only to match the art style, character designs, and colour palette. Do not copy its scene composition, background layout, camera framing, or specific poses. Output a single comic panel image.
 `;
