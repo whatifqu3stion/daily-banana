@@ -1,0 +1,22 @@
+[plugin:vite:esbuild] Transform failed with 1 error:
+/home/runner/workspace/services/geminiService.ts:144:6: ERROR: Expected ";" but found "visual_prompt"
+/home/runner/workspace/services/geminiService.ts:144:6
+Expected ";" but found "visual_prompt"
+142|  2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
+143|  3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
+144|  4. **`visual_prompt` — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in `text_elements` — never mention them in `visual_prompt`. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker".
+   |        ^
+145|  5. **Panel count: 2–4.** Do not pad with unnecessary panels.
+146|  6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
+    at failureErrorWithLog (/home/runner/workspace/node_modules/esbuild/lib/main.js:1467:15)
+    at /home/runner/workspace/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/home/runner/workspace/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/home/runner/workspace/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/home/runner/workspace/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:191:23
+Click outside, press Esc key, or fix the code to dismiss.
+You can also disable this overlay by setting server.hmr.overlay to false in vite.config.ts.

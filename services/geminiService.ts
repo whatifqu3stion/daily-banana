@@ -141,7 +141,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 1. **Never explain the joke** — in dialogue, captions, or the summary.
 2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
 3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
-4. **`visual_prompt` — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in `text_elements` — never mention them in `visual_prompt`. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker".
+4. **visual_prompt — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in text_elements — never mention them in visual_prompt. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker".
 5. **Panel count: 2–4.** Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 `;
