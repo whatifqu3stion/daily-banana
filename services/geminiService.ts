@@ -3,7 +3,7 @@
 //   • Panel image generation and refinement
 //   • News context explainer
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource } from '../types';
+import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource, AspectRatio } from '../types';
 import { extractDomain } from '../utils/urlUtils';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
@@ -261,6 +261,7 @@ const constructImagePrompt = (
     comedicStyle?: string,
     refinementPrompt?: string,
     stance?: string,
+    aspectRatio?: AspectRatio,
 ): string => {
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     // Use the full craft note so the image model gets the same rich guidance
@@ -281,10 +282,17 @@ ${safeConsistencyTags.map(t => `• ${t}`).join('\n')}
 Key props, vehicles, buildings, and set pieces must maintain consistent spatial orientation across panels — if an object faces left in one panel it must face left in all panels unless the description explicitly calls for a different angle.`
         : '';
 
+    const shapeLabel = aspectRatio === '16:9' ? 'widescreen 16:9 landscape'
+        : aspectRatio === '9:16' ? 'portrait 9:16 vertical'
+        : aspectRatio === '4:3'  ? 'landscape 4:3'
+        : 'square 1:1';
+
     return `
 OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.
 
 PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
+
+CANVAS SHAPE: ${shapeLabel} frame — compose the full shot for this exact ratio, filling edge-to-edge.
 
 ---
 
@@ -533,8 +541,9 @@ const generatePanelImageWithReferences = async (
     userProvidedImages: ProcessedReferenceImage[] = [],
     imageModel: string = 'gemini-3.1-flash-image-preview',
     stance?: string,
+    aspectRatio?: AspectRatio,
 ): Promise<string> => {
-    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance);
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio);
     // Each reference image is preceded by its tag text so the model understands
     // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
@@ -552,7 +561,11 @@ const generatePanelImageWithReferences = async (
             model: imageModel,
             contents: { parts },
             config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT]
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
+                imageConfig: {
+                    aspectRatio: aspectRatio ?? '1:1',
+                    imageSize: '2K',
+                },
             }
         });
 
@@ -580,6 +593,7 @@ const refinePanelImage = async (
     userProvidedImages: ProcessedReferenceImage[] = [],
     imageModel: string = 'gemini-3.1-flash-image-preview',
     stance?: string,
+    aspectRatio?: AspectRatio,
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         visualPrompt,
@@ -588,6 +602,7 @@ const refinePanelImage = async (
         comedicStyle,
         refinementPrompt,
         stance,
+        aspectRatio,
     );
 
     const parts = [
@@ -606,7 +621,11 @@ const refinePanelImage = async (
             model: imageModel,
             contents: { parts },
             config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT]
+                responseModalities: [Modality.IMAGE, Modality.TEXT],
+                imageConfig: {
+                    aspectRatio: aspectRatio ?? '1:1',
+                    imageSize: '2K',
+                },
             }
         });
 

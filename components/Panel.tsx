@@ -160,7 +160,7 @@ const Panel: React.FC<PanelProps> = ({
               <img
                 src={`data:image/png;base64,${panelData.image}`}
                 alt={panelData.visual_prompt}
-                className="w-full h-full object-contain bg-black"
+                className="w-full h-full object-cover"
               />
               {/* Per-panel error from a failed regenerate/refine attempt on an existing image.
                   Anchored at the TOP of the panel so it is never covered by the hover

@@ -103,7 +103,7 @@ export default function useComicGeneration() {
     speculativeAbortRef.current = false;
     speculativePanelsRef.current = [];
 
-    const { plan, firstPanelImage, userProvidedImages } = reviewData;
+    const { plan, firstPanelImage, userProvidedImages, panelLayouts } = reviewData;
     const { illustrationStyle, comedicStyle, imageModel } = formDataCache;
 
     if (plan.panels.length <= 1) return;
@@ -132,6 +132,7 @@ export default function useComicGeneration() {
             refs,
             imageModel,
             formDataCache.stance,
+            panelLayouts[i]?.aspectRatio,
           );
           if (speculativeAbortRef.current) return;
           speculativePanelsRef.current[i - 1] = img;
@@ -213,6 +214,7 @@ export default function useComicGeneration() {
 
       const firstPanelPlan = plan.panels[0];
       const globalTags = poolConsistencyTags(plan);
+      const panelLayouts = layoutAdapter(plan.panels);
       const firstPanelImage = await geminiService.generatePanelImageWithReferences(
         firstPanelPlan.visual_prompt,
         globalTags,
@@ -221,9 +223,9 @@ export default function useComicGeneration() {
         userImages,
         currentFormData.imageModel,
         currentFormData.stance,
+        panelLayouts[0]?.aspectRatio,
       );
 
-      const panelLayouts = layoutAdapter(plan.panels);
       setReviewData({ plan, firstPanelImage, userProvidedImages: userImages, panelLayouts });
       setAppStage('review');
     } catch (err: any) {
@@ -327,6 +329,7 @@ export default function useComicGeneration() {
           refs,
           formDataCache.imageModel,
           formDataCache.stance,
+          reviewData.panelLayouts[index + 1]?.aspectRatio,
         );
         panelImages.push(newImage);
       } catch {
@@ -466,6 +469,7 @@ export default function useComicGeneration() {
         [...activeComicReferences.current, ...primaryRef, ...neighbourRefs],
         formDataCache.imageModel,
         formDataCache.stance,
+        panel.layoutProps.aspectRatio,
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
@@ -516,6 +520,7 @@ export default function useComicGeneration() {
         activeComicReferences.current,
         formDataCache.imageModel,
         formDataCache.stance,
+        panel.layoutProps.aspectRatio,
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
