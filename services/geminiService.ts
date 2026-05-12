@@ -141,7 +141,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 1. **Never explain the joke** — in dialogue, captions, or the summary.
 2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
 3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
-4. **visual_prompt — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in text_elements — never mention them in visual_prompt. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker".
+4. **visual_prompt — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in text_elements — never mention them in visual_prompt. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker". **EXCEPTION — if a text string already appears in text_elements (as a caption, speech bubble, or SFX), do NOT describe that same string on a prop in visual_prompt.** The overlay system will display that text on screen; the image should show the prop as a generic/blank object. BAD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a sign reading 'AI TOOK MY JOB'". GOOD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a protest sign".
 5. **Panel count: 2–4.** Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 `;
@@ -262,6 +262,7 @@ const constructImagePrompt = (
     refinementPrompt?: string,
     stance?: string,
     aspectRatio?: AspectRatio,
+    overlayTexts?: string[],
 ): string => {
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     // Use the full craft note so the image model gets the same rich guidance
@@ -282,13 +283,18 @@ ${safeConsistencyTags.map(t => `• ${t}`).join('\n')}
 Key props, vehicles, buildings, and set pieces must maintain consistent spatial orientation across panels — if an object faces left in one panel it must face left in all panels unless the description explicitly calls for a different angle.`
         : '';
 
+    const safeOverlayTexts = (overlayTexts ?? []).filter(t => t.trim());
+    const overlayBlacklistBlock = safeOverlayTexts.length > 0
+        ? `\nOVERLAY TEXT BLACKLIST — These exact strings will be rendered on screen by the app. Do NOT paint them into the artwork — not in speech bubbles, captions, SFX bursts, signs, screens, or any other element. If a prop in the scene would naturally carry one of these strings, render that prop with blank, illegible, or placeholder markings instead:\n${safeOverlayTexts.map(t => `• "${t}"`).join('\n')}`
+        : '';
+
     const shapeLabel = aspectRatio === '16:9' ? 'widescreen 16:9 landscape'
         : aspectRatio === '9:16' ? 'portrait 9:16 vertical'
         : aspectRatio === '4:3'  ? 'landscape 4:3'
         : 'square 1:1';
 
     return `
-OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.
+OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.${overlayBlacklistBlock}
 
 PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
 
@@ -542,8 +548,9 @@ const generatePanelImageWithReferences = async (
     imageModel: string = 'gemini-3.1-flash-image-preview',
     stance?: string,
     aspectRatio?: AspectRatio,
+    overlayTexts?: string[],
 ): Promise<string> => {
-    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio);
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts);
     // Each reference image is preceded by its tag text so the model understands
     // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
@@ -594,6 +601,7 @@ const refinePanelImage = async (
     imageModel: string = 'gemini-3.1-flash-image-preview',
     stance?: string,
     aspectRatio?: AspectRatio,
+    overlayTexts?: string[],
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         visualPrompt,
@@ -603,6 +611,7 @@ const refinePanelImage = async (
         refinementPrompt,
         stance,
         aspectRatio,
+        overlayTexts,
     );
 
     const parts = [

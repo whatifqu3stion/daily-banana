@@ -133,6 +133,7 @@ export default function useComicGeneration() {
             imageModel,
             formDataCache.stance,
             panelLayouts[i]?.aspectRatio,
+            panel.text_elements?.map(el => el.text) ?? [],
           );
           if (speculativeAbortRef.current) return;
           speculativePanelsRef.current[i - 1] = img;
@@ -224,6 +225,7 @@ export default function useComicGeneration() {
         currentFormData.imageModel,
         currentFormData.stance,
         panelLayouts[0]?.aspectRatio,
+        firstPanelPlan.text_elements?.map(el => el.text) ?? [],
       );
 
       setReviewData({ plan, firstPanelImage, userProvidedImages: userImages, panelLayouts });
@@ -330,6 +332,7 @@ export default function useComicGeneration() {
           formDataCache.imageModel,
           formDataCache.stance,
           reviewData.panelLayouts[index + 1]?.aspectRatio,
+          panel.text_elements?.map(el => el.text) ?? [],
         );
         panelImages.push(newImage);
       } catch {
@@ -470,6 +473,7 @@ export default function useComicGeneration() {
         formDataCache.imageModel,
         formDataCache.stance,
         panel.layoutProps.aspectRatio,
+        panel.text_elements?.map(el => el.text) ?? [],
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {
@@ -521,6 +525,7 @@ export default function useComicGeneration() {
         formDataCache.imageModel,
         formDataCache.stance,
         panel.layoutProps.aspectRatio,
+        panel.text_elements?.map(el => el.text) ?? [],
       );
       handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
     } catch (err: any) {

@@ -54,6 +54,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 formData.imageModel,
                 formData.stance,
                 reviewData.panelLayouts[0]?.aspectRatio,
+                firstPanelPlan.text_elements?.map(el => el.text) ?? [],
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {
@@ -78,6 +79,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 formData.imageModel,
                 formData.stance,
                 reviewData.panelLayouts[0]?.aspectRatio,
+                firstPanelPlan.text_elements?.map(el => el.text) ?? [],
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {
