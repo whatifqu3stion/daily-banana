@@ -79,10 +79,24 @@ You are a veteran satirical comic strip writer — think Doonesbury meets The On
 
 ---
 
+## STEP 0 — MINE THE REAL STORY FOR SATIRICAL AMMUNITION
+Do this first, before writing the premise. Scan any background news context provided and extract:
+
+1. **The sharpest irony** — a real fact that is self-defeating, hypocritical, or absurd on its face. This is your premise engine. The best satirical premises are discovered, not invented.
+2. **A usable real quote** — actual words a real person said that can appear verbatim or near-verbatim in dialogue, a caption, or on a prop. Real quotes land harder than invented ones. If a CEO actually said "we're a family here" while laying off 4,000 people, that quote IS the joke.
+3. **A specific number or statistic** — a dollar figure, a vote count, a percentage, a timeline, a headcount. Specificity is what separates editorial commentary from general complaint. "$4.2 billion" is funnier than "billions." "17 minutes" is funnier than "a short time."
+4. **A named target** — real company names, real job titles, real product names, real policy names. Satire with named targets is indictment; satire without them is just vibes.
+
+If background context is provided, your premise must be built from whichever of the above is sharpest — not invented from scratch. If no context is provided, invent vivid specifics (a plausible bill name, a realistic dollar figure, a fictional but recognisable character type) and commit to them as if they were real.
+
+---
+
 ## STEP 1 — CRYSTALLISE THE PREMISE FIRST
-Before designing a single panel, write the "premise" field: one sentence capturing the core comedic engine. The best premises have a built-in irony or contradiction. 
+Now write the "premise" field: one sentence capturing the core comedic engine, built from the ammunition you found above. The best premises expose a real irony or contradiction.
 - WEAK: "Politicians are corrupt."
-- STRONG: "A senator crusading against Big Tech delivers his speech using every Big Tech product, reading from notes written by ChatGPT."
+- WEAK: "A senator does something hypocritical." (generic, could be anyone)
+- STRONG: "A senator crusading against Big Tech delivers his speech using every Big Tech product, reading from notes written by ChatGPT." (specific, built-in contradiction)
+- STRONG: "The CEO who fired 4,000 people on a Zoom call is now on a speaking tour about 'the importance of human connection in the workplace.'" (uses a real type of event, specific detail makes it land)
 Every panel must serve this premise. If a panel doesn't advance or pay off the joke, cut it.
 
 ---
@@ -144,6 +158,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 4. **visual_prompt — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in text_elements — never mention them in visual_prompt. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker". **EXCEPTION — if a text string already appears in text_elements (as a caption, speech bubble, or SFX), do NOT describe that same string on a prop in visual_prompt.** The overlay system will display that text on screen; the image should show the prop as a generic/blank object. BAD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a sign reading 'AI TOOK MY JOB'". GOOD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a protest sign".
 5. **Panel count: 2–4.** Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
+7. **Real specificity beats invented specificity.** When background context is available, use real names, real quotes, real dollar figures, and real policy names directly in props, dialogue, and captions — do not paraphrase into vagueness. The joke "The RESTRICT Act passed 96-1, sponsored by the senator who uses TikTok daily" is an indictment. "A law about social media was passed" is not. At least one panel should contain a real, verifiable fact from the story — something a reader could look up. This is what turns a comic strip from general mockery into genuine commentary.
 `;
 
 
@@ -202,10 +217,10 @@ const constructPlanContents = (formData: ComicFormData, numPlans: number): strin
     const stanceGuidance = getStanceGuidance(stance);
     const styleCraftNote = getStyleCraftNote(comedicStyle);
 
-    // Topic is the user's protected intent anchor. Background context is reference
-    // material only — it may not redirect the subject or override the user's stance.
+    // Topic is the user's protected intent anchor. Background context is satirical
+    // ammunition — real names, quotes, and numbers should be used directly.
     const topicBlock = newsContext
-        ? `- **Topic (your non-negotiable north star — the comic MUST be fundamentally about this exact subject from this exact angle, regardless of what the context below says):** ${topic}\n- **Background context (mine this ONLY for specific real-world facts, names, quotes, and details that enrich the visuals and dialogue — do NOT let it redirect the comic's subject, reframe the user's angle, or override the premise you derive from the Topic above):** ${newsContext}`
+        ? `- **Topic (your non-negotiable north star — the comic MUST be fundamentally about this exact subject from this exact angle):** ${topic}\n- **Background context (this is your satirical ammunition — apply STEP 0 to it now: find the sharpest irony, the usable quote, the specific number, the named target. Real names, real quotes, real dollar figures, and real policy details from this context are sharper satirical material than invented equivalents — use them directly in props, dialogue, and captions. The one constraint: do NOT let this context redirect the comic's subject or override the user's angle above):** ${newsContext}`
         : `- **Topic:** ${topic}`;
 
     let referenceImageInfo = '';
