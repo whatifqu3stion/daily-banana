@@ -244,8 +244,9 @@ ${topicBlock}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
+Before writing any premise, apply STEP 0 once: mine the background context for the sharpest irony, the usable real quote, the specific number, and the named target. Then use that same real ammunition across all three concepts — each concept expresses it through a different structural mechanism, but all three are grounded in the same real facts.
 Remember: write the "premise" field first for each concept before designing panels. That one sentence is your anchor.
-CRITICAL: No matter how much background context is provided, every concept's core premise must remain faithful to the user's stated Topic and Angle above. Background context is reference material only — never the subject.
+CRITICAL: No matter how much background context is provided, every concept's core premise must remain faithful to the user's stated Topic and Angle above. Background context is your satirical ammunition — not a replacement for the user's subject.
 `;
     }
 
