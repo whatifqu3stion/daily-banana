@@ -236,7 +236,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
       return;
     }
     if (showFreeTextComedicStyle && !formData.comedicStyle.trim()) {
-      setCustomStyleError('Please describe your custom comedic style.');
+      setCustomStyleError('Please describe your custom comedic angle.');
       return;
     }
     if (showFreeTextIllustrationStyle && !formData.illustrationStyle?.trim()) {
@@ -452,16 +452,16 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           </div>
           
           <div>
-            <Tooltip text="Select the method for the comic's humor.">
+            <Tooltip text="Select the point-of-view or angle for the comic's humor.">
               <label htmlFor="comedicStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
-                Comedic Style
+                Comedic Angle
               </label>
             </Tooltip>
             <CustomSelect
               id="comedicStyle"
               value={showFreeTextComedicStyle ? 'custom' : formData.comedicStyle}
               options={COMEDIC_STYLE_OPTIONS}
-              extraOption={{ value: 'custom', label: 'Write my own…' }}
+              extraOption={{ value: 'custom', label: 'Write my own angle…' }}
               onChange={handleComedicStyleChange}
             />
             {showFreeTextComedicStyle && (
@@ -473,7 +473,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                   value={formData.comedicStyle}
                   onChange={(e) => { setCustomStyleError(null); handleChange(e); }}
                   className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStyleError ? 'border-red-500' : 'border-black'}`}
-                  placeholder="Your custom comedic style..."
+                  placeholder="Your custom comedic angle..."
                   maxLength={160}
                   autoFocus
                 />
