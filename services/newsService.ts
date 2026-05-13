@@ -66,12 +66,14 @@ Focus on: politics, government, business, science, technology, international aff
 Avoid: sports scores, celebrity gossip, and purely local crime stories.
 
 Return your answer as a valid JSON array only, with no other text before or after it.
-Each item must have exactly two fields: "title" (a concise headline, max 120 characters) and "description" (a one-sentence summary, max 200 characters).
+Each item must have exactly two fields:
+- "title": a concise headline, max 120 characters
+- "description": 2-3 sentences (max 500 characters) that include at least one of the following if the story contains it: a specific dollar figure or statistic, a named individual or organisation and what they said or did, or a short direct quote (max 15 words). The goal is to give enough concrete detail that a satirist could write a joke grounded in a real fact — not just a vague summary.
 
 Example format:
 [
-  {"title": "Congress Passes Major Climate Bill", "description": "Legislators approved sweeping new emissions targets in a bipartisan vote late Thursday."},
-  {"title": "Tech Giant Reports Record Profits", "description": "A major Silicon Valley company announced quarterly earnings that far exceeded analyst expectations."}
+  {"title": "Congress Passes Major Climate Bill", "description": "The Senate approved sweeping new emissions targets in an 87-12 bipartisan vote late Thursday, the largest climate package since 2022. The bill mandates a 40% reduction in industrial emissions by 2035 and allocates $180 billion for clean energy infrastructure."},
+  {"title": "Tech Giant Reports Record Profits", "description": "A major Silicon Valley firm posted $34.2 billion in quarterly profit, up 28% year-on-year, even as it announced 6,000 layoffs earlier in the month. CEO Jensen Huang called the results 'a testament to disciplined cost management.'"}
 ]`;
 
         const result = await ai.models.generateContent({

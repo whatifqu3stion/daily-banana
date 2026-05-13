@@ -259,8 +259,9 @@ ${topicBlock}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
+Before writing the premise, apply STEP 0: mine the background context for the sharpest irony, the usable real quote, the specific number, and the named target. Then build the premise from whichever is sharpest.
 Remember: write the "premise" field first before designing panels. That one sentence anchors the entire strip.
-CRITICAL: No matter how much background context is provided, the comic's premise must remain faithful to the user's stated Topic and Angle above. Background context is reference material only — never the subject.
+CRITICAL: No matter how much background context is provided, the comic's premise must remain faithful to the user's stated Topic and Angle above. Background context is your satirical ammunition — not a replacement for the user's subject.
 `;
 };
 
