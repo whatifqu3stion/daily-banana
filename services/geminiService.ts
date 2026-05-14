@@ -58,6 +58,10 @@ const comicPlanSchema = {
                     aspect_ratio: {
                         type: Type.STRING,
                         description: 'Compositional hint for this panel. Use "large" size for panels that need visual room — the layout system will render those panels wider or in cinematic 16:9. Always set "1:1" here; aspect ratio is determined by the layout engine based on size and comedic_role.'
+                    },
+                    scene_state: {
+                        type: Type.STRING,
+                        description: 'For non-final panels only: ONE sentence describing where each named character is at the END of this panel, what props they are carrying, and which direction they are moving or facing. This is read by the next panel\'s image model to maintain visual continuity. Example: "Sarah is walking LEFT through the glass office doors, cardboard box in both arms, glancing back at colleagues who stand watching from the open-plan floor." Leave empty on the final panel.'
                     }
                 },
                 required: ['slug', 'comedic_role', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
@@ -80,14 +84,15 @@ You are a veteran satirical comic strip writer — think Doonesbury meets The On
 ---
 
 ## STEP 0 — MINE THE REAL STORY FOR SATIRICAL AMMUNITION
-Do this first, before writing the premise. Scan any background news context provided and extract:
+Do this first, before writing the premise. When background news context is provided, scan it and identify the **single sharpest piece** of satirical ammunition — pick ONE from these options:
 
-1. **The sharpest irony** — a real fact that is self-defeating, hypocritical, or absurd on its face. This is your premise engine. The best satirical premises are discovered, not invented.
-2. **A usable real quote** — actual words a real person said that can appear verbatim or near-verbatim in dialogue, a caption, or on a prop. Real quotes land harder than invented ones. If a CEO actually said "we're a family here" while laying off 4,000 people, that quote IS the joke.
-3. **A specific number or statistic** — a dollar figure, a vote count, a percentage, a timeline, a headcount. Specificity is what separates editorial commentary from general complaint. "$4.2 billion" is funnier than "billions." "17 minutes" is funnier than "a short time."
-4. **A named target** — real company names, real job titles, real product names, real policy names. Satire with named targets is indictment; satire without them is just vibes.
+- **A self-defeating irony** — a real fact that exposes hypocrisy on its face: the crusader who does the thing they crusade against, the reformer who profits from the status quo. This is the richest ore.
+- **A verbatim real quote** — actual words a real person said that can appear in dialogue, a caption, or on a prop. If a CEO said "we're a family here" the day before mass layoffs, that quote IS the joke.
+- **A specific number** — a dollar figure, a vote count, a percentage, a headcount. "$4.2 billion" is funnier than "billions." "17 minutes" is funnier than "a short time."
 
-If background context is provided, your premise must be built from whichever of the above is sharpest — not invented from scratch. If no context is provided, invent vivid specifics (a plausible bill name, a realistic dollar figure, a fictional but recognisable character type) and commit to them as if they were real.
+**Pick ONE. The sharpest single thing. Build the entire premise around that one piece.** Do NOT try to include all three — a strip cluttered with facts is a strip with no punchline. One sharp fact, weaponised well, beats three facts deployed cautiously.
+
+If no background context is provided, invent one vivid specific (a plausible bill name, a realistic dollar figure, a fictional but recognisable character type) and commit to it as though it were real.
 
 ---
 
@@ -159,6 +164,8 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 5. **Panel count: 2–4.** Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 7. **Real specificity beats invented specificity.** When background context is available, use real names, real quotes, real dollar figures, and real policy names directly in props, dialogue, and captions — do not paraphrase into vagueness. The joke "The RESTRICT Act passed 96-1, sponsored by the senator who uses TikTok daily" is an indictment. "A law about social media was passed" is not. At least one panel should contain a real, verifiable fact from the story — something a reader could look up. This is what turns a comic strip from general mockery into genuine commentary.
+8. **Comedy and narrative come first.** Factual specificity is a sharpening tool — it makes the punchline land harder. If a real fact doesn't directly power the joke, cut it. Never let a data point crowd out a visual gag or a sharp piece of dialogue. The goal is a great joke that happens to be grounded in something true — not a factual report with a comedy label.
+9. **scene_state is your continuity contract.** For every non-final panel, populate scene_state with one sentence stating where each named character is at the END of this panel, what they are carrying or wearing, and which direction they are moving. The next panel's image model will open from this exact state. WRONG: "Characters are visible in the scene." RIGHT: "Sarah is walking LEFT through the glass office doors, a cardboard box held in both arms, glancing back over her shoulder at colleagues watching from the open-plan office." Leave scene_state empty on the final (punchline/button) panel.
 `;
 
 
@@ -281,6 +288,7 @@ const constructImagePrompt = (
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
     panelContext?: PanelContext,
+    prevSceneState?: string,
 ): string => {
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     // Use the full craft note so the image model gets the same rich guidance
@@ -321,6 +329,10 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
         : aspectRatio === '4:3'  ? 'landscape 4:3'
         : 'square 1:1';
 
+    const prevSceneBlock = prevSceneState
+        ? `\nCONTINUITY FROM PREVIOUS PANEL — this scene opens from this state:\n${prevSceneState}\nCharacters begin this panel where the previous panel left them. Do not contradict this state.\n`
+        : '';
+
     return `${narrativeContextBlock}
 OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.${overlayBlacklistBlock}
 
@@ -331,7 +343,7 @@ CANVAS SHAPE: ${shapeLabel} frame — compose the full shot for this exact ratio
 ---
 
 ${mainInstruction}
-
+${prevSceneBlock}
 **Visual Description:**
 ${basePrompt}
 
@@ -449,6 +461,9 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
       if (['small', 'medium', 'large'].includes(p.size)) newPanel.size = p.size;
       if (['establish', 'escalate', 'punchline', 'button'].includes(p.comedic_role)) {
           newPanel.comedic_role = p.comedic_role;
+      }
+      if (typeof p.scene_state === 'string' && p.scene_state.trim()) {
+          newPanel.scene_state = p.scene_state.trim();
       }
 
       if (Array.isArray(p.text_elements)) {
@@ -578,8 +593,9 @@ const generatePanelImageWithReferences = async (
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
     panelContext?: PanelContext,
+    prevSceneState?: string,
 ): Promise<string> => {
-    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts, panelContext);
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts, panelContext, prevSceneState);
     // Each reference image is preceded by its tag text so the model understands
     // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
@@ -632,6 +648,7 @@ const refinePanelImage = async (
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
     panelContext?: PanelContext,
+    prevSceneState?: string,
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         visualPrompt,
@@ -643,6 +660,7 @@ const refinePanelImage = async (
         aspectRatio,
         overlayTexts,
         panelContext,
+        prevSceneState,
     );
 
     const parts = [

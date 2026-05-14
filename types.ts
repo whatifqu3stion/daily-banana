@@ -90,6 +90,10 @@ export interface PlanPanel {
     // Layout hints from the AI — used by layoutAdapter to select a template.
     size: 'small' | 'medium' | 'large';
     aspect_ratio: AspectRatio;
+    // Continuity handoff: one sentence describing character locations, props,
+    // and movement direction at the END of this panel. Consumed by the next
+    // panel's image generation to prevent continuity errors. Empty on final panel.
+    scene_state?: string;
 }
 
 // Data for the entire comic plan from the AI.
@@ -127,6 +131,7 @@ export interface PanelData {
   user_consistency_tags: string[]; // User-added tags for refinement (now an array)
   layoutProps: LayoutProps;
   comedic_role?: string; // Narrative role — passed to image model for compositional guidance
+  scene_state?: string; // Continuity handoff from PlanPanel — passed to next panel's image generation
 }
 
 // Interface for the complete comic strip data used in the app.
