@@ -70,6 +70,14 @@ const BUBBLE_SLOTS_SINGLE = [
   { pos: { x: '15%', y: '5%'  }, size: { width: '70%', height: '30%' }, tail: { x: '50%', y: '120%' } },
 ] as const;
 
+/**
+ * Narrower single-bubble slot for full-width (col-span-6) 16:9 cinematic panels.
+ * 70% width dominates a landscape composition; 50% keeps the bubble proportionate.
+ */
+const BUBBLE_SLOTS_SINGLE_WIDE = [
+  { pos: { x: '25%', y: '5%'  }, size: { width: '50%', height: '30%' }, tail: { x: '50%', y: '120%' } },
+] as const;
+
 const BUBBLE_SLOTS_MULTI = [
   { pos: { x: '2%',  y: '5%'  }, size: { width: '48%', height: '30%' }, tail: { x: '80%', y: '120%' } },
   { pos: { x: '50%', y: '58%' }, size: { width: '48%', height: '30%' }, tail: { x: '20%', y: '-20%' } },
@@ -385,11 +393,17 @@ export default function useComicGeneration() {
       const failed = image === '';
 
       // Pre-count speech/thought elements so we can choose the right slot set.
-      // 1 bubble → wide centred single slot; 2+ → left/right split with vertical separation.
+      // 1 bubble on a square panel → wide centred single slot (70%).
+      // 1 bubble on a full-width 16:9 panel → narrower centred slot (50%) to avoid dominating.
+      // 2+ bubbles → left/right split with vertical separation.
       const speechCount = (planPanel.text_elements || []).filter(
         te => te.role === 'speech' || te.role === 'thought'
       ).length;
-      const bubbleSlots = speechCount <= 1 ? BUBBLE_SLOTS_SINGLE : BUBBLE_SLOTS_MULTI;
+      const panelLayout = reviewData.panelLayouts[index];
+      const isWidePanel = panelLayout?.gridCols === 6 && panelLayout?.aspectRatio === '16:9';
+      const bubbleSlots = speechCount <= 1
+        ? (isWidePanel ? BUBBLE_SLOTS_SINGLE_WIDE : BUBBLE_SLOTS_SINGLE)
+        : BUBBLE_SLOTS_MULTI;
       let bubbleSlot = 0;
       const textElements = (planPanel.text_elements || []).map(te => {
         if (te.role === 'caption') {
