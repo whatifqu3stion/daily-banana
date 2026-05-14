@@ -506,7 +506,7 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
     const parts = [
         { text: contents },
         ...userProvidedImages.flatMap(img => [
-            { text: img.tag },
+            { text: img.tag || 'User-supplied reference image — match the style, characters, or setting shown.' },
             { inlineData: { data: img.base64, mimeType: img.mimeType } }
         ])
     ];
@@ -545,7 +545,7 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
     const parts = [
         { text: contents },
         ...userProvidedImages.flatMap(img => [
-            { text: img.tag },
+            { text: img.tag || 'User-supplied reference image — match the style, characters, or setting shown.' },
             { inlineData: { data: img.base64, mimeType: img.mimeType } }
         ])
     ];
@@ -607,7 +607,7 @@ const generatePanelImageWithReferences = async (
     const parts = [
         { text: prompt },
         ...userProvidedImages.flatMap(img => [
-            { text: img.tag },
+            { text: img.tag || 'User-supplied reference image — match the style, characters, or setting shown.' },
             { inlineData: { data: img.base64, mimeType: img.mimeType } }
         ])
     ];
@@ -673,7 +673,7 @@ const refinePanelImage = async (
         { inlineData: { data: baseImage, mimeType: 'image/png' } },
         { text: prompt },
         ...userProvidedImages.flatMap(img => [
-            { text: img.tag },
+            { text: img.tag || 'User-supplied reference image — match the style, characters, or setting shown.' },
             { inlineData: { data: img.base64, mimeType: img.mimeType } }
         ])
     ];

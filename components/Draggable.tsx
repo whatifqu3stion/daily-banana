@@ -231,6 +231,10 @@ const Draggable: React.FC<DraggableProps> = ({
         width: `${size.width}px`,
         height: `${size.height}px`,
         touchAction: 'none',
+        // Hide until the ResizeObserver has resolved the initial position/size
+        // from the percentage values. Without this, the element briefly renders
+        // at 0×0 in the top-left corner before the first observer callback fires.
+        visibility: size.width === 0 ? 'hidden' : 'visible',
       }}
     >
       <div className="w-full h-full cursor-move">
