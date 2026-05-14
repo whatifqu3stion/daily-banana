@@ -56,6 +56,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 reviewData.panelLayouts[0]?.aspectRatio,
                 firstPanelPlan.text_elements?.map(el => el.text) ?? [],
                 { premise: reviewData.plan.premise, comedicRole: firstPanelPlan.comedic_role, panelIndex: 0, totalPanels: reviewData.plan.panels.length },
+                undefined,
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {
@@ -82,6 +83,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 reviewData.panelLayouts[0]?.aspectRatio,
                 firstPanelPlan.text_elements?.map(el => el.text) ?? [],
                 { premise: reviewData.plan.premise, comedicRole: firstPanelPlan.comedic_role, panelIndex: 0, totalPanels: reviewData.plan.panels.length },
+                undefined,
             );
             onUpdateReviewImage(newImage);
         } catch (err: any) {

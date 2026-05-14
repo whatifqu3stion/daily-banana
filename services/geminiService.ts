@@ -227,7 +227,7 @@ const constructPlanContents = (formData: ComicFormData, numPlans: number): strin
     // Topic is the user's protected intent anchor. Background context is satirical
     // ammunition — real names, quotes, and numbers should be used directly.
     const topicBlock = newsContext
-        ? `- **Topic (your non-negotiable north star — the comic MUST be fundamentally about this exact subject from this exact angle):** ${topic}\n- **Background context (this is your satirical ammunition — apply STEP 0 to it now: find the sharpest irony, the usable quote, the specific number, the named target. Real names, real quotes, real dollar figures, and real policy details from this context are sharper satirical material than invented equivalents — use them directly in props, dialogue, and captions. The one constraint: do NOT let this context redirect the comic's subject or override the user's angle above):** ${newsContext}`
+        ? `- **Topic (your non-negotiable north star — the comic MUST be fundamentally about this exact subject from this exact angle):** ${topic}\n- **Background context (this is your satirical ammunition — apply STEP 0 to it now: pick ONE sharpest piece — the single best irony, OR a verbatim quote, OR a specific number. Real names, real quotes, and real figures from this context are sharper than invented ones — use the best one directly in props, dialogue, or captions. The one constraint: do NOT let this context redirect the comic's subject or override the user's angle above):** ${newsContext}`
         : `- **Topic:** ${topic}`;
 
     let referenceImageInfo = '';
@@ -251,7 +251,7 @@ ${topicBlock}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
-Before writing any premise, apply STEP 0 once: mine the background context for the sharpest irony, the usable real quote, the specific number, and the named target. Then use that same real ammunition across all three concepts — each concept expresses it through a different structural mechanism, but all three are grounded in the same real facts.
+Before writing any premise, apply STEP 0 once: mine the background context and pick ONE sharpest piece of ammunition — the single best irony, OR a verbatim real quote, OR a specific number. Then use that one sharp fact as the common foundation across all three concepts — each expresses it through a different structural mechanism, but all three are grounded in the same real material.
 Remember: write the "premise" field first for each concept before designing panels. That one sentence is your anchor.
 CRITICAL: No matter how much background context is provided, every concept's core premise must remain faithful to the user's stated Topic and Angle above. Background context is your satirical ammunition — not a replacement for the user's subject.
 `;
@@ -266,7 +266,7 @@ ${topicBlock}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
 ${referenceImageInfo}
-Before writing the premise, apply STEP 0: mine the background context for the sharpest irony, the usable real quote, the specific number, and the named target. Then build the premise from whichever is sharpest.
+Before writing the premise, apply STEP 0: mine the background context and pick ONE sharpest piece — the single best irony, OR a verbatim real quote, OR a specific number. Build the entire premise from that one piece.
 Remember: write the "premise" field first before designing panels. That one sentence anchors the entire strip.
 CRITICAL: No matter how much background context is provided, the comic's premise must remain faithful to the user's stated Topic and Angle above. Background context is your satirical ammunition — not a replacement for the user's subject.
 `;
