@@ -54,20 +54,24 @@ const makeConsistencyRef = (
 });
 
 /**
- * Curated starting positions for speech/thought bubbles — one per screen quadrant.
- * Each slot's tail points toward the opposite quadrant, where a character's mouth
- * would typically appear relative to their speech bubble.
+ * Curated starting positions for speech/thought bubbles.
  *
- *  Slot 0 — top-left,     tail → lower-right
- *  Slot 1 — top-right,    tail → lower-left
- *  Slot 2 — bottom-left,  tail → upper-right
- *  Slot 3 — bottom-right, tail → upper-left
+ * Priority order (slot 0 is used when there is only one bubble):
+ *
+ *  Slot 0 — upper-centre:   wide centred bubble for the common single-bubble case.
+ *                            Tail points to bottom-centre (character is below the bubble).
+ *  Slot 1 — lower-left:     second bubble drops to the lower half so the two don't
+ *                            both crowd the top strip. Tail points upward-right.
+ *  Slot 2 — upper-right:    third bubble returns to the top, offset to the right.
+ *                            Tail points downward-left.
+ *  Slot 3 — lower-right:    fourth bubble fills the remaining bottom-right quadrant.
+ *                            Tail points upward-left.
  */
 const BUBBLE_SLOTS = [
-  { pos: { x: '2%',  y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '120%' } },
-  { pos: { x: '50%', y: '4%'  }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '120%' } },
-  { pos: { x: '2%',  y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '80%', y: '-20%' } },
-  { pos: { x: '50%', y: '68%' }, size: { width: '48%', height: '25%' }, tail: { x: '20%', y: '-20%' } },
+  { pos: { x: '15%', y: '5%'  }, size: { width: '70%', height: '30%' }, tail: { x: '50%', y: '120%' } },
+  { pos: { x: '2%',  y: '60%' }, size: { width: '48%', height: '30%' }, tail: { x: '80%', y: '-20%' } },
+  { pos: { x: '50%', y: '5%'  }, size: { width: '48%', height: '30%' }, tail: { x: '20%', y: '120%' } },
+  { pos: { x: '50%', y: '60%' }, size: { width: '48%', height: '30%' }, tail: { x: '20%', y: '-20%' } },
 ] as const;
 
 export default function useComicGeneration() {
@@ -383,8 +387,8 @@ export default function useComicGeneration() {
           return {
             ...te,
             id: crypto.randomUUID(),
-            position: { x: '5%', y: '83%' },
-            size: { width: '90%', height: '14%' },
+            position: { x: '3%', y: '79%' },
+            size: { width: '94%', height: '18%' },
             tailPosition: { x: '50%', y: '50%' },
             invertedColors: false,
           };
@@ -393,8 +397,8 @@ export default function useComicGeneration() {
           return {
             ...te,
             id: crypto.randomUUID(),
-            position: { x: '25%', y: '35%' },
-            size: { width: '50%', height: '22%' },
+            position: { x: '20%', y: '28%' },
+            size: { width: '60%', height: '28%' },
             tailPosition: { x: '50%', y: '50%' },
             invertedColors: false,
           };
