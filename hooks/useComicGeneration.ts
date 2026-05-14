@@ -82,6 +82,12 @@ export default function useComicGeneration() {
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Per-card loading/error state for "Write Your Own" custom premise generation.
+  // Distinct from the global isLoading so the StorySwiper card shows an inline
+  // spinner rather than replacing the whole screen with LoadingState.
+  const [isCustomPremiseLoading, setIsCustomPremiseLoading] = useState(false);
+  const [customPremiseError, setCustomPremiseError] = useState<string | null>(null);
+
   const [panelLoadingState, setPanelLoadingState] = useState<Set<number>>(new Set());
   const activeComicReferences = useRef<ProcessedReferenceImage[]>([]);
 
@@ -170,6 +176,8 @@ export default function useComicGeneration() {
     setIsLoading(false);
     setError(null);
     setProgress(null);
+    setIsCustomPremiseLoading(false);
+    setCustomPremiseError(null);
     activeComicReferences.current = [];
   }, []);
 
@@ -259,9 +267,12 @@ export default function useComicGeneration() {
         setComicPlans(plans);
         setAppStage('story-swipe');
       } else {
+        // Non-brainstorm mode: route through StorySwiper so the user can review
+        // the AI concept or switch to the "Write Your Own Angle" card.
         setLoadingMessages(['Drafting a story concept...', 'Structuring the panels...', 'Finalizing the narrative...']);
         const plan = await geminiService.generateSingleComicPlan(formData, userImages);
-        await handleSelectStory(plan, formData);
+        setComicPlans([plan]);
+        setAppStage('story-swipe');
       }
     } catch (err: any) {
       _setError(err.message || 'An unexpected error occurred during planning.');
@@ -561,6 +572,29 @@ export default function useComicGeneration() {
     }
   }, [formDataCache, handleFormSubmit]);
 
+  /**
+   * Generates a new single plan using the user's typed premise as a hard
+   * constraint, then transitions to the review stage via handleSelectStory.
+   * Uses per-card loading state (isCustomPremiseLoading) rather than the
+   * global isLoading so StorySwiper shows an inline spinner, not a full screen.
+   */
+  const handleCustomPremise = useCallback(async (premise: string) => {
+    if (!formDataCache) return;
+    setIsCustomPremiseLoading(true);
+    setCustomPremiseError(null);
+    try {
+      const customFormData = { ...formDataCache, customPremise: premise };
+      const plan = await geminiService.generateSingleComicPlan(customFormData, activeComicReferences.current);
+      // handleSelectStory takes over from here with the global loading screen
+      // (it generates the panel 0 image before transitioning to review).
+      await handleSelectStory(plan, customFormData);
+    } catch (err: any) {
+      setCustomPremiseError(err.message || 'Failed to generate from your premise. Please try again.');
+    } finally {
+      setIsCustomPremiseLoading(false);
+    }
+  }, [formDataCache, handleSelectStory]);
+
   const onRegenerateIdeas = useCallback(() => {
     if (formDataCache) {
       const newFormData = { ...formDataCache, brainstormMode: true };
@@ -599,6 +633,8 @@ export default function useComicGeneration() {
     loadingMessages,
     progress,
     error,
+    isCustomPremiseLoading,
+    customPremiseError,
     isPanelLoading,
     handleFormSubmit,
     handleSelectStory,
@@ -607,6 +643,7 @@ export default function useComicGeneration() {
     handleRegeneratePanelImage,
     handleRefinePanelImage,
     handleStartNew,
+    handleCustomPremise,
     onRegenerateConcept,
     onRegenerateIdeas,
     onUpdateReviewImage,

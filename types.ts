@@ -39,6 +39,9 @@ export interface ComicFormData {
   referenceImages?: ReferenceImage[];
   brainstormMode: boolean;
   includeContext: boolean;
+  // Optional user-supplied premise that overrides AI narrative invention.
+  // When set, constructPlanContents injects it as a non-negotiable hard constraint.
+  customPremise?: string;
 }
 
 // Interface for element positioning.

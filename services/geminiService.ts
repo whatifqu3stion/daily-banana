@@ -219,7 +219,7 @@ const getIllustrationStyleDescription = (styleValue?: string): string => {
 
 // Constructs the user's specific request to be sent as the main content.
 const constructPlanContents = (formData: ComicFormData, numPlans: number): string => {
-    const { topic, newsContext, stance, comedicStyle, illustrationStyle, referenceImages } = formData;
+    const { topic, newsContext, stance, comedicStyle, illustrationStyle, referenceImages, customPremise } = formData;
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     const stanceGuidance = getStanceGuidance(stance);
     const styleCraftNote = getStyleCraftNote(comedicStyle);
@@ -234,6 +234,12 @@ const constructPlanContents = (formData: ComicFormData, numPlans: number): strin
     if (referenceImages && referenceImages.length > 0) {
         referenceImageInfo = `\n**Reference Images Provided:**\nThe user has supplied reference images. Use them as the visual foundation for characters/settings. Tag them precisely in consistency_tags:\n${referenceImages.map(img => `- "${img.tag}"`).join('\n')}\n`;
     }
+
+    // Hard-inject a user-supplied premise as a non-negotiable constraint.
+    // This overrides AI narrative invention while still respecting all other settings.
+    const customPremiseBlock = customPremise
+        ? `\nREQUIRED PREMISE (non-negotiable): "${customPremise}" — build the entire strip around this exact premise. Do not substitute, paraphrase, or reframe it. Every panel must serve this premise directly. The premise is locked; only the panel breakdown and visual execution are yours to design.\n`
+        : '';
 
     if (numPlans > 1) {
         // Brainstorm mode: three structurally distinct delivery mechanisms, all within the user's chosen comedic register
@@ -250,7 +256,7 @@ ${topicBlock}
 - **Angle:** ${stanceGuidance}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
-${referenceImageInfo}
+${referenceImageInfo}${customPremiseBlock}
 Before writing any premise, apply STEP 0 once: mine the background context and pick ONE sharpest piece of ammunition — the single best irony, OR a verbatim real quote, OR a specific number. Then use that one sharp fact as the common foundation across all three concepts — each expresses it through a different structural mechanism, but all three are grounded in the same real material.
 Remember: write the "premise" field first for each concept before designing panels. That one sentence is your anchor.
 CRITICAL: No matter how much background context is provided, every concept's core premise must remain faithful to the user's stated Topic and Angle above. Background context is your satirical ammunition — not a replacement for the user's subject.
@@ -265,7 +271,7 @@ ${topicBlock}
 - **Angle:** ${stanceGuidance}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
-${referenceImageInfo}
+${referenceImageInfo}${customPremiseBlock}
 Before writing the premise, apply STEP 0: mine the background context and pick ONE sharpest piece — the single best irony, OR a verbatim real quote, OR a specific number. Build the entire premise from that one piece.
 Remember: write the "premise" field first before designing panels. That one sentence anchors the entire strip.
 CRITICAL: No matter how much background context is provided, the comic's premise must remain faithful to the user's stated Topic and Angle above. Background context is your satirical ammunition — not a replacement for the user's subject.

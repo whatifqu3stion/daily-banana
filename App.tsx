@@ -21,6 +21,8 @@ const App: React.FC = () => {
     loadingMessages,
     progress,
     error,
+    isCustomPremiseLoading,
+    customPremiseError,
     isPanelLoading,
     handleFormSubmit,
     handleSelectStory,
@@ -29,6 +31,7 @@ const App: React.FC = () => {
     handleRegeneratePanelImage,
     handleRefinePanelImage,
     handleStartNew,
+    handleCustomPremise,
     onRegenerateConcept,
     onRegenerateIdeas,
     onUpdateReviewImage,
@@ -71,8 +74,11 @@ const App: React.FC = () => {
           <StorySwiper
             storyPlans={comicPlans}
             onSelectStory={handleSelectStory}
-            onRegenerate={onRegenerateIdeas}
+            onRegenerate={formData?.brainstormMode ? onRegenerateIdeas : onRegenerateConcept}
             onReturnToForm={onReturnFromSwiper}
+            onCustomPremise={handleCustomPremise}
+            isCustomPremiseLoading={isCustomPremiseLoading}
+            customPremiseError={customPremiseError}
           />
         );
       case 'review':
