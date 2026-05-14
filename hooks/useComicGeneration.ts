@@ -54,24 +54,27 @@ const makeConsistencyRef = (
 });
 
 /**
- * Curated starting positions for speech/thought bubbles.
+ * Bubble slot layouts chosen by pre-counting how many speech/thought elements
+ * are in the panel, so each count gets the most visually balanced arrangement.
  *
- * Priority order (slot 0 is used when there is only one bubble):
+ * SINGLE (1 bubble):
+ *   Slot 0 — upper-centre, 70% wide.  Tail → bottom-centre.
  *
- *  Slot 0 — upper-centre:   wide centred bubble for the common single-bubble case.
- *                            Tail points to bottom-centre (character is below the bubble).
- *  Slot 1 — lower-left:     second bubble drops to the lower half so the two don't
- *                            both crowd the top strip. Tail points upward-right.
- *  Slot 2 — upper-right:    third bubble returns to the top, offset to the right.
- *                            Tail points downward-left.
- *  Slot 3 — lower-right:    fourth bubble fills the remaining bottom-right quadrant.
- *                            Tail points upward-left.
+ * MULTI (2+ bubbles) — true left/right split with vertical separation:
+ *   Slot 0 — upper-left.   Tail → lower-right.
+ *   Slot 1 — lower-right.  Tail → upper-left.
+ *   Slot 2 — upper-right.  Tail → lower-left.
+ *   Slot 3 — lower-left.   Tail → upper-right.
  */
-const BUBBLE_SLOTS = [
+const BUBBLE_SLOTS_SINGLE = [
   { pos: { x: '15%', y: '5%'  }, size: { width: '70%', height: '30%' }, tail: { x: '50%', y: '120%' } },
-  { pos: { x: '2%',  y: '60%' }, size: { width: '48%', height: '30%' }, tail: { x: '80%', y: '-20%' } },
+] as const;
+
+const BUBBLE_SLOTS_MULTI = [
+  { pos: { x: '2%',  y: '5%'  }, size: { width: '48%', height: '30%' }, tail: { x: '80%', y: '120%' } },
+  { pos: { x: '50%', y: '58%' }, size: { width: '48%', height: '30%' }, tail: { x: '20%', y: '-20%' } },
   { pos: { x: '50%', y: '5%'  }, size: { width: '48%', height: '30%' }, tail: { x: '20%', y: '120%' } },
-  { pos: { x: '50%', y: '60%' }, size: { width: '48%', height: '30%' }, tail: { x: '20%', y: '-20%' } },
+  { pos: { x: '2%',  y: '58%' }, size: { width: '48%', height: '30%' }, tail: { x: '80%', y: '-20%' } },
 ] as const;
 
 export default function useComicGeneration() {
@@ -381,6 +384,12 @@ export default function useComicGeneration() {
       const image = panelImages[index] ?? '';
       const failed = image === '';
 
+      // Pre-count speech/thought elements so we can choose the right slot set.
+      // 1 bubble → wide centred single slot; 2+ → left/right split with vertical separation.
+      const speechCount = (planPanel.text_elements || []).filter(
+        te => te.role === 'speech' || te.role === 'thought'
+      ).length;
+      const bubbleSlots = speechCount <= 1 ? BUBBLE_SLOTS_SINGLE : BUBBLE_SLOTS_MULTI;
       let bubbleSlot = 0;
       const textElements = (planPanel.text_elements || []).map(te => {
         if (te.role === 'caption') {
@@ -404,7 +413,7 @@ export default function useComicGeneration() {
           };
         }
         // speech / thought — assign next slot
-        const slot = BUBBLE_SLOTS[bubbleSlot % BUBBLE_SLOTS.length];
+        const slot = bubbleSlots[bubbleSlot % bubbleSlots.length];
         bubbleSlot++;
         return {
           ...te,
