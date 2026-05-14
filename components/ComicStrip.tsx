@@ -129,9 +129,14 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             )}
           </div>
         )}
-        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite">
-          <p className="text-base text-gray-600">
+        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite space-y-1">
+          <p className="text-[10px] text-gray-500 whitespace-nowrap">
             {footerDisclaimer}
+          </p>
+          <p className="text-[10px] text-gray-500 flex items-center justify-center gap-1">
+            Tech. by
+            <TwitterIcon className="w-3 h-3 inline-block" />
+            @SummitSatoshi
           </p>
         </footer>
       </div>
