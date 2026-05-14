@@ -584,6 +584,10 @@ export default function useComicGeneration() {
     setCustomPremiseError(null);
     try {
       const customFormData = { ...formDataCache, customPremise: premise };
+      // Persist customFormData so downstream operations (speculative gen,
+      // handleContinueGeneration, regenerate, refine) all see the right
+      // form settings AND so onReturnFromReview restores the correct state.
+      setFormDataCache(customFormData);
       const plan = await geminiService.generateSingleComicPlan(customFormData, activeComicReferences.current);
       // handleSelectStory takes over from here with the global loading screen
       // (it generates the panel 0 image before transitioning to review).
@@ -615,13 +619,11 @@ export default function useComicGeneration() {
   const onReturnFromReview = useCallback(() => {
     speculativeAbortRef.current = true;
     speculativePanelsRef.current = [];
-    if (formDataCache?.brainstormMode) {
-      setAppStage('story-swipe');
-    } else {
-      setAppStage('form');
-    }
+    // Both brainstorm and non-brainstorm now use StorySwiper, so "go back"
+    // from review always returns to story-swipe rather than the raw form.
+    setAppStage('story-swipe');
     setReviewData(null);
-  }, [formDataCache]);
+  }, []);
 
   return {
     appStage,
