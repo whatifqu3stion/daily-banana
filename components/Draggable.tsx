@@ -56,8 +56,11 @@ const Draggable: React.FC<DraggableProps> = ({
   useEffect(() => { onSizeChangeRef.current = onSizeChange; });
 
   // Track boundary element dimensions via ResizeObserver.
-  // This fires on first layout (replacing the old setTimeout hack) and again
-  // any time the panel resizes — e.g. when the browser window is resized.
+  // Also reads getBoundingClientRect() immediately inside the useLayoutEffect so
+  // the initial position resolves synchronously even if the ResizeObserver fires
+  // its first callback with a 0×0 contentRect (which happens on some React 18
+  // concurrent renders where the element hasn't been painted when the observer
+  // first calls back, leaving every overlay permanently visibility:hidden).
   useLayoutEffect(() => {
     const boundary = boundaryRef.current;
     if (!boundary) return;
@@ -71,6 +74,14 @@ const Draggable: React.FC<DraggableProps> = ({
       });
     });
     observer.observe(boundary);
+
+    // Immediate fallback: useLayoutEffect fires after the DOM is committed so
+    // getBoundingClientRect() already has real pixel dimensions here.
+    const rect = boundary.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      setBoundarySize({ width: rect.width, height: rect.height });
+    }
+
     return () => {
       observer.disconnect();
       cancelAnimationFrame(rafId);
