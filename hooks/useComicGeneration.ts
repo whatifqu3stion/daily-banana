@@ -645,6 +645,13 @@ export default function useComicGeneration() {
     // The useEffect watching reviewData will automatically restart speculative generation.
   }, []);
 
+  const onUpdateSetDescription = useCallback((newDesc: string) => {
+    setReviewData(prev => {
+      if (!prev) return null;
+      return { ...prev, plan: { ...prev.plan, set_description: newDesc } };
+    });
+  }, []);
+
   const onReturnFromSwiper = useCallback(() => {
     setAppStage('form');
     setComicPlans([]);
@@ -683,6 +690,7 @@ export default function useComicGeneration() {
     onRegenerateConcept,
     onRegenerateIdeas,
     onUpdateReviewImage,
+    onUpdateSetDescription,
     onReturnFromSwiper,
     onReturnFromReview,
   };

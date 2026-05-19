@@ -16,6 +16,7 @@ interface ReviewPlanProps {
     onReturnToForm: () => void;
     onRegenerateConcept: () => void;
     onUpdateReviewImage: (newImage: string) => void;
+    onUpdateSetDescription: (newDesc: string) => void;
 }
 
 const ReviewPlan: React.FC<ReviewPlanProps> = ({
@@ -24,11 +25,15 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
     onContinue,
     onReturnToForm,
     onRegenerateConcept,
-    onUpdateReviewImage
+    onUpdateReviewImage,
+    onUpdateSetDescription,
 }) => {
     const [refinementTags, setRefinementTags] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [setDescOpen, setSetDescOpen] = useState(false);
+    const [setDescEditing, setSetDescEditing] = useState(false);
+    const [setDescDraft, setSetDescDraft] = useState(reviewData.plan.set_description ?? '');
 
     const firstPanelPlan = reviewData.plan.panels[0];
 
@@ -135,6 +140,61 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                                 </div>
                             </div>
                         ))}
+
+                        {/* Set Description — collapsible background-props contract */}
+                        {reviewData.plan.set_description !== undefined && (
+                            <div className="text-sm pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => { setSetDescOpen(o => !o); setSetDescEditing(false); }}
+                                    className="flex items-center gap-1 font-bold font-special-elite text-gray-600 hover:text-black transition-colors"
+                                >
+                                    <span className={`inline-block transition-transform duration-150 ${setDescOpen ? 'rotate-90' : ''}`}>▶</span>
+                                    Set Description
+                                </button>
+                                {setDescOpen && (
+                                    <div className="mt-2 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                        <p className="text-xs text-gray-500 font-lora italic mb-2">
+                                            Background props locked in for every panel. Edit before generating to keep the set consistent.
+                                        </p>
+                                        {setDescEditing ? (
+                                            <div className="flex flex-col gap-2">
+                                                <textarea
+                                                    className="w-full text-xs font-lora p-2 border border-gray-400 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black bg-white resize-none"
+                                                    rows={4}
+                                                    value={setDescDraft}
+                                                    onChange={e => setSetDescDraft(e.target.value)}
+                                                />
+                                                <div className="flex gap-2 justify-end">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSetDescDraft(reviewData.plan.set_description ?? ''); setSetDescEditing(false); }}
+                                                        className="text-xs px-2 py-1 border border-gray-400 rounded-md hover:bg-gray-100 text-gray-700"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { onUpdateSetDescription(setDescDraft); setSetDescEditing(false); }}
+                                                        className="text-xs px-2 py-1 bg-black text-white rounded-md hover:bg-gray-800"
+                                                    >
+                                                        Save
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className="font-lora text-gray-800 text-xs cursor-pointer hover:bg-gray-100 rounded p-1 transition-colors"
+                                                title="Click to edit"
+                                                onClick={() => setSetDescEditing(true)}
+                                            >
+                                                {reviewData.plan.set_description || <span className="italic text-gray-400">No set description provided.</span>}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 

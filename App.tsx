@@ -35,6 +35,7 @@ const App: React.FC = () => {
     onRegenerateConcept,
     onRegenerateIdeas,
     onUpdateReviewImage,
+    onUpdateSetDescription,
     onReturnFromSwiper,
     onReturnFromReview,
   } = useComicGeneration();
@@ -91,6 +92,7 @@ const App: React.FC = () => {
             onReturnToForm={onReturnFromReview}
             onRegenerateConcept={onRegenerateConcept}
             onUpdateReviewImage={onUpdateReviewImage}
+            onUpdateSetDescription={onUpdateSetDescription}
           />
         );
       case 'strip':

@@ -189,40 +189,40 @@ const Panel: React.FC<PanelProps> = ({
               {renderTextElement(element)}
             </Draggable>
           ))}
-        </div>
-      </div>
 
-      <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
-        <input
-          type="text"
-          value={tagsInput}
-          onChange={handleUserTagsChange}
-          onBlur={handleUserTagsBlur}
-          placeholder="e.g., 'wearing a red hat', 'add a dog'"
-          className="w-full text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
-        />
-        {/* Refine is only meaningful when there is an existing image to build on */}
-        {!panelData.failed && (
-          <Tooltip text="Refine image (small changes)" position="top-left">
-              <button
-                onClick={() => {
-                  // Commit the live input value immediately — don't rely on blur firing first
-                  const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-                  onUpdatePanel(panelIndex, { user_consistency_tags: committed });
-                  onRefineImage(panelIndex, tagsInput);
-                }}
-                disabled={isLoading}
-                className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
-              >
-                <SparklesIcon className="w-4 h-4 text-black" />
+          <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
+            <input
+              type="text"
+              value={tagsInput}
+              onChange={handleUserTagsChange}
+              onBlur={handleUserTagsBlur}
+              placeholder="e.g., 'wearing a red hat', 'add a dog'"
+              className="flex-1 min-w-0 text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
+            />
+            {/* Refine is only meaningful when there is an existing image to build on */}
+            {!panelData.failed && (
+              <Tooltip text="Refine image (small changes)" position="top-left">
+                <button
+                  onClick={() => {
+                    // Commit the live input value immediately — don't rely on blur firing first
+                    const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+                    onUpdatePanel(panelIndex, { user_consistency_tags: committed });
+                    onRefineImage(panelIndex, tagsInput);
+                  }}
+                  disabled={isLoading}
+                  className="flex-shrink-0 p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                >
+                  <SparklesIcon className="w-4 h-4 text-black" />
+                </button>
+              </Tooltip>
+            )}
+            <Tooltip text="Regenerate image (major changes)" position="top-right">
+              <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="flex-shrink-0 p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
+                <RefreshIcon className="w-4 h-4 text-black" />
               </button>
-          </Tooltip>
-        )}
-        <Tooltip text="Regenerate image (major changes)" position="top-right">
-            <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
-              <RefreshIcon className="w-4 h-4 text-black" />
-            </button>
-        </Tooltip>
+            </Tooltip>
+          </div>
+        </div>
       </div>
     </div>
   );
