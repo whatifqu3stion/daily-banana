@@ -105,6 +105,7 @@ export interface ComicPlan {
     title: string;
     summary: string;
     panels: PlanPanel[];
+    set_description?: string; // One sentence enumerating fixed background props and their exact positions — injected silently into every panel's image prompt.
 }
 
 // Concrete layout props produced by layoutAdapter for each panel.
@@ -141,6 +142,7 @@ export interface PanelData {
 export interface ComicStripData {
   title: string;
   premise?: string; // The core comedic premise — passed to image model for narrative context.
+  set_description?: string; // Fixed background prop contract — injected into per-panel regens.
   panels: PanelData[];
   context?: string; // Optional AI-generated archivist note about the real-world context.
   contextSources?: ExplainerSource[]; // Sources cited in the grounded context explainer.

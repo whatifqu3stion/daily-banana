@@ -19,6 +19,10 @@ const comicPlanSchema = {
         },
         title: { type: Type.STRING, description: 'A punchy, newspaper-headline-style title. Should tease the joke without giving it away. Avoid puns that require the strip to understand.' },
         summary: { type: Type.STRING, description: 'A one-sentence log-line of the strip, as a TV listings entry would describe it.' },
+        set_description: {
+            type: Type.STRING,
+            description: 'ONE sentence enumerating the key fixed background props that appear in more than one panel, with their exact spatial positions (which wall, which corner, which surface). Written once for the whole strip. Example: "Break room: \'Join Our Team\' poster on the right wall, Fidelity logo plaque in the upper-right corner, microwave on the far-left counter, notice board mounted above the door." The image model reads this for every panel to reproduce the same set dressing. Be specific about position — "right wall" and "upper-right corner" are useful; "in the background" is not. If no fixed recurring props exist, leave empty.'
+        },
         panels: {
             type: Type.ARRAY,
             description: 'An array of 3–4 panel objects. Each panel must earn its place in the comedic arc. Do not pad.',
@@ -106,7 +110,21 @@ Every panel must serve this premise. If a panel doesn't advance or pay off the j
 
 ---
 
-## STEP 2 — BUILD THE STRUCTURAL ARC
+## STEP 2 — LOCK THE SET WITH set_description
+Before designing any individual panel, write the \`set_description\` field. Look at the panels you plan to draw and identify every background prop that will appear in **more than one panel** (posters, logos, furniture, signage, screens, whiteboards, notice boards, etc.). For each prop, state its exact spatial position using wall (left wall / right wall / back wall), corner (upper-left / upper-right / lower-left / lower-right), or surface (counter / desk / shelf). Pack them all into ONE sentence.
+
+- GOOD: "Senate hearing room: 'SENATE INTELLIGENCE COMMITTEE' banner above the back wall, witness nameplate 'MARK ZUCKERBERG' on the table centre, a tangle of charging cables on the floor to the left."
+- BAD: "A hearing room with some furniture and decorations."
+
+If the strip takes place in only one location, this is straightforward. If panels shift location mid-strip, describe the props that anchor the first (and dominant) location. If the strip is entirely outdoors with no fixed props, write an empty string.
+
+The image model will receive this description verbatim for every panel — it is a non-negotiable spatial contract. Invest one careful sentence here and every panel will look like it was drawn in the same room.
+
+**Also: \`scene_state\` must now include any deliberate background changes.** If a banner gets unfurled, a door swings open, a projector screen descends, or any fixed set element changes state mid-strip, record that change in the \`scene_state\` of the panel where it happens so the next panel's image model opens from the correct updated set.
+
+---
+
+## STEP 3 — BUILD THE STRUCTURAL ARC
 Choose your panel count and follow its arc rigidly:
 
 **3 panels (classic):**
@@ -124,7 +142,7 @@ Choose your panel count and follow its arc rigidly:
 
 ---
 
-## STEP 3 — APPLY THE COMEDIC STYLE
+## STEP 4 — APPLY THE COMEDIC STYLE
 The user specifies a style. Apply it with craft, not just as a label:
 
 - **Satirical**: Expose a real hypocrisy through exaggeration. The target behaviour must be recognisable — the audience should wince in recognition. Use specificity: name the type of politician, the exact technology, the specific corporate jargon.
@@ -135,7 +153,7 @@ The user specifies a style. Apply it with craft, not just as a label:
 
 ---
 
-## STEP 4 — DIALOGUE ECONOMICS
+## STEP 5 — DIALOGUE ECONOMICS
 - Target: **3–7 words per speech bubble.** Fewer is almost always better.
 - Never let a character explain the joke. If you've written "As you can see, this ironically shows that..." — delete it.
 - Avoid hedging language: no "Well...", "I suppose...", "Perhaps...".
@@ -145,7 +163,7 @@ The user specifies a style. Apply it with craft, not just as a label:
 
 ---
 
-## STEP 5 — VISUAL COMEDY PRINCIPLES
+## STEP 6 — VISUAL COMEDY PRINCIPLES
 The image must carry at least 50% of the joke. Before writing dialogue, ask: "Could this be funny without any words?"
 
 - **Character specificity**: Give characters a strong, memorable visual hook (a signature prop, an absurd posture, a telling fashion choice). Avoid generic "man in suit."
@@ -295,6 +313,7 @@ const constructImagePrompt = (
     overlayTexts?: string[],
     panelContext?: PanelContext,
     prevSceneState?: string,
+    setDescription?: string,
 ): string => {
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     // Use the full craft note so the image model gets the same rich guidance
@@ -339,9 +358,13 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
         ? `\nCONTINUITY FROM PREVIOUS PANEL — this scene opens from this state:\n${prevSceneState}\nCharacters begin this panel where the previous panel left them. Do not contradict this state.\n`
         : '';
 
+    const setDescriptionBlock = setDescription?.trim()
+        ? `\nFIXED SET ELEMENTS — SPATIAL CONTRACT: The following background elements are fixed throughout the strip. Reproduce them in these exact positions whenever they are visible in this panel. Do not move, remove, or alter them unless the scene description or continuity note explicitly says they have changed.\n${setDescription.trim()}\n`
+        : '';
+
     return `${narrativeContextBlock}
 OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.${overlayBlacklistBlock}
-
+${setDescriptionBlock}
 PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
 
 CANVAS SHAPE: ${shapeLabel} frame — compose the full shot for this exact ratio, filling edge-to-edge.
@@ -446,6 +469,9 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
   if (typeof plan.premise === 'string') newPlan.premise = plan.premise.trim();
   if (typeof plan.title === 'string') newPlan.title = plan.title.trim();
   if (typeof plan.summary === 'string') newPlan.summary = plan.summary.trim();
+  if (typeof plan.set_description === 'string' && plan.set_description.trim()) {
+    newPlan.set_description = plan.set_description.trim();
+  }
 
   if (Array.isArray(plan.panels)) {
     for (const p of plan.panels) {
@@ -600,8 +626,9 @@ const generatePanelImageWithReferences = async (
     overlayTexts?: string[],
     panelContext?: PanelContext,
     prevSceneState?: string,
+    setDescription?: string,
 ): Promise<string> => {
-    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts, panelContext, prevSceneState);
+    const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts, panelContext, prevSceneState, setDescription);
     // Each reference image is preceded by its tag text so the model understands
     // what role that image plays (style sheet, previous panel, user character, etc.).
     const parts = [
@@ -655,6 +682,7 @@ const refinePanelImage = async (
     overlayTexts?: string[],
     panelContext?: PanelContext,
     prevSceneState?: string,
+    setDescription?: string,
 ): Promise<string> => {
     const prompt = constructImagePrompt(
         visualPrompt,
@@ -667,6 +695,7 @@ const refinePanelImage = async (
         overlayTexts,
         panelContext,
         prevSceneState,
+        setDescription,
     );
 
     const parts = [
