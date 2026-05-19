@@ -25,7 +25,7 @@ const comicPlanSchema = {
         },
         panels: {
             type: Type.ARRAY,
-            description: 'An array of 3–4 panel objects. Each panel must earn its place in the comedic arc. Do not pad.',
+            description: 'An array of 2–4 panel objects. 2 panels for a sharp single-beat visual gag; 3 for the classic setup-escalate-punchline; 4 for a story that earns the extra beat. Each panel must earn its place in the comedic arc. Do not pad.',
             items: {
                 type: Type.OBJECT,
                 properties: {
@@ -57,7 +57,7 @@ const comicPlanSchema = {
                     },
                     size: {
                         type: Type.STRING,
-                        description: 'Layout weight: "small" (quick beat), "medium" (standard), "large" (visual gag or punchline that needs space to breathe).'
+                        description: 'Layout weight for the layout engine: "small" (fast, tight beat — a quick reaction or brief escalation step), "medium" (standard panel), "large" (use this as the DEFAULT for any "punchline" or "button" panel — the layout engine gives large panels extra visual width or a cinematic 16:9 ratio so the payoff has room to breathe; only drop to "medium" if the joke lives entirely in tight close-up dialogue where extra width genuinely hurts). Also use "large" for an opening "establish" panel when a wide establishing shot genuinely sets the scene. Default "escalate" panels to "medium" unless a sight gag needs visual room.'
                     },
                     aspect_ratio: {
                         type: Type.STRING,

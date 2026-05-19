@@ -77,6 +77,13 @@ const TEMPLATES: Record<string, TemplateSlot[]> = {
         { gridCols: 2, aspectRatio: '1:1' },
         { gridCols: 6, aspectRatio: '16:9' },
     ],
+    // Wide establish + two tight beats + wide punchline — diagonal visual flow
+    'bookend-4': [
+        { gridCols: 4, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 4, aspectRatio: '1:1' },
+    ],
 };
 
 const isLarge     = (p: PlanPanel) => p.size === 'large';
@@ -106,6 +113,7 @@ function pickTemplateName(panels: PlanPanel[]): string {
             return 'triplet';
 
         case 4:
+            if (isEstablish(p0) && isLarge(p0) && isPunchline(pLast) && isLarge(pLast)) return 'bookend-4';
             if (isEstablish(p0) && isLarge(p0))      return 'cinematic-open-4';
             if (isPunchline(pLast) && isLarge(pLast)) return 'wide-punchline-4';
             return 'quad-equal';

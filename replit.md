@@ -91,7 +91,14 @@ Curated named templates chosen by reading `comedic_role` and `size` from the AI 
 | 3 | `cinematic-open-3` | 6 (16:9) / 3+3 sq | panel 0 establish+large |
 | 3 | `wide-punchline-3` | 3+3 sq / 6 (16:9) | panel 2 punchline+large |
 | 4 | `quad-equal` | 3+3 / 3+3 sq | default |
-| 4 | `cinematic-open-4` | 6 (16:9) / 2+2+2 sq | panel 0 establish+large |
-| 4 | `wide-punchline-4` | 2+2+2 sq / 6 (16:9) | panel 3 punchline+large |
+| 4 | `cinematic-open-4` | 6 (16:9) / 2+2+2 sq | panel 0 establish+large only |
+| 4 | `wide-punchline-4` | 2+2+2 sq / 6 (16:9) | panel 3 punchline+large only |
+| 4 | `bookend-4` | 4+2 / 2+4 sq | panel 0 establish+large AND panel 3 punchline+large |
 
 Only full-width (col-span-6) panels get 16:9 — avoids row-height mismatches within a row.
+
+### `size` assignment rules (prompt-enforced)
+- **punchline / button panels**: default to `"large"` — the layout engine widens or cinematic-crops these
+- **establish panels**: `"large"` when a wide shot genuinely sets the scene
+- **escalate panels**: `"medium"` unless a sight gag needs visual room
+- Panel count: **2–4** (2 for sharp single-beat gags; 3 classic; 4 full arc)
