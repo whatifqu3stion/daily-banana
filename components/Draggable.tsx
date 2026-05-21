@@ -231,21 +231,34 @@ const Draggable: React.FC<DraggableProps> = ({
     };
   }, [isDragging, isResizing, handlePointerMove, handlePointerUp]);
 
+  // True once the ResizeObserver / getBoundingClientRect has given us real pixel
+  // boundary dimensions.  Before that, render using the raw initialPosition /
+  // initialSize values as CSS strings (they are always percentage strings such as
+  // '15%' / '70%').  CSS handles percentage left/top/width/height on absolutely-
+  // positioned elements natively, so the overlays are visible immediately — no
+  // need to hide them while waiting for the boundary-size measurement cycle.
+  // Once resolved we switch to pixel layout for accurate drag/resize tracking.
+  const isResolved = size.width > 0;
+  const toCss = (v: number | string) =>
+    typeof v === 'string' ? v : `${v}px`;
+
   return (
     <div
       ref={elementRef}
       onPointerDown={handleDragStart}
       className="absolute z-10 group"
-      style={{
+      style={isResolved ? {
         left: `${position.x}px`,
         top: `${position.y}px`,
         width: `${size.width}px`,
         height: `${size.height}px`,
         touchAction: 'none',
-        // Hide until the ResizeObserver has resolved the initial position/size
-        // from the percentage values. Without this, the element briefly renders
-        // at 0×0 in the top-left corner before the first observer callback fires.
-        visibility: size.width === 0 ? 'hidden' : 'visible',
+      } : {
+        left: toCss(initialPosition.x),
+        top: toCss(initialPosition.y),
+        width: toCss(initialSize.width),
+        height: toCss(initialSize.height),
+        touchAction: 'none',
       }}
     >
       <div className="w-full h-full cursor-move">
