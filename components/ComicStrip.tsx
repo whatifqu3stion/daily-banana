@@ -131,13 +131,12 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         )}
         {/* -mx / px cancel the card's inner padding so the footer border and text
             span the full card width — gives whitespace-nowrap the most room. */}
-        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite space-y-1 -mx-4 px-4 md:-mx-8 md:px-8">
-          <p className="text-[9px] text-gray-500 whitespace-nowrap overflow-hidden">
+        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite -mx-4 px-4 md:-mx-8 md:px-8">
+          <p className="text-[9px] text-gray-500 flex items-center justify-center gap-1 whitespace-nowrap overflow-hidden">
             {footerDisclaimer}
-          </p>
-          <p className="text-[9px] text-gray-500 flex items-center justify-center gap-1">
+            <span className="opacity-40">·</span>
             Tech. by
-            <TwitterIcon className="w-3 h-3 inline-block" />
+            <TwitterIcon className="w-3 h-3 inline-block flex-shrink-0" />
             @SummitSatoshi
           </p>
         </footer>
