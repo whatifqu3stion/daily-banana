@@ -1,0 +1,1 @@
+- [Npm lockfile registries](npm-lockfile-registries.md) — regenerate locks with the public HTTPS registry so commits do not reference Replit-internal package URLs.
