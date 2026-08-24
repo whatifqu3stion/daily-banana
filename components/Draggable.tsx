@@ -13,6 +13,7 @@ interface DraggableProps {
   initialSize: ElementSize;
   onPositionChange: (position: ElementPosition) => void;
   onSizeChange: (size: ElementSize) => void;
+  onRemove: () => void;
   boundaryRef: React.RefObject<HTMLElement>;
   disableDrag?: boolean;
 }
@@ -36,6 +37,7 @@ const Draggable: React.FC<DraggableProps> = ({
   initialSize,
   onPositionChange,
   onSizeChange,
+  onRemove,
   boundaryRef,
   disableDrag = false,
 }) => {
@@ -264,6 +266,23 @@ const Draggable: React.FC<DraggableProps> = ({
       <div className="w-full h-full cursor-move">
         {children}
       </div>
+      <button
+        type="button"
+        aria-label="Remove text overlay"
+        title="Remove text overlay"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="no-export absolute -top-2 -right-2 z-30 w-6 h-6 items-center justify-center rounded-full border-2 border-black bg-white text-base font-bold leading-none text-black shadow-sm opacity-0 group-hover:flex hover:bg-red-100"
+      >
+        ×
+      </button>
       <div
         onPointerDown={handleResizeStart}
         className="absolute -right-1.5 -bottom-1.5 w-5 h-5 bg-black border-2 border-white rounded-full cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"

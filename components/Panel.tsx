@@ -43,6 +43,12 @@ const Panel: React.FC<PanelProps> = ({
     );
     onUpdatePanel(panelIndex, { text_elements: updatedElements });
   };
+
+  const handleRemoveTextElement = (elementId: string) => {
+    onUpdatePanel(panelIndex, {
+      text_elements: panelData.text_elements.filter(el => el.id !== elementId),
+    });
+  };
   
   const handleUserTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTagsInput(e.target.value);
@@ -184,6 +190,7 @@ const Panel: React.FC<PanelProps> = ({
               initialSize={element.size}
               onPositionChange={(pos) => handleUpdateTextElement(element.id, { position: pos })}
               onSizeChange={(size) => handleUpdateTextElement(element.id, { size: size })}
+              onRemove={() => handleRemoveTextElement(element.id)}
               boundaryRef={boundaryRef}
             >
               {renderTextElement(element)}
