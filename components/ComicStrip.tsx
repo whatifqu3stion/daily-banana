@@ -37,35 +37,57 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   footerDisclaimer,
 }) => {
   const comicRef = useRef<HTMLDivElement>(null);
+  const downloadInFlightRef = useRef(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (!comicRef.current) return;
+    if (!comicRef.current || downloadInFlightRef.current) return;
+    downloadInFlightRef.current = true;
     setDownloadError(null);
+    setIsDownloading(true);
 
     try {
       const fontCssUrl = 'https://fonts.googleapis.com/css2?family=Bangers&family=Lora:wght@400;700&family=Special+Elite&display=swap';
       const fontEmbedCss = await embedGoogleFonts(fontCssUrl);
+      const excludedNodes = Array.prototype.slice.call(
+        comicRef.current.querySelectorAll<HTMLElement>('.no-export')
+      ) as HTMLElement[];
+      const previousDisplays = excludedNodes.map(node => node.style.display);
 
-      const dataUrl = await htmlToImage.toPng(comicRef.current, {
-        quality: 1,
-        pixelRatio: 2,
-        fontEmbedCSS: fontEmbedCss,
-        filter: (node) => {
-          if (node instanceof HTMLElement) {
-            return !node.classList.contains('no-export');
-          }
-          return true;
-        }
-      });
+      try {
+        // Hide editor-only UI before html-to-image measures the canvas. Filtering
+        // only the cloned nodes preserves the original height and leaves a blank
+        // band at the bottom of the exported page.
+        excludedNodes.forEach(node => {
+          node.style.display = 'none';
+        });
+        await document.fonts.ready;
+        await new Promise<void>(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        });
 
-      const link = document.createElement('a');
-      link.download = `${comicData.title.replace(/\s+/g, '_').toLowerCase()}.png`;
-      link.href = dataUrl;
-      link.click();
+        const dataUrl = await htmlToImage.toPng(comicRef.current, {
+          quality: 1,
+          pixelRatio: 2,
+          fontEmbedCSS: fontEmbedCss,
+        });
+
+        const link = document.createElement('a');
+        link.download = `${comicData.title.replace(/\s+/g, '_').toLowerCase()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } finally {
+        excludedNodes.forEach((node, index) => {
+          node.style.display = previousDisplays[index];
+        });
+      }
     } catch (error) {
       console.error('Download failed:', error);
       setDownloadError('Download failed — the image could not be exported. Try again in a moment.');
+    } finally {
+      downloadInFlightRef.current = false;
+      setIsDownloading(false);
     }
   };
   
@@ -82,7 +104,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
-       <div ref={comicRef} className="w-full bg-paper-light p-4 md:p-8 border-3 border-black shadow-xl rounded-lg">
+       <div ref={comicRef} className="w-full bg-paper-light px-4 py-5 sm:p-6 md:p-8 border-3 border-black shadow-xl rounded-lg">
          <div className="no-export mb-5 flex flex-col gap-2 border-b-2 border-black pb-4 sm:flex-row sm:items-end sm:justify-between">
            <div>
              <p className="text-xs font-open-sans font-bold uppercase tracking-[0.18em] text-gray-500">Final edition</p>
@@ -90,7 +112,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
            </div>
            <span className="text-xs font-special-elite text-gray-600">{comicData.panels.length} panels</span>
          </div>
-        <h2 className="text-4xl md:text-5xl font-bangers text-center tracking-wider mb-8 text-black">
+         <h2 className="mx-auto mb-6 max-w-[18ch] text-balance text-center font-bangers text-4xl tracking-wider text-black md:mb-8 md:text-5xl">
           {comicData.title}
         </h2>
          <p className="text-center text-sm font-open-sans text-gray-600 mb-4 no-export">
@@ -111,12 +133,12 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           ))}
         </div>
         </div>
-        {comicData.context && (
-          <div className="mt-6 pt-4 border-t-2 border-dashed border-black">
-            <h4 className="font-special-elite text-lg font-bold text-black">A Note from the Archives:</h4>
-            <p className="font-lora text-base text-gray-800 mt-2">{comicData.context}</p>
+         {comicData.context && (
+           <aside className="mt-7 grid gap-3 border-y border-black/50 py-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-6 md:py-5">
+             <div>
+               <h4 className="font-special-elite text-lg font-bold leading-tight text-black">A Note from the Archives</h4>
             {comicData.contextSources && comicData.contextSources.length > 0 && (
-               <p className="mt-2 text-sm font-open-sans text-gray-600">
+               <p className="mt-3 break-words text-sm font-open-sans leading-5 text-gray-700">
                 {'Sources: '}
                 {comicData.contextSources.map((s, i) => (
                   <React.Fragment key={s.url}>
@@ -125,8 +147,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
                       href={s.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-500 hover:text-black transition-colors"
-                      style={{ textDecoration: 'none' }}
+                       className="underline decoration-black/30 underline-offset-2 transition-colors hover:text-black"
                     >
                       {extractDomain(s.url)}
                     </a>
@@ -134,18 +155,19 @@ const ComicStrip: React.FC<ComicStripProps> = ({
                 ))}
               </p>
             )}
-          </div>
+             </div>
+             <p className="max-w-[72ch] font-lora text-base leading-7 text-gray-800">{comicData.context}</p>
+           </aside>
         )}
-        {/* -mx / px cancel the card's inner padding so the footer border and text
-            span the full card width — gives whitespace-nowrap the most room. */}
-        <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite -mx-4 px-4 md:-mx-8 md:px-8">
-           <p className="text-xs text-gray-600 flex items-center justify-center gap-1 whitespace-nowrap overflow-hidden">
-            {footerDisclaimer}
-            <span className="opacity-40">·</span>
-            Tech. by
-            <TwitterIcon className="w-3 h-3 inline-block flex-shrink-0" />
-            @SummitSatoshi
-          </p>
+         <footer className="-mx-4 mt-6 border-t-2 border-black px-4 pt-5 font-special-elite sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">
+           <div className="flex flex-col items-center justify-between gap-3 text-center text-sm leading-5 text-gray-700 sm:flex-row sm:items-start sm:text-left md:text-base md:leading-6">
+             <p className="max-w-[68ch]">{footerDisclaimer}</p>
+             <p className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap font-bold text-black">
+               <span>Tech. by</span>
+               <TwitterIcon className="h-4 w-4 flex-shrink-0" />
+               <span>@SummitSatoshi</span>
+             </p>
+           </div>
         </footer>
       </div>
       
@@ -176,10 +198,12 @@ const ComicStrip: React.FC<ComicStripProps> = ({
          <Tooltip text="Download this comic as a PNG image">
           <button
             onClick={handleDownload}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white font-bold border-2 border-black hover:bg-gray-800 transition-colors rounded-md"
+             disabled={isDownloading}
+             aria-busy={isDownloading}
+             className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white font-bold border-2 border-black hover:bg-gray-800 transition-colors rounded-md disabled:cursor-wait disabled:opacity-65"
           >
-            <DownloadIcon className="w-5 h-5" />
-            Download
+             <DownloadIcon className={`w-5 h-5 ${isDownloading ? 'animate-pulse' : ''}`} />
+             {isDownloading ? 'Exporting…' : 'Download'}
           </button>
         </Tooltip>
         <Tooltip text="Share on X (Twitter)">
