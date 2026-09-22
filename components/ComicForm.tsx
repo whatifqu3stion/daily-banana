@@ -332,7 +332,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
               name="topic"
               value={formData.topic}
               onChange={handleChange}
-              className="w-full p-3 bg-white border-2 border-black text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-none"
+              className="w-full p-3 bg-white border-2 border-black text-lg font-open-sans leading-7 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-none"
               placeholder="e.g., A senator questioning an AI"
               required
               minLength={5}
@@ -374,7 +374,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 name="newsContext"
                 value={formData.newsContext ?? ''}
                 onChange={handleChange}
-                className="w-full p-3 bg-white border-2 border-black text-base font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
+                className="w-full p-3 bg-white border-2 border-black text-base font-open-sans leading-6 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors resize-y"
                 placeholder="Paste article text, quotes, key facts, or anything the AI should know..."
                 maxLength={3000}
                 rows={4}
@@ -410,7 +410,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           <button
             type="button"
             onClick={handleFetchNewsClick}
-            className="w-full flex items-center justify-center gap-2 p-3 bg-white text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-lg font-special-elite text-base"
+            className="w-full flex items-center justify-center gap-2 p-3 bg-white text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-lg font-open-sans font-semibold text-base"
           >
             <NewspaperIcon className="w-5 h-5 flex-shrink-0" />
             Get ideas from recent news
@@ -439,7 +439,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                   name="stance"
                   value={typeof formData.stance === 'string' ? formData.stance : ''}
                   onChange={(e) => { setCustomStanceError(null); handleChange(e); }}
-                  className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStanceError ? 'border-red-500' : 'border-black'}`}
+                  className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-open-sans leading-6 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStanceError ? 'border-red-500' : 'border-black'}`}
                   placeholder="Your custom stance..."
                   maxLength={160}
                   autoFocus
@@ -472,7 +472,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                   name="comedicStyle"
                   value={formData.comedicStyle}
                   onChange={(e) => { setCustomStyleError(null); handleChange(e); }}
-                  className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStyleError ? 'border-red-500' : 'border-black'}`}
+                  className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-open-sans leading-6 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customStyleError ? 'border-red-500' : 'border-black'}`}
                   placeholder="Your custom comedic angle..."
                   maxLength={160}
                   autoFocus
@@ -511,7 +511,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 name="illustrationStyle"
                 value={formData.illustrationStyle || ''}
                 onChange={(e) => { setCustomIllustrationError(null); handleChange(e); }}
-                className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-special-elite text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customIllustrationError ? 'border-red-500' : 'border-black'}`}
+                className={`w-full p-3 mt-2 h-14 bg-white border-2 text-lg font-open-sans leading-6 text-black placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors ${customIllustrationError ? 'border-red-500' : 'border-black'}`}
                 placeholder="Describe your custom illustration style..."
                 maxLength={160}
                 autoFocus
@@ -547,12 +547,12 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 >
                   <div className="flex-1 flex flex-col gap-0.5 p-3">
                     <span className="font-bangers text-lg tracking-wide leading-none">{opt.label}</span>
-                    <span className={`text-xs font-special-elite leading-snug ${selected ? 'text-stone-300' : 'text-gray-500'}`}>{opt.note}</span>
+                    <span className={`text-xs font-open-sans leading-5 ${selected ? 'text-stone-300' : 'text-gray-600'}`}>{opt.note}</span>
                   </div>
                   <div className={`w-px self-stretch ${selected ? 'bg-stone-600' : 'bg-stone-300'}`} />
                   <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 min-w-[72px]">
                     <span className={`font-bangers text-base tracking-wide leading-none ${selected ? 'text-yellow-300' : 'text-black'}`}>${minCost}–${maxCost}</span>
-                    <span className={`text-[10px] font-special-elite text-center leading-tight ${selected ? 'text-stone-400' : 'text-gray-400'}`}>2–4 panels est.</span>
+                    <span className={`text-[10px] font-open-sans text-center leading-tight ${selected ? 'text-stone-300' : 'text-gray-600'}`}>2–4 panels est.</span>
                   </div>
                 </button>
               );
@@ -602,7 +602,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                       value={image.tag}
                       onChange={(e) => handleTagChange(index, e.target.value)}
                       placeholder="Tag this image (e.g., 'main character', 'grumpy cat')"
-                      className="w-full flex-grow text-base p-3 border-l-2 border-black focus:outline-none focus:ring-2 focus:ring-inset focus:ring-black font-special-elite bg-transparent resize-none text-black placeholder:text-gray-500"
+                      className="w-full flex-grow text-base p-3 border-l-2 border-black focus:outline-none focus:ring-2 focus:ring-inset focus:ring-black font-open-sans leading-6 bg-transparent resize-none text-black placeholder:text-gray-600"
                       rows={3}
                     />
                     <button

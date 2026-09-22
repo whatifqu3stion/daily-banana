@@ -64,7 +64,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
   };
 
   const optionClass = (val: string, isExtra = false) =>
-    `w-full px-4 py-2.5 text-left font-special-elite text-base transition-colors ${
+    `w-full px-4 py-2.5 text-left font-open-sans text-base leading-6 transition-colors ${
       val === value
         ? 'bg-black text-white'
         : isExtra
@@ -79,11 +79,11 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
         id={id}
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-special-elite focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors flex items-center justify-between"
+        className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-open-sans font-medium leading-6 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors flex items-center justify-between"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={selected ? 'text-gray-700' : 'text-gray-400'}>
+        <span className={selected ? 'text-gray-900' : 'text-gray-500'}>
           {selected?.label ?? 'Select…'}
         </span>
         <ChevronDown open={open} />
