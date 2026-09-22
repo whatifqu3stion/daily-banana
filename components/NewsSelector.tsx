@@ -2,7 +2,7 @@
 // Modal overlay that displays today's top headlines fetched via newsService.
 // The user can select a story to pre-fill the Topic and News Context fields
 // in ComicForm, or close the modal to continue with a custom topic.
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NewsStory } from '../types';
 
 interface NewsSelectorProps {
@@ -105,12 +105,34 @@ const TypingLoader: React.FC = () => {
 };
 
 const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, onSelectStory, onClose }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    previousFocus.current = document.activeElement as HTMLElement;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
+      if (event.key !== 'Tab') return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('button')?.focus());
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus.current?.focus();
+    };
+  }, [onClose]);
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="news-selector-title">
       <div 
         className="bg-paper-light border-3 border-black rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto p-8 relative" 
         onClick={e => e.stopPropagation()}
         role="document"
+        ref={dialogRef}
       >
         <button 
           onClick={onClose} 
@@ -119,7 +141,8 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({ stories, isLoading, error, 
         >
           &times;
         </button>
-        <h3 className="text-2xl font-bold mb-6 font-special-elite text-center text-gray-900">Suggest from Today's Headlines</h3>
+         <h3 id="news-selector-title" className="text-2xl font-bold mb-2 font-special-elite text-center text-gray-900">Suggest from Today's Headlines</h3>
+         <p className="mb-6 text-center text-sm font-open-sans text-gray-600">Pick a headline and we’ll bring it back to the desk as a starting point.</p>
         
         {isLoading && <TypingLoader />}
 

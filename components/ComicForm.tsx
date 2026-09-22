@@ -490,6 +490,13 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           </div>
         </div>
 
+        <details className="group border-t-2 border-black pt-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-special-elite text-lg font-bold text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2">
+            <span>Optional details</span>
+            <span className="text-sm font-open-sans font-normal text-gray-600 group-open:hidden">Illustration, model, references, and finishing options</span>
+            <span className="hidden text-sm font-open-sans font-normal text-gray-600 group-open:inline">Hide optional details</span>
+          </summary>
+          <div className="mt-6 space-y-8">
         <div>
           <Tooltip text="Select an emblematic style or describe your own to guide the visual tone.">
             <label htmlFor="illustrationStyle" className="block text-lg font-bold mb-2 tracking-wide font-special-elite text-black">
@@ -620,7 +627,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Tooltip text="Generate 3 different story ideas to choose from instead of just one.">
             <label htmlFor="brainstormMode" className="flex items-center gap-3 cursor-pointer">
               <input
@@ -648,12 +655,14 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             </label>
           </Tooltip>
         </div>
+          </div>
+        </details>
 
         <div className="pt-4 border-t-4 border-black">
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full group inline-flex items-center justify-center gap-3 px-8 py-4 bg-banana text-black font-bangers text-2xl tracking-wider border-2 border-t-black border-l-black border-r-black border-b-8 border-b-black hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-md"
+             className="w-full group inline-flex items-center justify-center gap-3 px-8 py-4 bg-banana text-black font-bangers text-2xl tracking-wider border-2 border-t-black border-l-black border-r-black border-b-8 border-b-black hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <SparklesIcon className={`w-6 h-6 ${isLoading ? 'animate-spin' : 'group-hover:animate-spin-once'}`} />
             {isLoading ? 'Generating...' : 'Generate Comic Plan'}

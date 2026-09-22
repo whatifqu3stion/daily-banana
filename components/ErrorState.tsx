@@ -39,7 +39,7 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
   // Fallback for non-JSON errors or parsing failures
   return {
     title: 'An Error Occurred',
-    message: error,
+         message: error || 'The newsroom could not finish this comic.',
   };
 };
 
@@ -54,11 +54,12 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onStartOver }) => {
       <p className="text-lg font-lora text-black mt-4 break-words">
         {message}
       </p>
+      <p className="mt-3 text-sm font-open-sans text-gray-700">Your saved setup is preserved. Return to the desk to try again with the same topic, or adjust it before resubmitting.</p>
       <button
         onClick={onStartOver}
         className="mt-8 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md font-special-elite text-lg"
       >
-        Start Over
+         Return to the desk
       </button>
     </div>
   );

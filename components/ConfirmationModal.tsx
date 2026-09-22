@@ -1,7 +1,7 @@
 // components/ConfirmationModal.tsx
 // A generic, accessible confirmation dialog.
 // Rendered as a fixed overlay; clicking the backdrop or pressing Escape cancels.
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -22,14 +22,29 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmText = 'Continue',
   cancelText = 'Cancel',
 }) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   // Close on Escape key for keyboard accessibility.
   useEffect(() => {
     if (!isOpen) return;
+    previousFocus.current = document.activeElement as HTMLElement;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
+      if (e.key === 'Tab') {
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
+        if (!focusable?.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
     };
+    requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('button')?.focus());
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus.current?.focus();
+    };
   }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
@@ -46,15 +61,17 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         className="bg-paper-light border-3 border-black rounded-lg shadow-xl w-full max-w-lg p-8 relative"
         onClick={e => e.stopPropagation()}
         role="document"
+        ref={dialogRef}
       >
-        <h3 id="confirmation-title" className="text-2xl font-bold mb-4 font-special-elite text-center text-red-800">
+         <h3 id="confirmation-title" className="text-2xl font-bold mb-4 font-special-elite text-center text-red-800">
           {title}
         </h3>
         <div className="text-base font-lora text-black space-y-3 text-center">
           {message}
         </div>
         <div className="mt-8 flex justify-center gap-4">
-          <button
+            <button
+             autoFocus
             onClick={onCancel}
             className="px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
           >

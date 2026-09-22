@@ -58,12 +58,54 @@ const Panel: React.FC<PanelProps> = ({
     const tags = tagsInput.split(',').map(tag => tag.trim()).filter(Boolean);
     onUpdatePanel(panelIndex, { user_consistency_tags: tags });
   };
+
+  const panelTools = (
+    <>
+      <input
+        type="text"
+        value={tagsInput}
+        onChange={handleUserTagsChange}
+        onBlur={handleUserTagsBlur}
+        placeholder="e.g., 'wearing a red hat', 'add a dog'"
+        aria-label={`Refinement details for panel ${panelIndex + 1}`}
+        className="min-h-11 flex-1 min-w-0 text-sm p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
+      />
+      {!panelData.failed && (
+        <Tooltip text="Refine image with the details in the field" position="top-left">
+          <button
+            type="button"
+            onClick={() => {
+              const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+              onUpdatePanel(panelIndex, { user_consistency_tags: committed });
+              onRefineImage(panelIndex, tagsInput);
+            }}
+            disabled={isLoading}
+            className="inline-flex min-h-11 flex-shrink-0 items-center justify-center gap-1 border-2 border-black bg-gray-100 px-2 text-xs font-open-sans font-bold rounded-md hover:bg-gray-200 disabled:opacity-50"
+          >
+            <SparklesIcon className="w-4 h-4 text-black" />
+            <span>Refine</span>
+          </button>
+        </Tooltip>
+      )}
+      <Tooltip text="Regenerate this panel from its original direction" position="top-right">
+        <button
+          type="button"
+          onClick={() => onRegenerateImage(panelIndex)}
+          disabled={isLoading}
+          className="inline-flex min-h-11 flex-shrink-0 items-center justify-center gap-1 border-2 border-black bg-gray-100 px-2 text-xs font-open-sans font-bold rounded-md hover:bg-gray-200 disabled:opacity-50"
+        >
+          <RefreshIcon className="w-4 h-4 text-black" />
+          <span>Regenerate</span>
+        </button>
+      </Tooltip>
+    </>
+  );
   
   const colSpanClasses: { [key: number]: string } = {
-    2: 'col-span-2',
-    3: 'col-span-3',
-    4: 'col-span-4',
-    6: 'col-span-6',
+    2: 'col-span-1 sm:col-span-2',
+    3: 'col-span-1 sm:col-span-3',
+    4: 'col-span-1 sm:col-span-4',
+    6: 'col-span-1 sm:col-span-6',
   };
   const gridClass = colSpanClasses[panelData.layoutProps.gridCols] || 'col-span-2';
 
@@ -143,7 +185,7 @@ const Panel: React.FC<PanelProps> = ({
   };
   
   return (
-    <div className={`relative group/panel border-2 border-black hover:z-10 ${gridClass}`}>
+    <div className={`relative group/panel border-2 border-black hover:z-10 focus-within:z-10 ${gridClass}`} aria-label={`Panel ${panelIndex + 1}`}>
       <div className={`relative w-full ${arClass}`} style={arStyle}>
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
           {panelData.failed ? (
@@ -173,7 +215,7 @@ const Panel: React.FC<PanelProps> = ({
                   toolbar which lives at bottom-0. Always visible without hovering. */}
               {panelData.panelError && (
                 <div className="no-export absolute top-0 left-0 right-0 bg-red-700/90 text-white text-xs font-special-elite px-2 py-1.5 z-30 flex items-start gap-1.5">
-                  <span className="flex-shrink-0 mt-px">⚠</span>
+                  <span className="flex-shrink-0 font-bold" aria-hidden="true">!</span>
                   <span>{panelData.panelError}</span>
                 </div>
               )}
@@ -197,40 +239,14 @@ const Panel: React.FC<PanelProps> = ({
             </Draggable>
           ))}
 
-          <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover/panel:opacity-100 transition-opacity z-20 flex items-center gap-2">
-            <input
-              type="text"
-              value={tagsInput}
-              onChange={handleUserTagsChange}
-              onBlur={handleUserTagsBlur}
-              placeholder="e.g., 'wearing a red hat', 'add a dog'"
-              className="flex-1 min-w-0 text-xs p-1 bg-gray-100 border border-gray-300 rounded-md focus:ring-1 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
-            />
-            {/* Refine is only meaningful when there is an existing image to build on */}
-            {!panelData.failed && (
-              <Tooltip text="Refine image (small changes)" position="top-left">
-                <button
-                  onClick={() => {
-                    // Commit the live input value immediately — don't rely on blur firing first
-                    const committed = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
-                    onUpdatePanel(panelIndex, { user_consistency_tags: committed });
-                    onRefineImage(panelIndex, tagsInput);
-                  }}
-                  disabled={isLoading}
-                  className="flex-shrink-0 p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
-                >
-                  <SparklesIcon className="w-4 h-4 text-black" />
-                </button>
-              </Tooltip>
-            )}
-            <Tooltip text="Regenerate image (major changes)" position="top-right">
-              <button onClick={() => onRegenerateImage(panelIndex)} disabled={isLoading} className="flex-shrink-0 p-1.5 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50">
-                <RefreshIcon className="w-4 h-4 text-black" />
-              </button>
-            </Tooltip>
+           <div className="no-export absolute bottom-0 left-0 right-0 z-20 hidden flex-wrap items-center gap-2 bg-black/80 p-2 opacity-0 transition-opacity sm:flex sm:group-hover/panel:opacity-100 sm:focus-within:opacity-100">
+             {panelTools}
           </div>
         </div>
       </div>
+       <div className="no-export flex flex-wrap items-center gap-2 border-t-2 border-black bg-black p-2 sm:hidden">
+         {panelTools}
+       </div>
     </div>
   );
 };

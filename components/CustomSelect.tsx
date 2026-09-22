@@ -35,6 +35,8 @@ const ChevronDown: React.FC<{ open: boolean }> = ({ open }) => (
 const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOption, onChange }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const allOptions: CustomSelectOption[] = extraOption
     ? [...options, { value: extraOption.value, label: extraOption.label }]
@@ -48,7 +50,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); }
     };
     document.addEventListener('mousedown', onMouseDown);
     document.addEventListener('keydown', onKeyDown);
@@ -61,6 +63,20 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
   const handleSelect = (val: string) => {
     onChange(val);
     setOpen(false);
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  };
+
+  const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      setOpen(true);
+      const selectedIndex = Math.max(0, allOptions.findIndex(option => option.value === value));
+      const targetIndex = e.key === 'ArrowDown'
+        ? selectedIndex
+        : (selectedIndex - 1 + allOptions.length) % allOptions.length;
+      requestAnimationFrame(() => requestAnimationFrame(() => optionRefs.current[targetIndex]?.focus()));
+    }
+    if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); }
   };
 
   const optionClass = (val: string, isExtra = false) =>
@@ -77,8 +93,10 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
       {/* Trigger button — matches existing select styling */}
       <button
         id={id}
+         ref={triggerRef}
         type="button"
         onClick={() => setOpen(o => !o)}
+         onKeyDown={handleTriggerKeyDown}
         className="w-full p-3 h-14 bg-white border-2 border-black text-lg font-open-sans font-medium leading-6 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-black rounded-lg hover:bg-stone-200 transition-colors flex items-center justify-between"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -96,13 +114,23 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
           className="absolute z-50 w-full mt-1 bg-white border-2 border-black rounded-lg shadow-xl py-1"
           style={{ overflow: 'visible' }}
         >
-          {options.map((opt, i) => (
+           {allOptions.map((opt, i) => (
             <li key={opt.value} role="option" aria-selected={opt.value === value}>
-              {opt.tooltip ? (
+               {opt.tooltip ? (
                 <Tooltip text={opt.tooltip} position="top-left" wrapperClassName="w-full">
                   <button
                     type="button"
-                    onClick={() => handleSelect(opt.value)}
+                     onClick={() => handleSelect(opt.value)}
+                     ref={element => { optionRefs.current[i] = element; }}
+                     onKeyDown={(e) => {
+                       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+                         e.preventDefault();
+                         const next = e.key === 'Home' ? 0 : e.key === 'End' ? allOptions.length - 1 : e.key === 'ArrowDown'
+                           ? (i + 1) % allOptions.length
+                           : (i - 1 + allOptions.length) % allOptions.length;
+                         optionRefs.current[next]?.focus();
+                       }
+                     }}
                     className={`${optionClass(opt.value)} ${i === 0 ? 'rounded-t-md' : ''}`}
                   >
                     {opt.label}
@@ -111,7 +139,17 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
               ) : (
                 <button
                   type="button"
-                  onClick={() => handleSelect(opt.value)}
+                     onClick={() => handleSelect(opt.value)}
+                     ref={element => { optionRefs.current[i] = element; }}
+                     onKeyDown={(e) => {
+                       if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+                         e.preventDefault();
+                         const next = e.key === 'Home' ? 0 : e.key === 'End' ? allOptions.length - 1 : e.key === 'ArrowDown'
+                           ? (i + 1) % allOptions.length
+                           : (i - 1 + allOptions.length) % allOptions.length;
+                         optionRefs.current[next]?.focus();
+                       }
+                     }}
                   className={`${optionClass(opt.value)} ${i === 0 ? 'rounded-t-md' : ''}`}
                 >
                   {opt.label}
@@ -119,17 +157,6 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
               )}
             </li>
           ))}
-          {extraOption && (
-            <li role="option" aria-selected={extraOption.value === value} className="border-t border-stone-200 mt-1">
-              <button
-                type="button"
-                onClick={() => handleSelect(extraOption.value)}
-                className={`${optionClass(extraOption.value, true)} rounded-b-md`}
-              >
-                {extraOption.label}
-              </button>
-            </li>
-          )}
         </ul>
       )}
     </div>

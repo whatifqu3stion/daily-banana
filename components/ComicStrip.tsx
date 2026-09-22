@@ -82,15 +82,22 @@ const ComicStrip: React.FC<ComicStripProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
-      <div ref={comicRef} className="w-full bg-paper-light p-4 md:p-8 border-3 border-black shadow-xl rounded-lg">
+       <div ref={comicRef} className="w-full bg-paper-light p-4 md:p-8 border-3 border-black shadow-xl rounded-lg">
+         <div className="no-export mb-5 flex flex-col gap-2 border-b-2 border-black pb-4 sm:flex-row sm:items-end sm:justify-between">
+           <div>
+             <p className="text-xs font-open-sans font-bold uppercase tracking-[0.18em] text-gray-500">Final edition</p>
+             <p className="mt-1 text-sm font-open-sans text-gray-700">Click text to edit. Focus a panel to reveal its image tools.</p>
+           </div>
+           <span className="text-xs font-special-elite text-gray-600">{comicData.panels.length} panels</span>
+         </div>
         <h2 className="text-4xl md:text-5xl font-bangers text-center tracking-wider mb-8 text-black">
           {comicData.title}
         </h2>
-        <p className="text-center text-xs font-special-elite text-gray-400 mb-4 no-export">
-          Drag speech bubbles &amp; captions to arrange your comic. Hover a panel to edit or regenerate it.
+         <p className="text-center text-sm font-open-sans text-gray-600 mb-4 no-export">
+           Select text to edit it. On desktop, focus or hover a panel for image tools.
         </p>
-        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-        <div className="grid grid-cols-6 gap-4 items-stretch min-w-[560px]">
+         <div className="-mx-4 px-4 md:mx-0 md:px-0">
+         <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 items-stretch min-w-0">
           {comicData.panels.map((panel, index) => (
             <Panel
               key={panel.id}
@@ -109,7 +116,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             <h4 className="font-special-elite text-lg font-bold text-black">A Note from the Archives:</h4>
             <p className="font-lora text-base text-gray-800 mt-2">{comicData.context}</p>
             {comicData.contextSources && comicData.contextSources.length > 0 && (
-              <p className="mt-2 text-xs font-special-elite text-gray-500">
+               <p className="mt-2 text-sm font-open-sans text-gray-600">
                 {'Sources: '}
                 {comicData.contextSources.map((s, i) => (
                   <React.Fragment key={s.url}>
@@ -132,7 +139,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         {/* -mx / px cancel the card's inner padding so the footer border and text
             span the full card width — gives whitespace-nowrap the most room. */}
         <footer className="text-center pt-8 mt-4 border-t-2 border-black font-special-elite -mx-4 px-4 md:-mx-8 md:px-8">
-          <p className="text-[9px] text-gray-500 flex items-center justify-center gap-1 whitespace-nowrap overflow-hidden">
+           <p className="text-xs text-gray-600 flex items-center justify-center gap-1 whitespace-nowrap overflow-hidden">
             {footerDisclaimer}
             <span className="opacity-40">·</span>
             Tech. by
@@ -144,11 +151,11 @@ const ComicStrip: React.FC<ComicStripProps> = ({
       
       {downloadError && (
         <p className="w-full text-center text-sm font-special-elite text-red-800 bg-red-50 border border-red-300 rounded-md px-4 py-2">
-          ⚠ {downloadError}
+           Export issue: {downloadError}
         </p>
       )}
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
-        <Tooltip text="Start a new comic from scratch">
+         <Tooltip text="Start with a new topic and settings">
           <button
             onClick={onStartNew}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
@@ -157,7 +164,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             Create New
           </button>
         </Tooltip>
-        <Tooltip text="Write a brand-new story from scratch (same topic, new script and panels)">
+         <Tooltip text="Keep the topic and settings, but write a new story">
           <button
             onClick={onRegenerateComic}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
@@ -166,7 +173,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
             New Story
           </button>
         </Tooltip>
-        <Tooltip text="Download comic as a PNG image">
+         <Tooltip text="Download this comic as a PNG image">
           <button
             onClick={handleDownload}
             className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white font-bold border-2 border-black hover:bg-gray-800 transition-colors rounded-md"

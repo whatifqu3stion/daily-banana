@@ -48,9 +48,14 @@ const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
     : null;
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center justify-center min-h-[200px] shadow-xl rounded-lg">
+    <div className="w-full max-w-3xl mx-auto p-6 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center justify-center min-h-[260px] shadow-xl rounded-lg" aria-busy="true" aria-live="polite">
       <div className="w-full max-w-xl text-center">
-        <p className="text-lg font-special-elite text-black break-words min-h-[1.75rem]">
+        <div className="mb-6 flex justify-center gap-2" aria-hidden="true">
+          {[0, 1, 2].map(i => <span key={i} className="h-3 w-3 rounded-full bg-banana border-2 border-black" />)}
+        </div>
+        <p className="mb-2 text-xs font-open-sans font-bold uppercase tracking-[0.18em] text-gray-500">The newsroom is at work</p>
+        <p className="sr-only" role="status">The newsroom is working on your comic. {progress && progress.total > 0 ? `Panel ${progress.current} of ${progress.total}.` : 'Preparing the next stage.'}</p>
+        <p aria-hidden="true" className="text-lg font-special-elite text-black break-words min-h-[1.75rem]">
           {displayedText}
           <span className="blinking-cursor align-bottom">|</span>
         </p>
@@ -61,7 +66,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
               <span>Panel {progress.current} of {progress.total}</span>
               <span>{progressPercent}%</span>
             </div>
-            <div className="w-full bg-black/10 rounded-sm h-4 border-2 border-black overflow-hidden">
+              <div className="w-full bg-black/10 rounded-sm h-4 border-2 border-black overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent ?? 0}>
               <div
                 className="bg-banana h-full transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}

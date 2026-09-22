@@ -1,7 +1,7 @@
 // App.tsx — root layout component.
 // Owns the masthead, footer, and top-level stage rendering.
 // All comic generation state and logic lives in useComicGeneration().
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import useComicGeneration from './hooks/useComicGeneration';
 import ComicForm from './components/ComicForm';
 import LoadingState from './components/LoadingState';
@@ -9,8 +9,10 @@ import StorySwiper from './components/StorySwiper';
 import ReviewPlan from './components/ReviewPlan';
 import ComicStrip from './components/ComicStrip';
 import ErrorState from './components/ErrorState';
+import ConfirmationModal from './components/ConfirmationModal';
 
 const App: React.FC = () => {
+  const [isDiscardConfirmationOpen, setIsDiscardConfirmationOpen] = useState(false);
   const {
     appStage,
     formData,
@@ -55,6 +57,19 @@ const App: React.FC = () => {
     month: 'long',
     day: 'numeric',
   });
+  const stageMeta = {
+    form: { label: '01 · File the idea', title: 'Start with the story' },
+    'story-swipe': { label: '02 · Choose the angle', title: 'Choose the angle' },
+    review: { label: '03 · Proof the first panel', title: 'Proof the first panel' },
+    strip: { label: '04 · Make the edition', title: 'Your comic is ready' },
+  } as const;
+  const currentStage = stageMeta[appStage as keyof typeof stageMeta] ?? stageMeta.form;
+  const isSetup = appStage === 'form';
+  const requestNewComic = () => setIsDiscardConfirmationOpen(true);
+  const confirmNewComic = () => {
+    setIsDiscardConfirmationOpen(false);
+    handleStartNew();
+  };
 
   const renderContent = () => {
     if (isLoading && appStage !== 'strip') {
@@ -103,7 +118,7 @@ const App: React.FC = () => {
             onUpdatePanel={handleUpdatePanel}
             onRegeneratePanelImage={handleRegeneratePanelImage}
             onRefinePanelImage={handleRefinePanelImage}
-            onStartNew={handleStartNew}
+            onStartNew={requestNewComic}
             onRegenerateComic={onRegenerateConcept}
             isPanelLoading={isPanelLoading}
             footerDisclaimer="AI-generated satire. All characters &amp; events are fictional. Any resemblance to reality is coincidental and hilarious."
@@ -116,8 +131,21 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8 font-sans">
-      <header className="text-center mb-16">
+    <div className="min-h-[100dvh] px-3 py-3 sm:px-6 sm:py-6 font-sans">
+      <header className={`mx-auto w-full max-w-6xl ${isSetup ? 'mb-10 sm:mb-14' : 'mb-6'}`}>
+        {!isSetup && (
+          <div className="compact-masthead flex items-center justify-between gap-3 border-y-2 border-black py-2.5 sm:py-3">
+            <div className="flex items-center gap-2">
+              <img src="/banana-boy-mascot.png" alt="" className="h-9 w-auto sm:h-11" />
+              <span className="font-masthead text-xl leading-none sm:text-2xl">The Daily Banana</span>
+            </div>
+            <span className="hidden text-right text-xs font-special-elite uppercase tracking-wider text-gray-600 sm:block">{today}</span>
+            <button type="button" onClick={requestNewComic} className="border-2 border-black bg-paper-light px-3 py-2 text-xs font-bold uppercase tracking-wide hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black">
+              New comic
+            </button>
+          </div>
+        )}
+        {isSetup && <div className="text-center">
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
         <div className="flex justify-center max-w-6xl mx-auto">
           <div className="inline-flex flex-col md:flex-row items-center gap-1 md:gap-2">
@@ -136,18 +164,34 @@ const App: React.FC = () => {
           </div>
         </div>
         <div className="w-full max-w-6xl mx-auto h-0.5 bg-black mt-2"></div>
+        </div>}
       </header>
       <main>
+        <div className="mx-auto mb-6 flex w-full max-w-5xl items-center gap-3" aria-label={`Current stage: ${currentStage.label}`}>
+          <span className="shrink-0 text-xs font-bold uppercase tracking-[0.14em] text-gray-600">{currentStage.label}</span>
+          <div className="h-1 flex-1 bg-black/15" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={['form','story-swipe','review','strip'].indexOf(appStage) + 1}>
+            <div className="h-full bg-black transition-[width] duration-300" style={{ width: `${((['form','story-swipe','review','strip'].indexOf(appStage) + 1) / 4) * 100}%` }} />
+          </div>
+        </div>
         {renderContent()}
       </main>
       <footer className="text-center mt-12 font-special-elite text-gray-800">
           <p className="text-lg">
-            Built with Google Nano Banana, made with 💛 by <a href="https://x.com/SummitSatoshi" target="_blank" rel="noopener noreferrer" className="underline hover:text-black">SummitSatoshi</a>
+            Built with Google Nano Banana, made by <a href="https://x.com/SummitSatoshi" target="_blank" rel="noopener noreferrer" className="underline hover:text-black">SummitSatoshi</a>
           </p>
           <p className="text-xs mt-2 max-w-3xl mx-auto">
             All content is the sole view of the creator, not the tool owner, by using this service you agree to comply with Google’s T.O.S. and all other applicable laws.
           </p>
       </footer>
+      <ConfirmationModal
+        isOpen={isDiscardConfirmationOpen}
+        title="Start a new comic?"
+        message={<p>Your generated comic and any unsaved panel edits will be discarded. Your saved setup choices will remain available.</p>}
+        confirmText="Discard and start new"
+        cancelText="Keep editing"
+        onConfirm={confirmNewComic}
+        onCancel={() => setIsDiscardConfirmationOpen(false)}
+      />
     </div>
   );
 };
