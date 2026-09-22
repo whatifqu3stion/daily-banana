@@ -1,13 +1,9 @@
 // components/StorySwiper.tsx
-// Card-swipe UI for choosing a story concept — used for both brainstorm mode
-// (3 AI-generated plans) and non-brainstorm mode (1 AI plan).
-// A permanent "Write Your Own Angle" card is appended after the AI concepts.
+// Story-selection UI used for both brainstorm mode (multiple AI plans) and
+// non-brainstorm mode (one AI plan), with a separate custom-angle option.
 import React, { useState, useCallback } from 'react';
 import { ComicPlan } from '../types';
-import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
-import ChevronLeftIcon from './icons/ChevronLeftIcon';
-import ChevronRightIcon from './icons/ChevronRightIcon';
 import SparklesIcon from './icons/SparklesIcon';
 
 interface StorySwiperProps {
@@ -21,10 +17,17 @@ interface StorySwiperProps {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  speech: '💬',
-  thought: '💭',
-  sfx: '💥',
-  caption: '📰',
+  speech: 'Speech',
+  thought: 'Thought',
+  sfx: 'Sound effect',
+  caption: 'Caption',
+};
+
+const COMEDIC_ROLE_LABELS: Record<string, string> = {
+  establish: 'Setup',
+  escalate: 'Escalation',
+  punchline: 'Punchline',
+  button: 'Final beat',
 };
 
 const StorySwiper: React.FC<StorySwiperProps> = ({
@@ -36,24 +39,12 @@ const StorySwiper: React.FC<StorySwiperProps> = ({
     isCustomPremiseLoading = false,
     customPremiseError,
 }) => {
-    const totalCards = storyPlans.length + 1;
     const [currentIndex, setCurrentIndex] = useState(0);
     const [customPremiseText, setCustomPremiseText] = useState('');
 
     const isOnCustomCard = currentIndex === storyPlans.length;
     const currentPlan = isOnCustomCard ? undefined : storyPlans[currentIndex];
-
-    const handleNext = useCallback(() => setCurrentIndex(prev => Math.min(prev + 1, totalCards - 1)), [totalCards]);
-    const handlePrev = useCallback(() => setCurrentIndex(prev => Math.max(prev - 1, 0)), []);
-
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'ArrowRight') handleNext();
-            else if (e.key === 'ArrowLeft') handlePrev();
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleNext, handlePrev]);
+    const totalChoices = storyPlans.length + 1;
 
     const handleSubmitCustomPremise = useCallback(() => {
         const trimmed = customPremiseText.trim();
@@ -65,50 +56,117 @@ const StorySwiper: React.FC<StorySwiperProps> = ({
         ? 'Generate a fresh AI story concept.'
         : 'Generate a completely new set of story ideas.';
 
+    const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const direction = e.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (currentIndex + direction + totalChoices) % totalChoices;
+        setCurrentIndex(nextIndex);
+        requestAnimationFrame(() => {
+            document.getElementById(`story-choice-tab-${nextIndex}`)?.focus();
+        });
+    };
+
     return (
-        <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-6">
-            <div className="text-center">
-                <h2 className="text-2xl font-bold font-special-elite text-black">Choose Your Story</h2>
-                <p className="text-lg font-lora text-black">
+        <div className="w-full max-w-3xl mx-auto flex flex-col items-center gap-5">
+            <div className="text-center max-w-2xl">
+                <h2 className="text-3xl font-bold font-special-elite text-black">Choose Your Story</h2>
+                <p className="mt-2 text-base md:text-lg font-open-sans leading-7 text-gray-700">
                     {storyPlans.length > 1
-                        ? 'Here are a few story ideas. Pick your favourite to continue.'
-                        : "Here's a story idea. Proceed with it or write your own angle."}
+                        ? 'Compare the concepts, then choose the one you want to turn into a comic.'
+                        : 'Review the concept below, or switch to your own angle.'}
                 </p>
             </div>
 
-            <div className="w-full bg-paper-light border-3 border-black shadow-xl rounded-lg overflow-hidden">
+            <div
+                role="tablist"
+                aria-label="Story choices"
+                onKeyDown={handleTabKeyDown}
+                className="w-full grid gap-2 rounded-lg border-2 border-black bg-paper-light p-2 shadow-sm"
+                style={{ gridTemplateColumns: `repeat(${Math.min(totalChoices, 4)}, minmax(0, 1fr))` }}
+            >
+                {storyPlans.map((_, index) => (
+                    <button
+                        key={index}
+                        id={`story-choice-tab-${index}`}
+                        type="button"
+                        role="tab"
+                        aria-selected={currentIndex === index}
+                        aria-controls="story-choice-panel"
+                        aria-disabled={isCustomPremiseLoading}
+                        tabIndex={currentIndex === index ? 0 : -1}
+                        disabled={isCustomPremiseLoading}
+                        onClick={() => setCurrentIndex(index)}
+                        className={`min-h-11 px-3 py-2 rounded-md border-2 font-open-sans font-bold text-sm md:text-base transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${
+                            currentIndex === index
+                                ? 'bg-black border-black text-white'
+                                : 'bg-white border-transparent text-gray-800 hover:border-black'
+                        }`}
+                    >
+                        {storyPlans.length === 1 ? 'Generated story' : `Story ${index + 1}`}
+                    </button>
+                ))}
+                <button
+                    id={`story-choice-tab-${storyPlans.length}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isOnCustomCard}
+                    aria-controls="story-choice-panel"
+                    aria-disabled={isCustomPremiseLoading}
+                    tabIndex={isOnCustomCard ? 0 : -1}
+                    disabled={isCustomPremiseLoading}
+                    onClick={() => setCurrentIndex(storyPlans.length)}
+                    className={`min-h-11 px-3 py-2 rounded-md border-2 font-open-sans font-bold text-sm md:text-base transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60 ${
+                        isOnCustomCard
+                            ? 'bg-banana border-black text-black'
+                            : 'bg-white border-transparent text-gray-800 hover:border-black'
+                    }`}
+                >
+                    Write my own
+                </button>
+            </div>
+
+            <div
+                id="story-choice-panel"
+                role="tabpanel"
+                aria-labelledby={`story-choice-tab-${currentIndex}`}
+                aria-busy={isCustomPremiseLoading}
+                className="w-full bg-paper-light border-3 border-black shadow-xl rounded-lg overflow-hidden"
+            >
                 {isOnCustomCard ? (
                     <>
-                        <header className="text-center p-4 border-b-2 border-black bg-newsprint">
-                            <p className="text-sm font-special-elite text-gray-600 mb-1">
-                                Card {totalCards} of {totalCards}
-                            </p>
+                        <header className="text-center px-5 py-6 md:px-8 border-b-2 border-black bg-newsprint">
                             <h3 className="text-3xl font-bangers tracking-wider text-black">Write Your Own Angle</h3>
-                            <p className="text-base font-lora italic text-gray-700 mt-1">
+                            <p className="max-w-xl mx-auto text-base font-open-sans leading-6 text-gray-700 mt-2">
                                 Describe your own premise and we'll build the entire strip around it.
                             </p>
                         </header>
-                        <div className="p-6 flex flex-col gap-4">
+                        <div className="p-5 md:p-7 flex flex-col gap-4">
+                            <label htmlFor="custom-premise" className="font-special-elite font-bold text-black">
+                                Your story premise
+                            </label>
                             <textarea
+                                id="custom-premise"
                                 value={customPremiseText}
                                 onChange={(e) => setCustomPremiseText(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmitCustomPremise();
                                 }}
                                 placeholder="Describe your own narrative angle or premise… e.g. 'A senator who campaigns against AI secretly uses it to write all his speeches — and gets caught when the AI recommends products he's never heard of.'"
-                                className="w-full h-36 p-3 font-lora text-sm text-black bg-white border-2 border-black rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-banana placeholder:text-gray-400"
+                                className="w-full min-h-40 p-4 font-open-sans text-base leading-6 text-black bg-white border-2 border-black rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 placeholder:text-gray-600"
                                 disabled={isCustomPremiseLoading}
                             />
                             {customPremiseError && (
-                                <div className="p-3 bg-red-100 border border-red-300 rounded-md">
-                                    <p className="text-sm font-bold text-red-800">{customPremiseError}</p>
-                                    <p className="text-xs text-red-700 mt-1">Adjust your premise above and try again.</p>
+                                <div role="alert" className="p-3 bg-red-100 border border-red-300 rounded-md">
+                                    <p className="text-sm font-open-sans font-bold text-red-800">{customPremiseError}</p>
+                                    <p className="text-sm font-open-sans text-red-700 mt-1">Adjust your premise above and try again.</p>
                                 </div>
                             )}
                             <button
+                                type="button"
                                 onClick={handleSubmitCustomPremise}
                                 disabled={!customPremiseText.trim() || isCustomPremiseLoading}
-                                className="inline-flex items-center justify-center gap-3 w-full px-6 py-3 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black border-b-4 hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-0.5 transition-all rounded-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:border-b-4 disabled:mt-0"
+                                className="inline-flex items-center justify-center gap-3 w-full px-6 py-3 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black hover:bg-yellow-300 transition-colors rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isCustomPremiseLoading ? (
                                     <>
@@ -122,118 +180,110 @@ const StorySwiper: React.FC<StorySwiperProps> = ({
                                     </>
                                 )}
                             </button>
-                            <p className="text-xs text-center font-special-elite text-gray-500">
+                            <div className="min-h-5 text-center" aria-live="polite">
+                                {isCustomPremiseLoading && (
+                                    <p role="status" className="text-sm font-open-sans font-semibold text-gray-700">
+                                        Building your custom story plan. Please keep this page open.
+                                    </p>
+                                )}
+                            </div>
+                            <p className="text-sm text-center font-open-sans text-gray-600">
                                 Tip: ⌘↵ / Ctrl↵ to submit
                             </p>
                         </div>
                     </>
                 ) : currentPlan ? (
                     <>
-                        <header className="text-center p-4 border-b-2 border-black bg-newsprint">
-                            <p className="text-sm font-special-elite text-gray-600 mb-1">
-                                Idea {currentIndex + 1} of {storyPlans.length}
-                            </p>
-                            <h3 className="text-3xl font-bangers tracking-wider text-black">{currentPlan.title}</h3>
-                            <p className="text-base font-lora italic text-gray-700 mt-1">"{currentPlan.summary}"</p>
-                            {currentPlan.premise && (
-                                <p className="text-xs font-special-elite text-banana bg-black rounded px-2 py-1 mt-2 inline-block">
-                                    Core joke: {currentPlan.premise}
+                        <header className="text-center px-5 py-6 md:px-8 border-b-2 border-black bg-newsprint">
+                            {storyPlans.length > 1 && (
+                                <p className="text-sm font-open-sans font-semibold text-gray-600 mb-2">
+                                    Story {currentIndex + 1} of {storyPlans.length}
                                 </p>
                             )}
+                            <h3 className="text-3xl md:text-4xl font-bangers tracking-wider text-black">{currentPlan.title}</h3>
+                            <p className="max-w-2xl mx-auto text-base md:text-lg font-open-sans leading-7 text-gray-700 mt-2">{currentPlan.summary}</p>
                         </header>
-                        <div className="p-6 space-y-3">
+                        <div className="p-5 md:p-7 space-y-5">
+                            {currentPlan.premise && (
+                                <div className="rounded-md border border-yellow-600/50 bg-yellow-50 px-4 py-3">
+                                    <p className="text-xs font-open-sans font-bold uppercase tracking-wider text-gray-700">Core joke</p>
+                                    <p className="mt-1 text-sm md:text-base font-open-sans leading-6 text-gray-900">{currentPlan.premise}</p>
+                                </div>
+                            )}
+                            <div>
+                                <h4 className="font-special-elite font-bold text-lg text-black mb-2">Panel outline</h4>
+                                <div className="divide-y divide-black/20 border-y border-black/20">
                             {currentPlan.panels.map((panel, i) => (
-                                <div key={panel.slug} className="flex gap-3 items-start text-sm border-b border-black/10 pb-3 last:border-b-0 last:pb-0">
-                                    <div className="flex-shrink-0 w-16">
-                                        <span className="font-bangers text-base text-gray-500">Panel {i + 1}</span>
+                                <div key={panel.slug} className="grid grid-cols-1 sm:grid-cols-[7.5rem_1fr] gap-2 sm:gap-5 py-4 first:pt-3 last:pb-3">
+                                    <div>
+                                        <span className="font-bangers text-xl tracking-wide text-black">Panel {i + 1}</span>
                                         {panel.comedic_role && (
-                                            <span className="block text-xs font-special-elite text-gray-400 uppercase">{panel.comedic_role}</span>
+                                            <span className="block mt-0.5 text-xs font-open-sans font-bold tracking-wide text-gray-600 uppercase">
+                                                {COMEDIC_ROLE_LABELS[panel.comedic_role] ?? panel.comedic_role}
+                                            </span>
                                         )}
                                     </div>
-                                    <div className="flex-1 space-y-1">
+                                    <div className="min-w-0 space-y-2">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-xs font-open-sans font-bold uppercase tracking-wide text-gray-600">
+                                                Scene
+                                            </span>
+                                            <p className="font-open-sans text-sm md:text-base leading-6 text-gray-800">
+                                                {panel.visual_prompt}
+                                            </p>
+                                        </div>
                                         {panel.text_elements.length > 0 ? (
                                             panel.text_elements.map((el, j) => (
-                                                <p key={j} className="font-lora text-black">
-                                                    <span className="mr-1">{ROLE_LABELS[el.role] ?? '•'}</span>
-                                                    <span className="italic">"{el.text}"</span>
-                                                </p>
+                                                <div key={j} className="flex flex-col xs:flex-row gap-1 xs:gap-3">
+                                                    <span className="flex-shrink-0 text-xs font-open-sans font-bold uppercase tracking-wide text-gray-600">
+                                                        {ROLE_LABELS[el.role] ?? 'Text'}
+                                                    </span>
+                                                    <p className="font-open-sans text-base leading-6 text-gray-900">“{el.text}”</p>
+                                                </div>
                                             ))
                                         ) : (
-                                            <p className="font-lora italic text-gray-500">Visual panel — no dialogue</p>
+                                            <p className="font-open-sans text-sm italic leading-6 text-gray-600">No dialogue — the visual carries this beat.</p>
                                         )}
                                     </div>
                                 </div>
                             ))}
+                                </div>
+                            </div>
                         </div>
                     </>
                 ) : null}
 
-                <div className="flex justify-between items-center px-4 py-3 border-t-2 border-black bg-newsprint">
+                {!isOnCustomCard && currentPlan && (
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-3 px-5 py-4 md:px-7 border-t-2 border-black bg-newsprint">
                     <button
-                        onClick={handlePrev}
-                        disabled={currentIndex === 0}
-                        className="w-12 h-12 flex items-center justify-center bg-banana rounded-full text-black disabled:opacity-40 disabled:bg-yellow-200 transition-colors"
-                        aria-label="Previous story"
-                    >
-                        <ChevronLeftIcon className="w-8 h-8" strokeWidth="2.5" />
-                    </button>
-                    <div className="flex gap-2 items-center">
-                        {Array.from({ length: totalCards }, (_, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setCurrentIndex(i)}
-                                className={`w-3 h-3 rounded-full transition-colors ${
-                                    i === currentIndex
-                                        ? 'bg-banana border-2 border-black'
-                                        : i === storyPlans.length
-                                            ? 'bg-white border-2 border-dashed border-black'
-                                            : 'bg-white border-2 border-black'
-                                }`}
-                                aria-label={i === storyPlans.length ? 'Write your own angle' : `Go to idea ${i + 1}`}
-                            />
-                        ))}
-                    </div>
-                    <button
-                        onClick={handleNext}
-                        disabled={currentIndex === totalCards - 1}
-                        className="w-12 h-12 flex items-center justify-center bg-banana rounded-full text-black disabled:opacity-40 disabled:bg-yellow-200 transition-colors"
-                        aria-label="Next story"
-                    >
-                        <ChevronRightIcon className="w-8 h-8" strokeWidth="2.5" />
-                    </button>
-                </div>
-            </div>
-
-            <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-2">
-                <Tooltip text="Go back and change the topic or style.">
-                    <button
-                        onClick={onReturnToForm}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
-                    >
-                        Start Over
-                    </button>
-                </Tooltip>
-                <Tooltip text={regenerateTooltip}>
-                    <button
+                        type="button"
                         onClick={onRegenerate}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
+                        title={regenerateTooltip}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-black font-open-sans font-bold border-2 border-black hover:bg-stone-100 transition-colors rounded-md"
                     >
                         <RefreshIcon className="w-5 h-5" />
                         {regenerateLabel}
                     </button>
-                </Tooltip>
-                {!isOnCustomCard && currentPlan && (
-                    <Tooltip text="I like this story! Let's create the art." wrapperClassName="generate-button-wrapper">
-                        <button
-                            onClick={() => onSelectStory(currentPlan)}
-                            className="inline-flex items-center justify-center gap-3 px-8 py-1.5 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black border-b-4 hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-0.5 transition-all rounded-md"
-                        >
-                            <SparklesIcon className="w-6 h-6" />
-                            Choose This Story
-                        </button>
-                    </Tooltip>
+                    <button
+                        type="button"
+                        onClick={() => onSelectStory(currentPlan)}
+                        className="inline-flex items-center justify-center gap-3 px-7 py-3 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black hover:bg-yellow-300 transition-colors rounded-md"
+                    >
+                        <SparklesIcon className="w-6 h-6" />
+                        Choose This Story
+                    </button>
+                </div>
                 )}
             </div>
+
+            <button
+                type="button"
+                onClick={onReturnToForm}
+                disabled={isCustomPremiseLoading}
+                className="font-open-sans font-semibold text-gray-700 underline underline-offset-4 decoration-dotted hover:text-black focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-4 disabled:cursor-wait disabled:opacity-50"
+            >
+                Back to topic and style
+            </button>
         </div>
     );
 };
