@@ -72,7 +72,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ id, value, options, extraOp
       setOpen(true);
       const selectedIndex = Math.max(0, allOptions.findIndex(option => option.value === value));
       const targetIndex = e.key === 'ArrowDown'
-        ? selectedIndex
+        ? (selectedIndex + 1) % allOptions.length
         : (selectedIndex - 1 + allOptions.length) % allOptions.length;
       requestAnimationFrame(() => requestAnimationFrame(() => optionRefs.current[targetIndex]?.focus()));
     }

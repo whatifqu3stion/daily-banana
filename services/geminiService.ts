@@ -783,10 +783,58 @@ The following is a satirical comic strip. Use Google Search to find the real-wor
 };
 
 // Exported service object
-export const geminiService = {
+const liveGeminiService = {
     generateSingleComicPlan,
     generateMultipleComicPlans,
     generatePanelImageWithReferences,
     refinePanelImage,
     generateContextExplainer,
 };
+
+const MOCK_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+const mockPlan: ComicPlan = {
+    premise: 'A banana discovers that every productivity shortcut creates two more meetings.',
+    title: 'The Peel Deal',
+    summary: 'An ambitious banana automates its work and accidentally automates the bureaucracy too.',
+    set_description: 'Newsroom: deadline clock on the left wall and a yellow filing cabinet by the desk.',
+    panels: [
+        {
+            slug: 'shortcut',
+            comedic_role: 'establish',
+            visual_prompt: 'A banana reporter proudly presses a large automate button in a busy newsroom.',
+            text_elements: [{ role: 'speech', text: 'I automated everything!' }],
+            consistency_tags: ['banana reporter', 'blue tie'],
+            size: 'medium',
+            aspect_ratio: '1:1',
+            scene_state: 'The banana remains at the newsroom desk.',
+        },
+        {
+            slug: 'meetings',
+            comedic_role: 'punchline',
+            visual_prompt: 'The banana reporter is surrounded by calendar invitations pouring from a printer.',
+            text_elements: [{ role: 'speech', text: 'Including the meetings?' }],
+            consistency_tags: ['banana reporter', 'blue tie'],
+            size: 'medium',
+            aspect_ratio: '1:1',
+        },
+    ],
+};
+
+const mockGeminiService = {
+    generateSingleComicPlan: async () => structuredClone(mockPlan),
+    generateMultipleComicPlans: async () => [
+        structuredClone(mockPlan),
+        { ...structuredClone(mockPlan), title: 'Deadline Split' },
+        { ...structuredClone(mockPlan), title: 'Minutes of Madness' },
+    ],
+    generatePanelImageWithReferences: async () => MOCK_IMAGE,
+    refinePanelImage: async () => MOCK_IMAGE,
+    generateContextExplainer: async () => ({
+        text: 'A deterministic test note from the archives.',
+        sources: [],
+    }),
+};
+
+export const geminiService = import.meta.env.VITE_E2E_MOCKS === 'true'
+    ? mockGeminiService
+    : liveGeminiService;

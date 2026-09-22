@@ -24,12 +24,18 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const onCancelRef = useRef(onCancel);
+
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
   // Close on Escape key for keyboard accessibility.
   useEffect(() => {
     if (!isOpen) return;
     previousFocus.current = document.activeElement as HTMLElement;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Escape') onCancelRef.current();
       if (e.key === 'Tab') {
         const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
         if (!focusable?.length) return;
@@ -43,9 +49,10 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      previousFocus.current?.focus();
+      const focusTarget = previousFocus.current;
+      requestAnimationFrame(() => focusTarget?.focus());
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -71,7 +78,6 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         </div>
         <div className="mt-8 flex justify-center gap-4">
             <button
-             autoFocus
             onClick={onCancel}
             className="px-4 py-2 bg-white text-black font-bold border-2 border-black hover:bg-gray-100 transition-colors rounded-md"
           >

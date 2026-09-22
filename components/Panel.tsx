@@ -186,7 +186,7 @@ const Panel: React.FC<PanelProps> = ({
   
   return (
     <div className={`relative group/panel border-2 border-black hover:z-10 focus-within:z-10 ${gridClass}`} aria-label={`Panel ${panelIndex + 1}`}>
-      <div className={`relative w-full ${arClass}`} style={arStyle}>
+      <div className={`relative w-full ${arClass}`} style={arStyle} data-testid={`panel-artwork-${panelIndex + 1}`}>
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
           {panelData.failed ? (
             <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center gap-3 p-4"
@@ -244,7 +244,7 @@ const Panel: React.FC<PanelProps> = ({
           </div>
         </div>
       </div>
-       <div className="no-export flex flex-wrap items-center gap-2 border-t-2 border-black bg-black p-2 sm:hidden">
+       <div className="no-export flex flex-wrap items-center gap-2 border-t-2 border-black bg-black p-2 sm:hidden" data-testid={`panel-mobile-controls-${panelIndex + 1}`}>
          {panelTools}
        </div>
     </div>
