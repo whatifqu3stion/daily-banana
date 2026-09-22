@@ -143,7 +143,7 @@ const Panel: React.FC<PanelProps> = ({
   };
   
   return (
-    <div className={`relative group border-2 border-black hover:z-10 ${gridClass}`}>
+    <div className={`relative group/panel border-2 border-black hover:z-10 ${gridClass}`}>
       <div className={`relative w-full ${arClass}`} style={arStyle}>
         <div ref={boundaryRef} className="absolute inset-0 w-full h-full">
           {panelData.failed ? (
@@ -197,7 +197,7 @@ const Panel: React.FC<PanelProps> = ({
             </Draggable>
           ))}
 
-          <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center gap-2">
+          <div className="no-export absolute bottom-0 left-0 right-0 bg-black/60 p-2 opacity-0 group-hover/panel:opacity-100 transition-opacity z-20 flex items-center gap-2">
             <input
               type="text"
               value={tagsInput}

@@ -245,7 +245,18 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
             <circle cx={dotCx - 8} cy={dotCy + 23} r="3" strokeWidth={2} stroke={stroke} fill={fill} />
           </svg>
           <Tooltip text="Invert Colors">
-            <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInvertColors();
+              }}
+              className="no-export absolute -top-3 -left-3 z-30 p-1.5 bg-white border-2 border-black hover:bg-yellow-100 rounded-full shadow-md transition-colors opacity-0 group-hover/overlay:opacity-100 focus:opacity-100"
+            >
               <InvertColorsIcon className="w-5 h-5" />
             </button>
           </Tooltip>
@@ -269,12 +280,23 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
               r="10"
               fill="rgba(0,0,0,0.45)"
               onPointerDown={handlePointerDown}
-              className="cursor-move opacity-0 group-hover:opacity-100 transition-opacity"
+              className="cursor-move opacity-0 group-hover/overlay:opacity-100 transition-opacity"
               style={{ touchAction: 'none' }}
             />
           </svg>
           <Tooltip text="Invert Colors">
-            <button onClick={handleInvertColors} className="absolute top-1 right-1 p-1.5 bg-white/60 hover:bg-white/90 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+            <button
+              type="button"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleInvertColors();
+              }}
+              className="no-export absolute -top-3 -left-3 z-30 p-1.5 bg-white border-2 border-black hover:bg-yellow-100 rounded-full shadow-md transition-colors opacity-0 group-hover/overlay:opacity-100 focus:opacity-100"
+            >
               <InvertColorsIcon className="w-5 h-5" />
             </button>
           </Tooltip>
@@ -286,7 +308,7 @@ const Bubble: React.FC<BubbleProps> = ({ bubbleData, onUpdate, children }) => {
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full relative group">
+    <div ref={containerRef} className="w-full h-full relative">
       {renderBubble()}
       <div className="absolute inset-0 p-4">
         {children}

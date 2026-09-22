@@ -324,7 +324,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 Topic
               </label>
             </Tooltip>
-            <p className="text-xs font-special-elite text-gray-500 mb-2">
+            <p className="text-base font-open-sans leading-6 text-gray-700 mb-2">
               Start with your own idea, or pull from today's headlines below.
             </p>
             <textarea
@@ -348,7 +348,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 <button
                   type="button"
                   onClick={() => setShowContextField(true)}
-                  className="text-sm font-special-elite text-gray-500 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
+                  className="text-base font-open-sans text-gray-700 hover:text-black transition-colors underline underline-offset-2 decoration-dotted"
                 >
                   + Add background context
                 </button>
@@ -356,7 +356,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             ) : (
               <span />
             )}
-            <p className="text-xs font-special-elite text-gray-400">
+            <p className="text-xs font-open-sans tabular-nums text-gray-500">
               {formData.topic.length}/150
             </p>
           </div>
@@ -366,7 +366,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             <div className="pt-1">
               <Tooltip text="Paste an article, quote, or key details. The AI draws on these facts to enrich the story without changing your topic or angle.">
                 <label htmlFor="newsContext" className="block text-base font-bold mb-1 tracking-wide font-special-elite text-black">
-                  Background Context <span className="font-normal text-gray-500 text-sm">(optional)</span>
+                  Background Context <span className="font-open-sans font-normal text-gray-700 text-base">(optional)</span>
                 </label>
               </Tooltip>
               <textarea
@@ -386,11 +386,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                     setShowContextField(false);
                     setFormData(prev => ({ ...prev, newsContext: undefined }));
                   }}
-                  className="text-xs font-special-elite text-gray-400 hover:text-black transition-colors"
+                  className="text-xs font-open-sans text-gray-500 hover:text-black transition-colors"
                 >
                   Remove
                 </button>
-                <p className="text-xs font-special-elite text-gray-400">
+                <p className="text-xs font-open-sans tabular-nums text-gray-500">
                   {(formData.newsContext?.length ?? 0)}/3000
                 </p>
               </div>
@@ -400,7 +400,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
           {/* "or" divider */}
           <div className="relative flex items-center py-3">
             <div className="flex-grow border-t border-gray-300" />
-            <span className="flex-shrink mx-3 text-xs font-special-elite text-gray-500 tracking-wider uppercase">
+            <span className="flex-shrink mx-3 text-xs font-open-sans font-semibold text-gray-700 tracking-wider uppercase">
               or pull from today's headlines
             </span>
             <div className="flex-grow border-t border-gray-300" />
@@ -445,7 +445,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                   autoFocus
                 />
                 {customStanceError && (
-                  <p className="mt-1 text-xs font-special-elite text-red-600">{customStanceError}</p>
+                  <p className="mt-1 text-sm font-open-sans text-red-700">{customStanceError}</p>
                 )}
               </>
             )}
@@ -478,12 +478,12 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                   autoFocus
                 />
                 {customStyleError && (
-                  <p className="mt-1 text-xs font-special-elite text-red-600">{customStyleError}</p>
+                  <p className="mt-1 text-sm font-open-sans text-red-700">{customStyleError}</p>
                 )}
               </>
             )}
             {formData.comedicStyle === 'dark-comedy' && !showFreeTextComedicStyle && (
-              <p className="mt-2 text-xs font-special-elite text-amber-800 bg-amber-50 border border-amber-300 rounded px-3 py-2">
+              <p className="mt-2 text-sm font-open-sans leading-5 text-amber-900 bg-amber-50 border border-amber-300 rounded px-3 py-2">
                 Stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence or tragedy may be blocked by content filters.
               </p>
             )}
@@ -517,7 +517,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 autoFocus
               />
               {customIllustrationError && (
-                <p className="mt-1 text-xs font-special-elite text-red-600">{customIllustrationError}</p>
+                <p className="mt-1 text-sm font-open-sans text-red-700">{customIllustrationError}</p>
               )}
             </>
           )}
@@ -547,18 +547,18 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
                 >
                   <div className="flex-1 flex flex-col gap-0.5 p-3">
                     <span className="font-bangers text-lg tracking-wide leading-none">{opt.label}</span>
-                    <span className={`text-xs font-open-sans leading-5 ${selected ? 'text-stone-300' : 'text-gray-600'}`}>{opt.note}</span>
+                    <span className={`text-sm font-open-sans leading-5 ${selected ? 'text-stone-200' : 'text-gray-700'}`}>{opt.note}</span>
                   </div>
                   <div className={`w-px self-stretch ${selected ? 'bg-stone-600' : 'bg-stone-300'}`} />
                   <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 min-w-[72px]">
                     <span className={`font-bangers text-base tracking-wide leading-none ${selected ? 'text-yellow-300' : 'text-black'}`}>${minCost}–${maxCost}</span>
-                    <span className={`text-[10px] font-open-sans text-center leading-tight ${selected ? 'text-stone-300' : 'text-gray-600'}`}>2–4 panels est.</span>
+                    <span className={`text-xs font-open-sans text-center leading-tight ${selected ? 'text-stone-200' : 'text-gray-700'}`}>2–4 panels est.</span>
                   </div>
                 </button>
               );
             })}
           </div>
-          <p className="text-[10px] font-special-elite text-gray-400 mt-1.5">
+          <p className="text-xs font-open-sans leading-5 text-gray-700 mt-2">
             Prices are estimates based on Google's published rates as of May 2026 and may have changed. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Check current pricing.</a>
           </p>
         </div>
@@ -583,11 +583,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full flex flex-col items-center justify-center gap-2 p-4 hover:bg-stone-100 transition-colors text-gray-500 font-special-elite rounded-lg"
+              className="w-full flex flex-col items-center justify-center gap-2 p-4 hover:bg-stone-100 transition-colors text-gray-700 font-open-sans font-semibold rounded-lg"
             >
               <UploadIcon className="w-8 h-8" />
               <span>{referenceImages.length > 0 ? 'Upload More Images' : 'Click to Upload Images'}</span>
-              <span className="text-xs text-gray-400 mt-1">(PNG, JPG, WEBP accepted)</span>
+              <span className="text-sm font-normal text-gray-700 mt-1">(PNG, JPG, WEBP accepted)</span>
             </button>
             {referenceImages.length > 0 && (
               <div className="flex flex-col gap-4">

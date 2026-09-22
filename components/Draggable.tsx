@@ -248,7 +248,7 @@ const Draggable: React.FC<DraggableProps> = ({
     <div
       ref={elementRef}
       onPointerDown={handleDragStart}
-      className="absolute z-10 group"
+      className="absolute z-10 group/overlay"
       style={isResolved ? {
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -279,13 +279,13 @@ const Draggable: React.FC<DraggableProps> = ({
           e.stopPropagation();
           onRemove();
         }}
-        className="no-export absolute -top-2 -right-2 z-30 w-6 h-6 items-center justify-center rounded-full border-2 border-black bg-white text-base font-bold leading-none text-black shadow-sm opacity-0 group-hover:flex hover:bg-red-100"
+        className="no-export absolute -top-3 -right-3 z-30 hidden w-7 h-7 items-center justify-center rounded-full border-2 border-black bg-white text-lg font-bold leading-none text-black shadow-md group-hover/overlay:flex focus:flex hover:bg-red-100"
       >
         ×
       </button>
       <div
         onPointerDown={handleResizeStart}
-        className="absolute -right-1.5 -bottom-1.5 w-5 h-5 bg-black border-2 border-white rounded-full cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+        className="no-export absolute -right-2 -bottom-2 z-30 w-5 h-5 bg-black border-2 border-white rounded-full cursor-se-resize opacity-0 group-hover/overlay:opacity-100 focus:opacity-100 transition-opacity"
         style={{ touchAction: 'none' }}
       />
     </div>
