@@ -4,6 +4,14 @@ An AI comic-making prototype that turns a topic or idea into a short illustrated
 
 The project explores how to give someone useful creative control around generated content. Instead of accepting a single finished result, the user chooses a story idea, reviews the plan, and can edit or regenerate individual panels.
 
+## Preview
+
+![Daily Banana comic setup with a squirrel topic, absurdist humor, illustration style, and reference-image upload](docs/previews/comic-setup.jpg)
+
+The comic setup screen with an example topic and humor style. This capture shows the creative controls; no story or image generation was run.
+
+[Capture notes](docs/previews/README.md) record the source revision and demo conditions.
+
 ## The workflow
 
 1. Enter a topic, an angle, and a visual style; optionally add reference images.
