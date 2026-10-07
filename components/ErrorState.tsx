@@ -19,6 +19,14 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
 
     if (innerError && innerError.code && innerError.status) {
       const { code, status } = innerError;
+      if (Number(code) === 402 || status === 'RESOURCE_EXHAUSTED' || Number(code) === 429) {
+        return {
+          title: 'AI usage limit reached',
+          message: Number(code) === 402
+            ? 'The AI provider rejected this request because of a billing, credit, or quota limit. This is not a problem with your topic. The app owner needs to check the AI service’s billing and usage allowance before trying again.'
+            : 'The AI service has reached a usage or rate limit. This is not a problem with your topic. Wait for the limit to reset, or have the app owner check the AI service’s quota and billing.',
+        };
+      }
       let userMessage = `The AI model encountered an issue (Code: ${code} - ${status}).`;
       
       if (code === 500) {
