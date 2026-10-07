@@ -3,11 +3,12 @@
 // refine or regenerate the first panel image, then continue generating the rest.
 import React, { useState } from 'react';
 import { ComicFormData, ReviewData } from '../types';
-import { geminiService } from '../services/geminiService';
 import RefreshIcon from './icons/RefreshIcon';
 import SparklesIcon from './icons/SparklesIcon';
 import NewComicIcon from './icons/NewComicIcon';
 import Tooltip from './Tooltip';
+
+const getGeminiService = async () => (await import('../services/geminiService')).geminiService;
 
 interface ReviewPlanProps {
     reviewData: ReviewData;
@@ -48,7 +49,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
         setIsLoading(true);
         setError(null);
         try {
-            const newImage = await geminiService.refinePanelImage(
+            const newImage = await (await getGeminiService()).refinePanelImage(
                 reviewData.firstPanelImage,
                 refinementTags,
                 firstPanelPlan.visual_prompt,
@@ -78,7 +79,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
         setError(null);
         try {
             const userTags = refinementTags.split(',').map(t => t.trim()).filter(Boolean);
-            const newImage = await geminiService.generatePanelImageWithReferences(
+            const newImage = await (await getGeminiService()).generatePanelImageWithReferences(
                 firstPanelPlan.visual_prompt,
                 [...globalTags, ...userTags],
                 formData.illustrationStyle,

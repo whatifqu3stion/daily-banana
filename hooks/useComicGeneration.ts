@@ -15,9 +15,10 @@ import {
   ReferenceImage,
   ReviewData,
 } from '../types';
-import { geminiService } from '../services/geminiService';
 import { toBase64 } from '../utils/fileUtils';
 import { layoutAdapter } from '../utils/layoutAdapter';
+
+const getGeminiService = async () => (await import('../services/geminiService')).geminiService;
 
 /**
  * Collects and deduplicates consistency tags across ALL panels in a plan.
@@ -145,7 +146,7 @@ export default function useComicGeneration() {
           prevRef,
         ];
         try {
-          const img = await geminiService.generatePanelImageWithReferences(
+          const img = await (await getGeminiService()).generatePanelImageWithReferences(
             panel.visual_prompt,
             globalTags,
             illustrationStyle,
@@ -242,7 +243,7 @@ export default function useComicGeneration() {
       const firstPanelPlan = plan.panels[0];
       const globalTags = poolConsistencyTags(plan);
       const panelLayouts = layoutAdapter(plan.panels);
-      const firstPanelImage = await geminiService.generatePanelImageWithReferences(
+      const firstPanelImage = await (await getGeminiService()).generatePanelImageWithReferences(
         firstPanelPlan.visual_prompt,
         globalTags,
         currentFormData.illustrationStyle,
@@ -278,7 +279,7 @@ export default function useComicGeneration() {
 
       if (formData.brainstormMode) {
         setLoadingMessages(['Brainstorming story concepts...', 'Crafting witty dialogue...', 'Polishing the punchlines...']);
-        const plans = await geminiService.generateMultipleComicPlans(formData, userImages);
+        const plans = await (await getGeminiService()).generateMultipleComicPlans(formData, userImages);
         if (plans.length === 0) {
           throw new Error("The AI couldn't generate any story ideas. Please try a different topic.");
         }
@@ -288,7 +289,7 @@ export default function useComicGeneration() {
         // Non-brainstorm mode: route through StorySwiper so the user can review
         // the AI concept or switch to the "Write Your Own Angle" card.
         setLoadingMessages(['Drafting a story concept...', 'Structuring the panels...', 'Finalizing the narrative...']);
-        const plan = await geminiService.generateSingleComicPlan(formData, userImages);
+        const plan = await (await getGeminiService()).generateSingleComicPlan(formData, userImages);
         setComicPlans([plan]);
         setAppStage('story-swipe');
       }
@@ -355,7 +356,7 @@ export default function useComicGeneration() {
       ];
 
       try {
-        const newImage = await geminiService.generatePanelImageWithReferences(
+        const newImage = await (await getGeminiService()).generatePanelImageWithReferences(
           panel.visual_prompt,
           globalTags,
           formDataCache.illustrationStyle,
@@ -383,7 +384,7 @@ export default function useComicGeneration() {
     let contextSources: ExplainerSource[] = [];
     if (formDataCache.includeContext) {
       setLoadingMessages(["Checking the archives for context..."]);
-      const explainerResult = await geminiService.generateContextExplainer(
+      const explainerResult = await (await getGeminiService()).generateContextExplainer(
         reviewData.plan.title,
         reviewData.plan.summary,
         formDataCache.newsContext,
@@ -515,7 +516,7 @@ export default function useComicGeneration() {
           )]
         : [];
 
-      const newImage = await geminiService.generatePanelImageWithReferences(
+      const newImage = await (await getGeminiService()).generatePanelImageWithReferences(
         panel.visual_prompt,
         globalTags,
         formDataCache.illustrationStyle,
@@ -568,7 +569,7 @@ export default function useComicGeneration() {
         ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
       ];
 
-      const newImage = await geminiService.refinePanelImage(
+      const newImage = await (await getGeminiService()).refinePanelImage(
         panel.image,
         refinementPrompt,
         panel.visual_prompt,
@@ -622,7 +623,7 @@ export default function useComicGeneration() {
       // handleContinueGeneration, regenerate, refine) all see the right
       // form settings AND so onReturnFromReview restores the correct state.
       setFormDataCache(customFormData);
-      const plan = await geminiService.generateSingleComicPlan(customFormData, activeComicReferences.current);
+      const plan = await (await getGeminiService()).generateSingleComicPlan(customFormData, activeComicReferences.current);
       // handleSelectStory takes over from here with the global loading screen
       // (it generates the panel 0 image before transitioning to review).
       await handleSelectStory(plan, customFormData);

@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #efe4c9;
+  position: relative;
+  z-index: 0;
+}
+
+body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.07) 2px, transparent 2px);
+  background-size: 8px 8px;
+  mask-image: linear-gradient(to bottom, transparent 25%, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 25%, black 100%);
+}
+
+.masthead-title {
+  position: relative;
+  display: inline-block;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: #333;
+}
+
+@media (min-width: 640px) {
+  .masthead-title {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .masthead-title {
+    font-size: 4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .masthead-title {
+    font-size: 5.5rem;
+  }
+}
+
+.masthead-title::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  background-image: radial-gradient(circle, #000 45%, transparent 45%);
+  background-size: 3px 3px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  pointer-events: none;
+}
+
+.blinking-cursor {
+  font-weight: 100;
+  animation: 1s blink step-end infinite;
+}
+
+@keyframes blink {
+  from,
+  to {
+    color: transparent;
+  }
+  50% {
+    color: black;
+  }
+}

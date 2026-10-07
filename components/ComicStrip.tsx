@@ -3,7 +3,6 @@
 // provides per-panel editing controls (regenerate / refine / drag bubbles),
 // and handles PNG export and Twitter sharing.
 import React, { useRef, useState } from 'react';
-import * as htmlToImage from 'html-to-image';
 import { ComicStripData, PanelData } from '../types';
 import { embedGoogleFonts } from '../utils/fontUtils';
 import { extractDomain } from '../utils/urlUtils';
@@ -67,7 +66,8 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
         });
 
-        const dataUrl = await htmlToImage.toPng(comicRef.current, {
+        const { toPng } = await import('html-to-image');
+        const dataUrl = await toPng(comicRef.current, {
           quality: 1,
           pixelRatio: 2,
           fontEmbedCSS: fontEmbedCss,

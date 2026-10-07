@@ -3,10 +3,16 @@
 // Results are cached in localStorage keyed by calendar date so repeated opens
 // of the NewsSelector within the same day reuse one API call. Concurrent
 // callers share a single in-flight promise (inflightRequest deduplication).
-import { GoogleGenAI } from "@google/genai";
 import { NewsStory } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let aiPromise: Promise<import('@google/genai').GoogleGenAI> | null = null;
+
+const getAi = () => {
+    aiPromise ??= import('@google/genai').then(
+        ({ GoogleGenAI }) => new GoogleGenAI({ apiKey: process.env.API_KEY })
+    );
+    return aiPromise;
+};
 
 const CACHE_KEY = 'dailyBanana_news';
 
@@ -76,7 +82,7 @@ Example format:
   {"title": "Tech Giant Reports Record Profits", "description": "A major Silicon Valley firm posted $34.2 billion in quarterly profit, up 28% year-on-year, even as it announced 6,000 layoffs earlier in the month. CEO Jensen Huang called the results 'a testament to disciplined cost management.'"}
 ]`;
 
-        const result = await ai.models.generateContent({
+        const result = await (await getAi()).models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
