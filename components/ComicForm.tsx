@@ -18,6 +18,8 @@ import ConfirmationModal from './ConfirmationModal'; // Import the new modal
 interface ComicFormProps {
   onSubmit: (formData: ComicFormData) => void;
   isLoading: boolean;
+  hasApiKey: boolean;
+  onOpenApiSettings?: () => void;
 }
 
 // Internal state type for managing file previews
@@ -58,7 +60,7 @@ const loadSavedForm = (): Partial<ComicFormData> => {
   }
 };
 
-const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
+const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, onOpenApiSettings }) => {
   const [formData, setFormData] = useState<ComicFormData>(() => {
     const saved = loadSavedForm();
     return {
@@ -68,7 +70,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
       illustrationStyle: saved.illustrationStyle ?? 'default-color',
       imageModel: (IMAGE_MODEL_OPTIONS.some(o => o.value === saved.imageModel)
         ? saved.imageModel
-        : 'gemini-3.1-flash-image-preview') as ImageModel,
+        : 'gemini-nano-banana-2.1') as ImageModel,
       newsContext: saved.newsContext,
       referenceImages: [],
       brainstormMode: saved.brainstormMode ?? false,
@@ -99,28 +101,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     return !!(loadSavedForm().newsContext);
   });
 
-  // Pre-fetch headlines in the background, but only once the browser is idle
-  // after the initial paint so we don't compete with page-load resources.
-  const newsPrefetchRef = useRef<Promise<NewsStory[]> | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-
-    const startPrefetch = () => {
-      if (cancelled) return;
-      const p = getTopStories();
-      p.catch(() => {}); // suppress unhandled-rejection during silent prefetch
-      newsPrefetchRef.current = p;
-    };
-
-    if (typeof window.requestIdleCallback === 'function') {
-      const id = window.requestIdleCallback(startPrefetch, { timeout: 4000 });
-      return () => { cancelled = true; window.cancelIdleCallback(id); };
-    } else {
-      // Fallback: short delay so at minimum the first paint finishes first
-      const id = setTimeout(startPrefetch, 300);
-      return () => { cancelled = true; clearTimeout(id); };
-    }
-  }, []);
+  // BYOK requests run only after an explicit user action, never on page load.
   
   // State for the new confirmation modal
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
@@ -154,7 +135,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newImages = Array.from(files).map(file => ({
+      const newImages = Array.from<File>(files).map(file => ({
         file,
         tag: '',
         previewUrl: URL.createObjectURL(file),
@@ -230,6 +211,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hasApiKey) return;
     // Validate custom free-text fields before proceeding
     if (showFreeTextStance && !formData.stance.trim()) {
       setCustomStanceError('Please describe your custom stance.');
@@ -252,7 +234,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
   
   const handleConfirmSensitive = () => {
     setIsConfirmationModalOpen(false);
-    onSubmit(formData);
+    if (hasApiKey) onSubmit(formData);
   };
   
   const handleCancelSensitive = () => {
@@ -267,8 +249,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
     try {
       // Reuse the background prefetch if it's in-flight or already done;
       // fall back to a fresh call only if no prefetch exists.
-      const promise = newsPrefetchRef.current ?? getTopStories();
-      newsPrefetchRef.current = null; // next open will fetch fresh headlines
+      const promise = getTopStories();
       const stories = await promise;
       setNewsStories(stories);
     } catch (error: any) {
@@ -566,7 +547,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
             })}
           </div>
           <p className="text-xs font-open-sans leading-5 text-gray-700 mt-2">
-            Prices are estimates based on Google's published rates as of May 2026 and may have changed. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Check current pricing.</a>
+            Image-output estimates at the selected resolution, checked October 7, 2026. Planning, reference images, edits, retries, and search can cost extra. Google bills your API project; these are not total comic prices. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Check current pricing.</a>
           </p>
         </div>
 
@@ -661,12 +642,26 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading }) => {
         <div className="pt-4 border-t-4 border-black">
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !hasApiKey}
              className="w-full group inline-flex items-center justify-center gap-3 px-8 py-4 bg-banana text-black font-bangers text-2xl tracking-wider border-2 border-t-black border-l-black border-r-black border-b-8 border-b-black hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <SparklesIcon className={`w-6 h-6 ${isLoading ? 'animate-spin' : 'group-hover:animate-spin-once'}`} />
             {isLoading ? 'Generating...' : 'Generate Comic Plan'}
           </button>
+          {!hasApiKey && (
+            <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-base font-open-sans">
+              <span>Connect a Google API key to generate a comic.</span>
+              {onOpenApiSettings && (
+                <button
+                  type="button"
+                  onClick={onOpenApiSettings}
+                  className="font-bold underline decoration-2 underline-offset-2 hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                >
+                  Open API settings
+                </button>
+              )}
+            </p>
+          )}
         </div>
       </form>
     </>

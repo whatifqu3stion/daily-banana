@@ -2,12 +2,12 @@
 //   • Comic plan generation  (single plan + multi-plan brainstorm)
 //   • Panel image generation and refinement
 //   • News context explainer
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { Type, Modality } from "@google/genai";
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource, AspectRatio, PanelContext } from '../types';
 import { extractDomain } from '../utils/urlUtils';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+import { generateContent } from './geminiConnection';
 
 // ─── Response schemas ────────────────────────────────────────────────────────
 const comicPlanSchema = {
@@ -537,7 +537,7 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
         ])
     ];
 
-    const result = await ai.models.generateContent({
+    const result = await generateContent({
         model: 'gemini-2.5-flash',
         contents: { parts },
         config: {
@@ -550,7 +550,7 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
     assertNotSafetyBlocked(result, 'generateSingleComicPlan');
 
     try {
-        const jsonText = result.text.trim();
+        const jsonText = result.text?.trim() ?? '';
         if (!jsonText) {
             console.error("AI returned empty text for single comic plan.");
             throw new Error("The AI returned an empty response. Please try again.");
@@ -576,7 +576,7 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
         ])
     ];
 
-    const result = await ai.models.generateContent({
+    const result = await generateContent({
         model: 'gemini-2.5-flash',
         contents: { parts },
         config: {
@@ -589,7 +589,7 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
     assertNotSafetyBlocked(result, 'generateMultipleComicPlans');
 
     try {
-        const jsonText = result.text.trim();
+        const jsonText = result.text?.trim() ?? '';
         if (!jsonText) {
             console.error("AI returned empty text for multiple comic plans.");
             throw new Error("The AI returned an empty response. Please try again.");
@@ -620,7 +620,7 @@ const generatePanelImageWithReferences = async (
     illustrationStyle?: string,
     comedicStyle?: string,
     userProvidedImages: ProcessedReferenceImage[] = [],
-    imageModel: string = 'gemini-3.1-flash-image-preview',
+    imageModel: string = 'gemini-nano-banana-2.1',
     stance?: string,
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
@@ -642,14 +642,14 @@ const generatePanelImageWithReferences = async (
     for (let attempt = 1; attempt <= IMAGE_GENERATION_ATTEMPTS; attempt++) {
         if (attempt > 1) await sleep(1000 * (attempt - 1));
 
-        const result = await ai.models.generateContent({
+        const result = await generateContent({
             model: imageModel,
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
                 imageConfig: {
                     aspectRatio: aspectRatio ?? '1:1',
-                    imageSize: '2K',
+                    ...(imageModel === 'gemini-2.5-flash-image' ? {} : { imageSize: '2K' }),
                 },
             }
         });
@@ -658,7 +658,7 @@ const generatePanelImageWithReferences = async (
         assertNotSafetyBlocked(result, 'generatePanelImageWithReferences');
 
         const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (imagePart?.inlineData) return imagePart.inlineData.data;
+        if (imagePart?.inlineData?.data) return imagePart.inlineData.data;
 
         // Log what the model said instead of the image — helps diagnose soft refusals.
         const textPart = result.candidates?.[0]?.content?.parts?.find(p => p.text);
@@ -676,7 +676,7 @@ const refinePanelImage = async (
     illustrationStyle?: string,
     comedicStyle?: string,
     userProvidedImages: ProcessedReferenceImage[] = [],
-    imageModel: string = 'gemini-3.1-flash-image-preview',
+    imageModel: string = 'gemini-nano-banana-2.1',
     stance?: string,
     aspectRatio?: AspectRatio,
     overlayTexts?: string[],
@@ -710,14 +710,14 @@ const refinePanelImage = async (
     for (let attempt = 1; attempt <= IMAGE_GENERATION_ATTEMPTS; attempt++) {
         if (attempt > 1) await sleep(1000 * (attempt - 1));
 
-        const result = await ai.models.generateContent({
+        const result = await generateContent({
             model: imageModel,
             contents: { parts },
             config: {
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
                 imageConfig: {
                     aspectRatio: aspectRatio ?? '1:1',
-                    imageSize: '2K',
+                    ...(imageModel === 'gemini-2.5-flash-image' ? {} : { imageSize: '2K' }),
                 },
             }
         });
@@ -725,7 +725,7 @@ const refinePanelImage = async (
         assertNotSafetyBlocked(result, 'refinePanelImage');
 
         const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (imagePart?.inlineData) return imagePart.inlineData.data;
+        if (imagePart?.inlineData?.data) return imagePart.inlineData.data;
 
         const textPart = result.candidates?.[0]?.content?.parts?.find(p => p.text);
         console.error(`refinePanelImage attempt ${attempt}/${IMAGE_GENERATION_ATTEMPTS}: no image returned. Model text: "${textPart?.text ?? '(none)'}"`);
@@ -752,7 +752,7 @@ The following is a satirical comic strip. Use Google Search to find the real-wor
 `;
 
     try {
-        const result = await ai.models.generateContent({
+        const result = await generateContent({
             model: 'gemini-2.5-flash',
             contents,
             config: {

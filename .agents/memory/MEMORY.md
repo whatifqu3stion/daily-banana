@@ -1,2 +1,3 @@
 - [Npm lockfile registries](npm-lockfile-registries.md) — regenerate locks with the public HTTPS registry so commits do not reference Replit-internal package URLs.
 - [CSS pipeline restarts](css-pipeline-restarts.md) — restart the development workflow after CSS toolchain merges before judging visual regressions.
+- [BYOK placement](byok-placement.md) — the user wants API-key setup outside the main comic-creation workspace.

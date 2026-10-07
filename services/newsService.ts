@@ -4,15 +4,7 @@
 // of the NewsSelector within the same day reuse one API call. Concurrent
 // callers share a single in-flight promise (inflightRequest deduplication).
 import { NewsStory } from '../types';
-
-let aiPromise: Promise<import('@google/genai').GoogleGenAI> | null = null;
-
-const getAi = () => {
-    aiPromise ??= import('@google/genai').then(
-        ({ GoogleGenAI }) => new GoogleGenAI({ apiKey: process.env.API_KEY })
-    );
-    return aiPromise;
-};
+import { generateContent, getConnectionRevision, hasGeminiKey } from './geminiConnection';
 
 const CACHE_KEY = 'dailyBanana_news';
 
@@ -51,6 +43,7 @@ function saveCache(stories: NewsStory[]): void {
 // Deduplicates concurrent callers — if two calls arrive before the first
 // resolves (e.g. idle prefetch races a manual open), only one API request is made.
 let inflightRequest: Promise<NewsStory[]> | null = null;
+let inflightRevision = -1;
 
 /**
  * Fetches today's top news headlines using the Gemini API with Google Search grounding.
@@ -58,10 +51,13 @@ let inflightRequest: Promise<NewsStory[]> | null = null;
  * redundant API calls.
  */
 export const getTopStories = async (): Promise<NewsStory[]> => {
+    if (!hasGeminiKey()) throw new Error('Connect your Google API key before fetching headlines.');
+    const revision = getConnectionRevision();
     const cached = loadCache();
     if (cached) return cached;
 
-    if (inflightRequest) return inflightRequest;
+    if (inflightRequest && inflightRevision === revision) return inflightRequest;
+    inflightRevision = revision;
 
     inflightRequest = (async () => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -82,7 +78,7 @@ Example format:
   {"title": "Tech Giant Reports Record Profits", "description": "A major Silicon Valley firm posted $34.2 billion in quarterly profit, up 28% year-on-year, even as it announced 6,000 layoffs earlier in the month. CEO Jensen Huang called the results 'a testament to disciplined cost management.'"}
 ]`;
 
-        const result = await (await getAi()).models.generateContent({
+        const result = await generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
@@ -125,7 +121,7 @@ Example format:
         saveCache(stories);
         return stories;
     })().finally(() => {
-        inflightRequest = null;
+        if (inflightRevision === revision) inflightRequest = null;
     });
 
     return inflightRequest;

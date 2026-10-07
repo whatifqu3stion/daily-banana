@@ -7,7 +7,7 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 - **Frontend:** React 19 + TypeScript
 - **Build Tool:** Vite 6
 - **Styling:** Tailwind CSS (via CDN in dev and prod)
-- **AI:** Google Gemini (`gemini-2.5-flash` for text, `gemini-3.1-flash-image-preview` for images)
+- **AI:** Google Gemini (`gemini-2.5-flash` for text, stable `gemini-nano-banana-2.1` for 2K images; stable `gemini-2.5-flash-image` as a legacy 1K alternative)
 - **Image Export:** html-to-image (with Google Fonts embedded as Base64 for offline-safe PNG export)
 - **News:** Google Search grounding via Gemini API (results cached in localStorage per calendar day)
 
@@ -47,9 +47,12 @@ An AI-powered web application that generates satirical, newspaper-style comic st
     └── fileUtils.ts         # toBase64() — File → base64 for Gemini inlineData
 ```
 
-## Environment Variables
-- `GEMINI_API_KEY` (secret) — Google Gemini API key, required for all AI features.
-  Exposed in Vite's `define` block as both `process.env.API_KEY` and `process.env.GEMINI_API_KEY`.
+## Personal API Keys (BYOK)
+- Creators connect their own Gemini key in the app. It is held only in memory for the current tab, cleared on refresh/removal, and sent directly to Google.
+- Do not embed an owner key in the Vite bundle or persist personal keys in browser storage.
+- Connection validates model metadata without generating content; billing and image-model access are checked by Google when generating.
+- Image API models require paid access. Do not promise a fixed free-generation quota; Google AI Studio allowances are separate.
+- Headlines are fetched only on explicit user action, not automatically at page load.
 
 ## Running the App
 ```bash
@@ -59,7 +62,7 @@ npm run build # Production build → dist/
 ```
 
 ## Image Pricing
-Hard-coded in `constants.ts` (`pricePerImage`). Estimates shown in the UI are based on Google's published rates as of May 2026 — verify at https://ai.google.dev/gemini-api/docs/pricing if needed.
+Hard-coded in `constants.ts` (`pricePerImage`). Image-output estimates checked October 7, 2026: $0.0504 per Nano Banana 2.1 2K image, $0.039 per legacy 2.5 image. They exclude text/input tokens, edits, retries and search. Verify at https://ai.google.dev/gemini-api/docs/pricing.
 
 ## Deployment
 - **Type:** Static site

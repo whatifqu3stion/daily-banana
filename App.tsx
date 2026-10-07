@@ -1,7 +1,7 @@
 // App.tsx — root layout component.
 // Owns the masthead, footer, and top-level stage rendering.
 // All comic generation state and logic lives in useComicGeneration().
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import useComicGeneration from './hooks/useComicGeneration';
 import ComicForm from './components/ComicForm';
 import LoadingState from './components/LoadingState';
@@ -10,9 +10,13 @@ import ReviewPlan from './components/ReviewPlan';
 import ComicStrip from './components/ComicStrip';
 import ErrorState from './components/ErrorState';
 import ConfirmationModal from './components/ConfirmationModal';
+import ApiKeySettings from './components/ApiKeySettings';
+import { hasGeminiKey, subscribeGeminiConnection } from './services/geminiConnection';
 
 const App: React.FC = () => {
+  const hasApiKey = useSyncExternalStore(subscribeGeminiConnection, hasGeminiKey, () => false);
   const [isDiscardConfirmationOpen, setIsDiscardConfirmationOpen] = useState(false);
+  const [isApiSettingsOpen, setIsApiSettingsOpen] = useState(false);
   const {
     appStage,
     formData,
@@ -78,13 +82,13 @@ const App: React.FC = () => {
 
     if (error) {
       return (
-        <ErrorState error={error} onStartOver={handleStartNew} />
+        <ErrorState error={error} onStartOver={handleStartNew} onOpenApiSettings={() => setIsApiSettingsOpen(true)} />
       );
     }
 
     switch (appStage) {
       case 'form':
-        return <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} />;
+        return <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} hasApiKey={hasApiKey} onOpenApiSettings={() => setIsApiSettingsOpen(true)} />;
       case 'story-swipe':
         return (
           <StorySwiper
@@ -98,7 +102,7 @@ const App: React.FC = () => {
           />
         );
       case 'review':
-        if (!reviewData) return <ErrorState error="No review data available. Please start over." onStartOver={handleStartNew} />;
+        if (!reviewData) return <ErrorState error="No review data available. Please start over." onStartOver={handleStartNew} onOpenApiSettings={() => setIsApiSettingsOpen(true)} />;
         return (
           <ReviewPlan
             reviewData={reviewData}
@@ -111,7 +115,7 @@ const App: React.FC = () => {
           />
         );
       case 'strip':
-        if (!comicStripData) return <ErrorState error="No comic data available. Please start over." onStartOver={handleStartNew} />;
+        if (!comicStripData) return <ErrorState error="No comic data available. Please start over." onStartOver={handleStartNew} onOpenApiSettings={() => setIsApiSettingsOpen(true)} />;
         return (
           <ComicStrip
             comicData={comicStripData}
@@ -126,13 +130,18 @@ const App: React.FC = () => {
         );
       default:
         // The useEffect above will call handleStartNew() on the next tick.
-        return <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} />;
+        return <ComicForm onSubmit={handleFormSubmit} isLoading={isLoading} hasApiKey={hasApiKey} onOpenApiSettings={() => setIsApiSettingsOpen(true)} />;
     }
   };
 
   return (
     <div className="min-h-[100dvh] px-3 py-3 sm:px-6 sm:py-6 font-sans">
       <header className={`mx-auto w-full max-w-6xl ${isSetup ? 'mb-10 sm:mb-14' : 'mb-6'}`}>
+        {isSetup && (
+          <div className="mb-3 flex justify-end">
+            <ApiSettingsButton connected={hasApiKey} onClick={() => setIsApiSettingsOpen(true)} />
+          </div>
+        )}
         {!isSetup && (
           <div className="compact-masthead grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-y-2 border-black py-2.5 sm:py-3 lg:grid-cols-[minmax(22rem,1fr)_auto_minmax(10rem,1fr)] lg:gap-5">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -140,7 +149,8 @@ const App: React.FC = () => {
               <span className="whitespace-nowrap font-masthead text-xl leading-none sm:text-2xl md:text-3xl lg:text-4xl">The Daily Banana</span>
             </div>
             <span className="hidden whitespace-nowrap text-center text-lg font-bold font-special-elite uppercase tracking-[0.1em] text-gray-900 lg:block">{today}</span>
-            <div className="justify-self-end">
+            <div className="flex items-center justify-self-end gap-2">
+              <ApiSettingsButton connected={hasApiKey} onClick={() => setIsApiSettingsOpen(true)} />
               <button type="button" onClick={requestNewComic} className="border-2 border-black bg-paper-light px-3 py-2 text-xs font-bold uppercase tracking-wide hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black">
                 New comic
               </button>
@@ -194,8 +204,33 @@ const App: React.FC = () => {
         onConfirm={confirmNewComic}
         onCancel={() => setIsDiscardConfirmationOpen(false)}
       />
+      {isApiSettingsOpen && (
+        <ApiKeySettings
+          disabled={isLoading || isCustomPremiseLoading || [0, 1, 2, 3].some(isPanelLoading)}
+          onClose={() => setIsApiSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 };
+
+interface ApiSettingsButtonProps {
+  connected: boolean;
+  onClick: () => void;
+}
+
+const ApiSettingsButton: React.FC<ApiSettingsButtonProps> = ({ connected, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={`API settings. ${connected ? 'Connected' : 'Not connected'}.`}
+    className="inline-flex items-center gap-2 border-2 border-black bg-paper-light px-2.5 py-2 text-[0.65rem] font-bold uppercase tracking-wide hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black sm:px-3 sm:text-xs"
+  >
+    <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full border border-black ${connected ? 'bg-black' : 'bg-transparent'}`} />
+    <span className="sm:hidden">API</span>
+    <span className="hidden sm:inline">API settings</span>
+    <span className="hidden text-[0.6rem] tracking-normal sm:inline">{connected ? 'Connected' : 'Not connected'}</span>
+  </button>
+);
 
 export default App;

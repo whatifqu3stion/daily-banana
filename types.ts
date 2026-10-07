@@ -10,7 +10,7 @@ export type Stance = 'supportive' | 'critical' | 'neutral' | (string & {});
 export type ComedicStyle = 'satirical' | 'ironic' | 'deadpan' | 'absurdist' | 'slapstick' | (string & {});
 
 // Defines which Gemini image generation model to use for panel rendering.
-export type ImageModel = 'gemini-3.1-flash-image-preview' | 'gemini-2.5-flash-preview-image-generation';
+export type ImageModel = 'gemini-nano-banana-2.1' | 'gemini-2.5-flash-image';
 
 // Defines the stages of the application's UI flow.
 export type AppStage = 'form' | 'story-swipe' | 'review' | 'strip';

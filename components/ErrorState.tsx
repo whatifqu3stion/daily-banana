@@ -7,9 +7,28 @@ import React from 'react';
 interface ErrorStateProps {
   error: string | null;
   onStartOver: () => void;
+  onOpenApiSettings?: () => void;
 }
 
 const parseErrorMessage = (error: string): { title: string; message: string } => {
+  if (/API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(error)) {
+    return {
+      title: 'Check your Google API access',
+      message: 'Open API settings to replace your key. Check that the Gemini API is enabled and the key’s Google project has billing and permission to use the selected model. Your topic is not the problem.',
+    };
+  }
+  if (/RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)/i.test(error)) {
+    return {
+      title: 'Google API usage limit reached',
+      message: 'Check billing, credits, and quotas in your Google API project, or wait for a rate limit to reset. You can replace your key in API settings. This is not a problem with your topic.',
+    };
+  }
+  if (/NOT_FOUND|(?:^|\D)404(?:\D|$)/i.test(error)) {
+    return {
+      title: 'Image model unavailable',
+      message: 'Check whether your Google project can access this model, or return to the desk and choose the other image model under More control.',
+    };
+  }
   try {
     // Attempt to parse the error message, which might be a JSON string from the API
     let errorData = JSON.parse(error);
@@ -23,8 +42,8 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
         return {
           title: 'AI usage limit reached',
           message: Number(code) === 402
-            ? 'The AI provider rejected this request because of a billing, credit, or quota limit. This is not a problem with your topic. The app owner needs to check the AI service’s billing and usage allowance before trying again.'
-            : 'The AI service has reached a usage or rate limit. This is not a problem with your topic. Wait for the limit to reset, or have the app owner check the AI service’s quota and billing.',
+            ? 'Google rejected this request because of a billing, credit, or quota limit in your API project. Check your Google billing and usage allowance. This is not a problem with your topic.'
+            : 'Your Google API project has reached a usage or rate limit. Wait for the limit to reset, or check your Google quota and billing. This is not a problem with your topic.',
         };
       }
       let userMessage = `The AI model encountered an issue (Code: ${code} - ${status}).`;
@@ -51,10 +70,12 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
   };
 };
 
-const ErrorState: React.FC<ErrorStateProps> = ({ error, onStartOver }) => {
+const ErrorState: React.FC<ErrorStateProps> = ({ error, onStartOver, onOpenApiSettings }) => {
   if (!error) return null;
 
   const { title, message } = parseErrorMessage(error);
+  const isBillingError = /RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)|billing|quota|credit/i.test(error);
+  const isKeyAccessError = /API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(error);
 
   return (
     <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center shadow-xl rounded-lg text-center">
@@ -62,6 +83,15 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onStartOver }) => {
       <p className="text-lg font-lora text-black mt-4 break-words">
         {message}
       </p>
+      {(isBillingError || isKeyAccessError) && onOpenApiSettings && (
+        <button
+          type="button"
+          onClick={onOpenApiSettings}
+          className="mt-5 border-2 border-black bg-banana px-4 py-2 font-bold hover:bg-yellow-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+        >
+          Open API settings
+        </button>
+      )}
       <p className="mt-3 text-sm font-open-sans text-gray-700">Your saved setup is preserved. Return to the desk to try again with the same topic, or adjust it before resubmitting.</p>
       <button
         onClick={onStartOver}

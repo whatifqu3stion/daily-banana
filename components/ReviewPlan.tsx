@@ -39,7 +39,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
     const firstPanelPlan = reviewData.plan.panels[0];
 
     // Pool consistency tags across all panels, not just panel 0.
-    const globalTags = [...new Set(reviewData.plan.panels.flatMap(p => p.consistency_tags ?? []))];
+    const globalTags = [...new Set<string>(reviewData.plan.panels.flatMap(p => p.consistency_tags ?? []))];
 
     const handleRefine = async () => {
         if (!refinementTags) {

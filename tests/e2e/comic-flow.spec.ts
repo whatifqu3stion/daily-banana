@@ -2,6 +2,11 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function startComic(page: Page) {
   await page.goto('/');
+  await page.getByRole('button', { name: /^API settings/ }).click();
+  await page.getByLabel('Google API key', { exact: true }).fill('test-key-not-a-secret');
+  await page.getByRole('button', { name: 'Connect key', exact: true }).click();
+  await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
   await page.getByLabel('Topic').fill('Office automation gone wrong');
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   await expect(page.getByRole('heading', { name: 'Choose Your Story' })).toBeVisible();
@@ -22,6 +27,13 @@ async function reachStrip(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
+  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+    } else {
+      await route.abort();
+    }
+  });
 });
 
 test('covers setup, story selection, proof review, and final comic', async ({ page }) => {

@@ -69,15 +69,15 @@ export const IMAGE_MODEL_OPTIONS: {
   pricePerImage: number;
 }[] = [
   {
-    value: 'gemini-3.1-flash-image-preview',
-    label: 'Flash Image 3.1',
-    note: 'Higher quality · natively multimodal',
-    pricePerImage: 0.067,
+    value: 'gemini-nano-banana-2.1',
+    label: 'Nano Banana 2.1',
+    note: 'Latest stable · 2K images · billing required',
+    pricePerImage: 0.0504,
   },
   {
-    value: 'gemini-2.5-flash-preview-image-generation',
+    value: 'gemini-2.5-flash-image',
     label: 'Flash Image 2.5',
-    note: 'Fast · cost-effective',
+    note: 'Legacy stable · 1K images · billing required',
     pricePerImage: 0.039,
   },
 ];

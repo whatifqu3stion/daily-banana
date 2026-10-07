@@ -492,7 +492,7 @@ export default function useComicGeneration() {
       // Pool tags from every panel so the regenerated image knows about all
       // recurring characters, not just the ones this panel's own tags mention.
       const globalTags = [
-        ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
+        ...new Set<string>(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
       ];
 
       // Build reference list:
@@ -566,7 +566,7 @@ export default function useComicGeneration() {
     setPanelLoadingState(prev => new Set(prev).add(panelIndex));
     try {
       const globalTags = [
-        ...new Set(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
+        ...new Set<string>(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
       ];
 
       const newImage = await (await getGeminiService()).refinePanelImage(
