@@ -435,6 +435,59 @@ test('failed replacement keeps connection; successful replacement and removal up
   expect(mock.sessions.size).toBe(0);
 });
 
+for (const [kind, code, message, heading] of [
+  ['GENERATION_NETWORK', 502, 'The app server could not complete its connection to Google.', 'Image generation: connection interrupted'],
+  ['GENERATION_TIMEOUT', 504, 'The request did not finish before its time limit. It may still count toward Google usage.', 'Image generation timed out'],
+  ['GOOGLE_UPSTREAM_ERROR', 502, 'Google’s image service is temporarily unavailable; diagnostic 403 is not a permission failure.', 'Image generation: Google returned an error'],
+  ['GENERATION_UNKNOWN', 502, 'The app could not interpret the generation failure. The cause is not yet known.', 'Image generation: cause not confirmed'],
+  ['GENERATION_INCOMPLETE', 502, 'Google returned an image interaction marked in_progress, not a completed image.', 'Image generation did not finish'],
+  ['GENERATION_RESPONSE_INVALID', 502, 'Google returned an unexpected image response.', 'Image generation: unexpected response'],
+] as const) {
+  test(`generation error ${kind} shows its explanation and preserves setup without automatic retry`, async ({ page }) => {
+    await mockBackend(page);
+    let images = 0;
+    await page.route('**/api/gemini/interactions', async route => {
+      images++;
+      await route.fulfill({ status: code, json: { error: { code, kind, status: kind === 'GOOGLE_UPSTREAM_ERROR' ? 'BAD_GATEWAY' : 'GOOGLE_REQUEST_FAILED', operation: 'image', message } } });
+    });
+    await page.goto('/');
+    await connect(page);
+    await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
+    await page.getByLabel('Topic', { exact: true }).fill('Office automation');
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await page.getByRole('button', { name: 'Choose This Story' }).click();
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    await expect(page.getByText(message, { exact: false })).toBeVisible();
+    await expect(page.getByText(/No automatic retry was made/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open API settings', exact: true })).toHaveCount(0);
+    expect(images).toBe(1);
+    if (kind === 'GOOGLE_UPSTREAM_ERROR') await page.screenshot({ path: '/tmp/google-502-diagnostics.png' });
+    await page.getByRole('button', { name: 'Return to the desk' }).click();
+    await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Office automation');
+  });
+}
+
+for (const mode of ['unreadable', 'network', 'unexpected-json'] as const) {
+  test(`app boundary ${mode} failure is not misreported as a Google key or topic failure`, async ({ page }) => {
+    await mockBackend(page);
+    await page.goto('/');
+    await connect(page);
+    await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
+    await page.route('**/api/gemini/content', route => mode === 'network'
+      ? route.abort('connectionreset')
+      : mode === 'unexpected-json'
+        ? route.fulfill({ status: 502, json: { privateBody: 'hidden-proxy-data' } })
+        : route.fulfill({ status: 403, contentType: 'text/html', body: '<html>hidden-proxy-data</html>' }));
+    await page.getByLabel('Topic', { exact: true }).fill('Office automation');
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await expect(page.getByRole('heading', { name: mode === 'network' ? 'Story or news generation: app connection interrupted' : 'Story or news generation: app response unavailable', exact: true })).toBeVisible();
+    await expect(page.getByText(/hidden-proxy-data/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Open API settings', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Return to the desk' }).click();
+    await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Office automation');
+  });
+}
+
 test('billing errors retain useful UI and an expired server session clears connection', async ({ page }) => {
   const mock = await mockBackend(page);
   await page.goto('/');

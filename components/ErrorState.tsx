@@ -16,13 +16,38 @@ const errorClassification = (error: string): string => {
     const detail = value?.error || value;
     if (detail?.code) {
       const keyError = /API_KEY_INVALID|API key not valid/i.test(String(detail.message || '')) ? 'API_KEY_INVALID' : '';
-      return `${detail.code} ${detail.status || ''} ${keyError}`;
+      return `${detail.code} ${detail.status || ''} ${detail.kind || ''} ${keyError}`;
     }
   } catch { /* Legacy plain-text errors still need keyword classification. */ }
   return error;
 };
 
 const parseErrorMessage = (error: string): { title: string; message: string } => {
+  try {
+    const value = JSON.parse(error);
+    const detail = value?.error || value;
+    const operation = detail.operation === 'image' ? 'Image generation' : detail.operation === 'text' ? 'Story or news generation' : 'AI request';
+    const categories: Record<string, { title: string; advice: string }> = {
+      GENERATION_NETWORK: { title: `${operation}: connection interrupted`, advice: 'Try again when the connection recovers. No automatic retry was made.' },
+      GENERATION_TIMEOUT: { title: `${operation} timed out`, advice: 'Wait before trying again. No automatic retry was made.' },
+      GENERATION_CANCELLED: { title: `${operation} was cancelled`, advice: 'No automatic retry was made.' },
+      GENERATION_INCOMPLETE: { title: `${operation} did not finish`, advice: 'No automatic retry was made. Return to the desk when you are ready to try again.' },
+      GENERATION_RESPONSE_INVALID: { title: `${operation}: unexpected response`, advice: 'The app could not use this result. No automatic retry was made.' },
+      GENERATION_UNKNOWN: { title: `${operation}: cause not confirmed`, advice: 'Share this error message for troubleshooting, never your API key. No automatic retry was made.' },
+      APP_NETWORK_ERROR: { title: `${operation}: app connection interrupted`, advice: 'This failure occurred between your browser and the app, not necessarily at Google.' },
+      APP_RESPONSE_INVALID: { title: `${operation}: app response unavailable`, advice: 'This failure occurred at the app or hosting boundary, not necessarily at Google.' },
+    };
+    const category = categories[detail?.kind];
+    if (category) {
+      return { title: category.title, message: `${typeof detail.message === 'string' ? detail.message.slice(0, 1500) : 'No specific explanation was provided.'} ${category.advice} (Code: ${detail.code}).` };
+    }
+    if (Number(detail?.code) >= 500) {
+      return {
+        title: detail.kind === 'GOOGLE_UPSTREAM_ERROR' ? `${operation}: Google returned an error` : `${operation} could not finish`,
+        message: `${typeof detail.message === 'string' ? detail.message.slice(0, 1500) : 'No specific explanation was provided.'} (Code: ${detail.code}${detail.status ? ` — ${detail.status}` : ''}). Try again later; this error alone does not establish that your key or topic is invalid. No automatic retry was made.`,
+      };
+    }
+  } catch { /* Continue with legacy and access-error handling below. */ }
   const classification = errorClassification(error);
   if (/API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(classification)) {
     return {
@@ -59,7 +84,7 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
       };
     }
 
-    if (innerError && innerError.code && innerError.status) {
+    if (innerError && innerError.code) {
       const { code, status } = innerError;
       if (Number(code) === 402 || status === 'RESOURCE_EXHAUSTED' || Number(code) === 429) {
         return {
@@ -69,7 +94,7 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
             : 'Your Google API project has reached a usage or rate limit. Wait for the limit to reset, or check your Google quota and billing. This is not a problem with your topic.',
         };
       }
-      let userMessage = `The AI model encountered an issue (Code: ${code} - ${status}).`;
+      let userMessage = `${typeof innerError.message === 'string' ? innerError.message.slice(0, 1500) : 'No specific explanation was provided.'} (Code: ${code}${status ? ` - ${status}` : ''}).`;
       
       if (code === 500) {
         userMessage += " This is often a temporary internal issue on the server's end. We recommend starting over or trying your request again in a moment.";
@@ -98,8 +123,9 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onStartOver, onOpenApiSe
 
   const { title, message } = parseErrorMessage(error);
   const classification = errorClassification(error);
-  const isBillingError = /RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)|billing|quota|credit/i.test(classification);
-  const isKeyAccessError = /API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(classification);
+  const isAppFailure = /APP_NETWORK_ERROR|APP_RESPONSE_INVALID/.test(classification);
+  const isBillingError = !isAppFailure && /RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)|billing|quota|credit/i.test(classification);
+  const isKeyAccessError = !isAppFailure && /API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(classification);
 
   return (
     <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center shadow-xl rounded-lg text-center">

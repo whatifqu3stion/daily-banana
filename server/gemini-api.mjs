@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { CredentialSessions, SessionError, SESSION_TTL, TAB_PATTERN, cookieName } from './sessions.mjs';
+import { generationFailure, GenerationResponseError } from './generation-errors.mjs';
 
 const IMAGE_MODELS = new Set(['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']);
 const RPC_STATUSES = { 3: 'INVALID_ARGUMENT', 5: 'NOT_FOUND', 7: 'PERMISSION_DENIED', 8: 'RESOURCE_EXHAUSTED', 13: 'INTERNAL', 14: 'UNAVAILABLE', 16: 'UNAUTHENTICATED' };
@@ -131,7 +132,7 @@ function imageParams(body) {
   };
 }
 
-export function createGeminiApi({ sessions = new CredentialSessions(), createClient = key => new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 180_000 } }), secureCookies = true } = {}) {
+export function createGeminiApi({ sessions = new CredentialSessions(), createClient = key => new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 180_000 } }), secureCookies = true, imageTimeoutMs = 180_000 } = {}) {
   const timer = setInterval(() => sessions.prune(), 60_000);
   timer.unref();
   const handler = async (req, res, next) => {
@@ -139,6 +140,7 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
     if (!path?.startsWith('/api/gemini/')) return next?.();
     const secrets = [];
     const controller = new AbortController();
+    let imageDeadline;
     const cancelUpstream = () => { if (!res.writableEnded) controller.abort(); };
     res.once('close', cancelUpstream);
     res.setHeader('Cache-Control', 'no-store');
@@ -159,6 +161,7 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
       const name = secureCookies ? cookieName(tab) : `gemini-${tab}`;
       const cookie = req.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`));
       const token = cookie?.slice(name.length + 1) || '';
+      secrets.push(token);
       const current = sessions.get(token, tab, false);
       if (current) secrets.push(current.key);
       const setCookie = (value, maxAge) => res.setHeader('Set-Cookie', `${name}=${value}; Path=/api/gemini; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`);
@@ -194,18 +197,35 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
         const client = createClient(key);
         if (path.endsWith('/content')) {
           const output = await client.models.generateContent(params);
+          if (!output || typeof output !== 'object') {
+            throw new GenerationResponseError('GENERATION_RESPONSE_INVALID', 'Google returned an unexpected text response. The app could not read the result.');
+          }
           // SDK convenience getters are not included by JSON.stringify.
           return { ...output, text: output.text };
         }
+        // The installed Interactions bridge disables timeout_ms whenever a
+        // signal is supplied. Bound the signal itself, keeping client cancellation.
+        imageDeadline = AbortSignal.timeout(imageTimeoutMs);
         const output = await client.interactions.create(params, {
-          maxRetries: 0, timeout: 180_000, signal: controller.signal,
+          maxRetries: 0, timeout: imageTimeoutMs, signal: AbortSignal.any([controller.signal, imageDeadline]),
         });
+        if (!output || typeof output !== 'object' || (output.steps !== undefined && !Array.isArray(output.steps))) {
+          throw new GenerationResponseError('GENERATION_RESPONSE_INVALID', 'Google returned an unexpected image response. The app could not read the result.');
+        }
         for (const step of output.steps || []) {
+          if (!step || typeof step !== 'object') {
+            throw new GenerationResponseError('GENERATION_RESPONSE_INVALID', 'Google returned an unexpected image step. The app could not read the result.');
+          }
           if (step.type === 'model_output' && step.error) {
             throw new Error(JSON.stringify({ error: { ...step.error, status: RPC_STATUSES[step.error.code] || 'IMAGE_GENERATION_FAILED' } }));
           }
         }
-        if (output.status !== 'completed') throw new SessionError(502, `Google image interaction ${output.status}. Please try again.`);
+        if (output.status !== 'completed') {
+          const known = ['failed', 'in_progress', 'cancelled', 'incomplete'].includes(output.status);
+          throw new GenerationResponseError(known ? 'GENERATION_INCOMPLETE' : 'GENERATION_RESPONSE_INVALID',
+            known ? `Google returned an image interaction marked ${output.status}, not a completed image. Its final outcome and Google usage may be unknown.`
+              : 'Google returned an unexpected image response without a recognized completion status.');
+        }
         return { ...output, output_image: output.output_image, output_text: output.output_text };
       });
       return send(200, result);
@@ -213,6 +233,11 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
       // Never log upstream exceptions, bodies, headers, keys, or session IDs.
       if (error instanceof SessionError) return send(error.status, { error: { code: error.status, message: error.message } });
       const parsed = providerError(error);
+      if (path !== '/api/gemini/connect') {
+        const deadlineExpired = imageDeadline?.aborted && !controller.signal.aborted;
+        const failure = generationFailure(deadlineExpired ? imageDeadline.reason : error, deadlineExpired ? {} : parsed, path.endsWith('/interactions') ? 'image' : 'text');
+        return send(failure.code, { error: failure });
+      }
       const code = Number(parsed?.code || error.status || error.statusCode || 502);
       const status = code >= 400 && code <= 599 ? code : (RPC_HTTP_CODES[code] || 502);
       const keyFailure = path === '/api/gemini/connect' ? keyCheckFailure(error, parsed, code) : null;

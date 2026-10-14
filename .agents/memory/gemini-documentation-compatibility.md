@@ -16,3 +16,11 @@ Google SDK compatibility checks must exercise the installed SDK's failure behavi
 **Why:** Text and image clients within the same SDK can use different error representations and retry options. Losing the provider explanation produced a generic image rejection and misleading advice to simplify the creator's topic.
 
 **How to apply:** During SDK or transport changes, use intercepted, credential-free SDK requests to verify that provider diagnostics survive, credentials are redacted, and paid requests stay bounded. Keep explicitly authorized live tests separate.
+
+## Interactions cancellation and deadlines
+
+Bound the cancellation signal itself when making image Interactions requests; do not rely on a separate SDK timeout option when also supplying a signal.
+
+**Why:** The installed Interactions bridge skips its timeout when an explicit signal is present. An intercepted SDK timeout test hung until an independently timed signal was supplied.
+
+**How to apply:** Combine the browser-disconnect signal with a deadline signal, distinguish deadline expiration from user cancellation, and verify bounded failure and session-lock release through the installed SDK after upgrades.

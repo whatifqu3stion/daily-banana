@@ -24,7 +24,7 @@ async function fixture(t, options = {}) {
     interactions: { create: async params => {
       calls.push({ key, operation: 'image', params });
       await options.interact?.(key, params);
-      return options.image || { status: 'completed', steps: [], get output_image() { return { data: 'base64', mime_type: 'image/jpeg' }; }, get output_text() { return ''; } };
+      return Object.hasOwn(options, 'image') ? options.image : { status: 'completed', steps: [], get output_image() { return { data: 'base64', mime_type: 'image/jpeg' }; }, get output_text() { return ''; } };
     } },
   });
   const api = createGeminiApi({ createClient: client, ...options });
@@ -127,6 +127,94 @@ test('key validation lists metadata once, without a model dependency or generate
   assert.equal(calls[0].params.config.pageSize, 1);
   assert.deepEqual(calls[0].params.config.httpOptions, { timeout: 15_000, retryOptions: { attempts: 1 } });
   assert.ok(calls[0].params.config.abortSignal instanceof AbortSignal);
+});
+
+for (const [label, failure, expectedCode, expectedKind] of [
+  ['network', () => Object.assign(new TypeError('fetch failed private-key'), { cause: { code: 'ENOTFOUND' } }), 502, 'GENERATION_NETWORK'],
+  ['timeout', () => Object.assign(new Error('Request timed out private-key'), { name: 'APIConnectionTimeoutError' }), 504, 'GENERATION_TIMEOUT'],
+  ['cancelled', () => Object.assign(new Error('aborted private-key'), { name: 'APIUserAbortError' }), 408, 'GENERATION_CANCELLED'],
+  ['unknown', () => new Error('internal raw body Authorization: Bearer private-key'), 502, 'GENERATION_UNKNOWN'],
+  ['upstream', () => Object.assign(new Error('502 raw proxy HTML private-key'), { status: 502,
+    error: { code: 502, message: 'Provider temporarily unavailable private-key' } }), 502, 'GOOGLE_UPSTREAM_ERROR'],
+]) {
+  for (const endpoint of ['content', 'interactions']) {
+    test(`${endpoint} ${label} failure is distinguishable, safe and releases the request lock`, async t => {
+      const fail = async () => { throw failure(); };
+      const { browser, calls } = await fixture(t, { generate: fail, interact: fail });
+      const user = browser();
+      await user.request('connect', { key: 'private-key' });
+      const response = await user.request(endpoint, endpoint === 'content' ? content : image('gemini-nano-banana-2.1'));
+      assert.equal(response.status, expectedCode);
+      assert.equal(response.body.error.kind, expectedKind);
+      assert.equal(response.body.error.operation, endpoint === 'content' ? 'text' : 'image');
+      assert.ok(!response.text.includes('private-key'));
+      assert.ok(!response.text.includes('raw body') && !response.text.includes('raw proxy'));
+      assert.equal(calls.filter(call => call.operation !== 'metadata').length, 1);
+      assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+    });
+  }
+}
+
+for (const output of [null, { status: 'mysterious' }, { status: 'completed', steps: {} }, { status: 'completed', steps: [null] }, { status: 'in_progress', steps: [] }]) {
+  test(`unexpected interaction output ${JSON.stringify(output)} has safe response diagnostics`, async t => {
+    const { browser } = await fixture(t, { image: output });
+    const user = browser();
+    await user.request('connect', { key: 'response-key' });
+    const response = await user.request('interactions', image('gemini-nano-banana-2.1'));
+    assert.equal(response.status, 502);
+    assert.equal(response.body.error.kind, output?.status === 'in_progress' ? 'GENERATION_INCOMPLETE' : 'GENERATION_RESPONSE_INVALID');
+    assert.equal(response.body.error.operation, 'image');
+    assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+  });
+}
+
+for (const mode of ['network', 'timeout', '502', 'html-502']) {
+  test(`installed SDK ${mode} image failure retains the correct diagnostic without retry`, async t => {
+    const methods = [];
+    const { browser } = await fixture(t, { imageTimeoutMs: mode === 'timeout' ? 20 : 180_000, createClient: key => {
+      const client = new GoogleGenAI({ apiKey: key, httpOptions: { fetch: async (input, init) => {
+        const request = input instanceof Request ? input : new Request(input, init);
+        methods.push(request.method);
+        if (request.method === 'GET') {
+          return new Response(JSON.stringify({ models: [{ name: 'models/example' }] }), { headers: { 'Content-Type': 'application/json' } });
+        }
+        if (mode === 'network') throw Object.assign(new TypeError(`fetch failed ${key}`), { cause: { code: 'ECONNRESET' } });
+        if (mode === 'timeout') {
+          await new Promise((_, reject) => {
+            const cancel = () => reject(request.signal.reason);
+            if (request.signal.aborted) cancel();
+            else request.signal.addEventListener('abort', cancel, { once: true });
+          });
+        }
+        if (mode === 'html-502') return new Response(`<html>private proxy body ${key}</html>`, { status: 502 });
+        return new Response(JSON.stringify({ error: { code: 502, message: `Provider unavailable ${key}` } }), { status: 502, headers: { 'Content-Type': 'application/json' } });
+      } } });
+      return client;
+    } });
+    const user = browser();
+    await user.request('connect', { key: 'sdk-private-key' });
+    const response = await user.request('interactions', image('gemini-nano-banana-2.1'));
+    assert.equal(response.status, mode === 'timeout' ? 504 : 502);
+    assert.equal(response.body.error.kind, mode === 'network' ? 'GENERATION_NETWORK' : mode === 'timeout' ? 'GENERATION_TIMEOUT' : 'GOOGLE_UPSTREAM_ERROR');
+    assert.ok(!response.text.includes('sdk-private-key'));
+    assert.ok(!response.text.includes('<html>') && !response.text.includes('private proxy body'));
+    assert.deepEqual(methods, ['GET', 'POST']);
+    assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+  });
+}
+
+test('generation diagnostics redact session tokens, URLs and private headers as well as the key', async t => {
+  let token;
+  const { browser } = await fixture(t, { interact: async key => {
+    throw Object.assign(new Error('private SDK body'), { status: 502, error: { code: 502,
+      message: `Temporarily unavailable; ${key}; ${token}; https://google.invalid/?credential=secret-other\nAuthorization: Bearer secret-other` } });
+  } });
+  const user = browser();
+  await user.request('connect', { key: 'safe-key' });
+  token = user.cookie.split('=')[1];
+  const response = await user.request('interactions', image('gemini-nano-banana-2.1'));
+  assert.match(response.body.error.message, /Temporarily unavailable/);
+  for (const secret of ['safe-key', token, 'secret-other', 'private SDK body']) assert.ok(!response.text.includes(secret));
 });
 
 test('real SDK sends a single model-list metadata request without any generated content', async t => {

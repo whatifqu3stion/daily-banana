@@ -27,6 +27,7 @@ function clearConnection() {
 }
 
 async function backend<T>(endpoint: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<T> {
+  const operation = endpoint === 'interactions' ? 'image' : endpoint === 'content' ? 'text' : 'key-check';
   let response: Response;
   try {
     response = await fetch(`/api/gemini/${endpoint}`, {
@@ -37,14 +38,29 @@ async function backend<T>(endpoint: string, body?: unknown, method = 'POST', sig
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new Error('Could not reach the app server. Check your connection and try again.');
+    throw new Error(JSON.stringify({ error: { code: 502, kind: 'APP_NETWORK_ERROR', operation,
+      message: 'Your browser could not reach the app server. Check your connection before trying again. The request outcome is unknown.' } }));
   }
   let value: any;
   try { value = await response.json(); }
-  catch { throw new Error('The app backend is unavailable. This app needs a running server, not static-only hosting.'); }
+  catch { throw new Error(JSON.stringify({ error: { code: response.ok ? 502 : response.status, kind: 'APP_RESPONSE_INVALID', operation,
+    message: `The app server or hosting proxy returned an unreadable response (HTTP ${response.status}). Check that the app backend is running; this can also be a hosting or proxy failure, not a Google key problem.` } })); }
   if (!response.ok) {
     if (response.status === 401 && endpoint !== 'connect') clearConnection();
-    throw new Error(JSON.stringify(value));
+    const detail = value?.error;
+    if (!detail || typeof detail !== 'object' || Array.isArray(detail)) {
+      throw new Error(JSON.stringify({ error: { code: response.status, kind: 'APP_RESPONSE_INVALID', operation,
+        message: `The app server or hosting proxy returned an unexpected error response (HTTP ${response.status}). No usable explanation was provided.` } }));
+    }
+    // Forward only the backend's public diagnostic contract, never arbitrary
+    // JSON bodies, headers or other fields returned by a proxy.
+    throw new Error(JSON.stringify({ error: {
+      code: detail.code || response.status,
+      ...(typeof detail.status === 'string' ? { status: detail.status } : {}),
+      ...(typeof detail.kind === 'string' ? { kind: detail.kind } : {}),
+      operation,
+      ...(typeof detail.message === 'string' ? { message: detail.message.slice(0, 1500) } : {}),
+    } }));
   }
   return value;
 }
