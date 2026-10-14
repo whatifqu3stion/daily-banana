@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { GoogleGenAI } from '@google/genai';
 import { createGeminiApi, redact } from '../../server/gemini-api.mjs';
 import { CredentialSessions, cookieName } from '../../server/sessions.mjs';
 
@@ -9,10 +10,10 @@ async function fixture(t, options = {}) {
   const calls = [];
   const client = key => ({
     models: {
-      get: async params => {
+      list: async params => {
         calls.push({ key, operation: 'metadata', params });
         if (key === 'bad-key') throw new Error(JSON.stringify({ error: { code: 403, status: 'PERMISSION_DENIED', message: `Invalid API key: ${key}` } }));
-        await options.validate?.(key);
+        await options.validate?.(key, params);
       },
       generateContent: async params => {
         calls.push({ key, operation: 'text', params });
@@ -50,6 +51,79 @@ async function fixture(t, options = {}) {
 }
 const content = { model: 'gemini-2.5-flash', contents: 'A story', config: { systemInstruction: 'Be funny', tools: [{ googleSearch: {} }] } };
 const image = model => ({ model, input: [{ type: 'text', text: 'banana' }, { type: 'image', data: 'png', mime_type: 'image/png' }], response_format: { aspect_ratio: '16:9' }, store: true, stream: true, previous_interaction_id: 'private-history' });
+
+test('key validation lists metadata once, without a model dependency or generated content', async t => {
+  const { browser, calls } = await fixture(t);
+  assert.equal((await browser().request('connect', { key: 'metadata-key' })).status, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].operation, 'metadata');
+  assert.equal(calls[0].params.model, undefined);
+  assert.equal(calls[0].params.config.pageSize, 1);
+  assert.deepEqual(calls[0].params.config.httpOptions, { timeout: 15_000, retryOptions: { attempts: 1 } });
+  assert.ok(calls[0].params.config.abortSignal instanceof AbortSignal);
+});
+
+test('real SDK sends a single model-list metadata request without any generated content', async t => {
+  const urls = [];
+  const { browser } = await fixture(t, { createClient: key => new GoogleGenAI({
+    apiKey: key, httpOptions: { fetch: async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      urls.push(new URL(request.url));
+      assert.equal(request.method, 'GET');
+      assert.equal(request.headers.get('x-goog-api-key'), 'sdk-test-key');
+      return new Response(JSON.stringify({ models: [{ name: 'models/example-model' }] }), {
+        status: 200, headers: { 'Content-Type': 'application/json' },
+      });
+    } },
+  }) });
+  assert.equal((await browser().request('connect', { key: 'sdk-test-key' })).status, 200);
+  assert.equal(urls.length, 1);
+  assert.equal(urls[0].pathname, '/v1beta/models');
+  assert.equal(urls[0].searchParams.get('pageSize'), '1');
+  assert.equal(urls[0].searchParams.has('key'), false);
+});
+
+for (const [code, status, reason, message, kind] of [
+  [400, 'INVALID_ARGUMENT', 'API_KEY_INVALID', 'API key not valid', 'KEY_INVALID'],
+  [403, 'PERMISSION_DENIED', 'API_KEY_HTTP_REFERRER_BLOCKED', 'Forbidden', 'KEY_WEBSITE_RESTRICTED'],
+  [403, 'PERMISSION_DENIED', 'API_KEY_IP_ADDRESS_BLOCKED', 'Forbidden', 'KEY_IP_RESTRICTED'],
+  [403, 'PERMISSION_DENIED', 'API_KEY_SERVICE_BLOCKED', 'Forbidden', 'KEY_SERVICE_DISABLED'],
+  [403, 'PERMISSION_DENIED', '', 'Access denied', 'KEY_PERMISSION'],
+  [400, 'FAILED_PRECONDITION', '', 'User location is not supported', 'KEY_REGION_UNSUPPORTED'],
+  [400, 'FAILED_PRECONDITION', '', 'Free tier is not available in your country. Please enable billing', 'KEY_BILLING_REQUIRED'],
+  [429, 'RESOURCE_EXHAUSTED', '', 'Quota exceeded', 'KEY_QUOTA'],
+  [404, 'NOT_FOUND', '', 'Model metadata unavailable', 'KEY_METADATA_UNAVAILABLE'],
+  [504, 'DEADLINE_EXCEEDED', '', 'Deadline exceeded', 'KEY_CHECK_TIMEOUT'],
+  [503, 'UNAVAILABLE', '', 'Unavailable', 'KEY_CHECK_FAILED'],
+]) {
+  test(`key-check failure ${kind} is specific, safe, and preserves a working key`, async t => {
+    const { browser, api } = await fixture(t, { validate: async key => {
+      if (key === 'candidate-private-key') throw new Error(JSON.stringify({ error: {
+        code, status, message: `${message}: ${key}`, details: reason ? [{ reason }] : [],
+      } }));
+    } });
+    const user = browser();
+    await user.request('connect', { key: 'existing-key' });
+    const result = await user.request('connect', { key: 'candidate-private-key' });
+    assert.equal(result.status, code);
+    assert.equal(result.body.error.kind, kind);
+    assert.ok(!result.text.includes('candidate-private-key'));
+    assert.equal(api.sessions.sessions.size, 1);
+    assert.equal((await user.request('content', content)).status, 200);
+  });
+}
+
+test('key-check network errors and malformed details remain safe and release the lock', async t => {
+  const { browser, calls } = await fixture(t, { validate: async key => {
+    if (key === 'network-key') throw Object.assign(new Error('fetch failed'), { cause: { code: 'ENOTFOUND' } });
+    if (key === 'malformed-key') throw new Error(JSON.stringify({ error: { code: 500, details: {}, message: 'Unexpected response' } }));
+  } });
+  const user = browser();
+  assert.equal((await user.request('connect', { key: 'network-key' })).body.error.kind, 'KEY_CHECK_NETWORK');
+  assert.equal((await user.request('connect', { key: 'malformed-key' })).body.error.kind, 'KEY_CHECK_FAILED');
+  assert.equal((await user.request('connect', { key: 'valid-key' })).status, 200);
+  assert.equal(calls.length, 3);
+});
 
 test('isolated users and tabs cannot borrow credentials; cookies are secure and opaque', async t => {
   const { browser, calls } = await fixture(t);

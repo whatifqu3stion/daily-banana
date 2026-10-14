@@ -3,6 +3,50 @@ import { expect, test, type Page } from '@playwright/test';
 const KEY = 'test-personal-key-not-a-secret';
 const OTHER_KEY = 'test-replacement-key-not-a-secret';
 const IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+for (const [kind, code, expected] of [
+  ['KEY_WEBSITE_RESTRICTED', 403, 'server-side use'],
+  ['KEY_REGION_UNSUPPORTED', 400, 'supported hosting location'],
+  ['KEY_BILLING_REQUIRED', 400, 'requires billing to be enabled'],
+  ['KEY_CHECK_NETWORK', 502, 'app server could not reach Google'],
+  ['KEY_CHECK_FAILED', 503, 'HTTP 503'],
+] as const) {
+  test(`key-check UI explains ${kind} without exposing the key`, async ({ page }) => {
+    await page.route('**/api/gemini/connect', route => route.fulfill({ status: code, json: {
+      error: { code, kind, status: 'GOOGLE_REQUEST_FAILED', message: `Private upstream text ${KEY}` },
+    } }));
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
+    await page.getByLabel('Google API key', { exact: true }).fill(KEY);
+    await page.getByRole('button', { name: 'Connect key', exact: true }).click();
+    const alert = page.getByRole('dialog', { name: 'API settings', exact: true }).getByRole('alert');
+    await expect(alert).toContainText(expected);
+    await expect(alert).not.toContainText(KEY);
+    await expect(page.getByRole('button', { name: 'Connect key', exact: true })).toBeEnabled();
+    await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+  });
+}
+
+test('key-check deadline unlocks the form and reports timeout rather than an invalid key', async ({ page }) => {
+  await page.clock.install();
+  let release: (() => void) | undefined;
+  await page.route('**/api/gemini/connect', async route => {
+    await new Promise<void>(resolve => { release = resolve; });
+    try { await route.abort(); } catch { /* Client deadline already aborted the request. */ }
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
+  await page.getByLabel('Google API key', { exact: true }).fill(KEY);
+  await page.getByRole('button', { name: 'Connect key', exact: true }).click();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await page.clock.fastForward(20_001);
+  await expect(page.getByRole('dialog', { name: 'API settings', exact: true }).getByRole('alert')).toContainText('did not finish the key check in time');
+  await expect(page.getByRole('button', { name: 'Connect key', exact: true })).toBeEnabled();
+  await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+  release!();
+});
+
 const plan = {
   title: 'Personal Edition', premise: 'Automation creates more meetings.',
   summary: 'A banana learns that automation has a downside.',

@@ -4,6 +4,47 @@ import { CredentialSessions, SessionError, SESSION_TTL, TAB_PATTERN, cookieName 
 const IMAGE_MODELS = new Set(['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']);
 const RPC_STATUSES = { 3: 'INVALID_ARGUMENT', 5: 'NOT_FOUND', 7: 'PERMISSION_DENIED', 8: 'RESOURCE_EXHAUSTED', 13: 'INTERNAL', 14: 'UNAVAILABLE', 16: 'UNAUTHENTICATED' };
 
+function keyCheckFailure(error, parsed, code) {
+  const reason = Array.isArray(parsed?.details)
+    ? parsed.details.find(detail => typeof detail?.reason === 'string')?.reason : undefined;
+  const message = String(parsed?.message || error.message || '');
+  const networkCode = error.cause?.code || error.code;
+  if (reason === 'API_KEY_HTTP_REFERRER_BLOCKED') {
+    return { kind: 'KEY_WEBSITE_RESTRICTED', message: 'Google blocked this website-restricted key. Use a Gemini API key configured for server-side use; keep the Gemini API service restriction.' };
+  }
+  if (reason === 'API_KEY_IP_ADDRESS_BLOCKED') {
+    return { kind: 'KEY_IP_RESTRICTED', message: 'Google blocked this server under the key’s IP restrictions. Review the allowed server IPs for this hosting environment.' };
+  }
+  if (['SERVICE_DISABLED', 'API_KEY_SERVICE_BLOCKED'].includes(reason)) {
+    return { kind: 'KEY_SERVICE_DISABLED', message: 'Enable the Gemini (Generative Language) API in this key’s Google project and allow that service in the key’s restrictions.' };
+  }
+  if (reason === 'BILLING_DISABLED' || ([400, 403].includes(code) && /billing/i.test(message) && /enable|required|disabled|not active/i.test(message))) {
+    return { kind: 'KEY_BILLING_REQUIRED', message: 'Google requires billing to be enabled for this project or access tier. Review the project’s Google billing settings. No comic was generated.' };
+  }
+  if (/location|region|country/i.test(message) && /not supported|unsupported|not available/i.test(message)) {
+    return { kind: 'KEY_REGION_UNSUPPORTED', message: 'Google rejected this request from the app server’s region. The app needs a supported hosting location; replacing the key may not resolve this.' };
+  }
+  if (reason === 'API_KEY_INVALID' || code === 401 || code === 16 || /API key not valid|invalid.*(?:api.?key|key)/i.test(message)) {
+    return { kind: 'KEY_INVALID', message: 'That key was not accepted. Check that it is copied correctly and belongs to a Google project with the Gemini API enabled.' };
+  }
+  if (code === 429 || code === 8 || parsed?.status === 'RESOURCE_EXHAUSTED') {
+    return { kind: 'KEY_QUOTA', message: 'Google’s key check reached a usage limit. Wait for a rate limit to reset or review your project’s quota and billing. No comic was generated.' };
+  }
+  if (code === 408 || code === 504 || parsed?.status === 'DEADLINE_EXCEEDED' || /timeout|timed out|aborted/i.test(message)) {
+    return { kind: 'KEY_CHECK_TIMEOUT', message: 'Google did not finish the key check in time. Try again; a timeout does not establish that your key is invalid.' };
+  }
+  if (['ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET', 'ECONNREFUSED', 'UND_ERR_CONNECT_TIMEOUT'].includes(networkCode) || /fetch failed|network/i.test(message)) {
+    return { kind: 'KEY_CHECK_NETWORK', message: 'The app server could not reach Google. Try again shortly; this does not establish that your key is invalid.' };
+  }
+  if (code === 404 || code === 5) {
+    return { kind: 'KEY_METADATA_UNAVAILABLE', message: 'Google’s model-list check is unavailable for this request. Check Gemini API access or try again; this is not proof that the key is invalid.' };
+  }
+  if (code === 403 || code === 7) {
+    return { kind: 'KEY_PERMISSION', message: 'Google denied Gemini API access. Check the key’s Google project permissions and API restrictions.' };
+  }
+  return { kind: 'KEY_CHECK_FAILED', message: 'Google could not complete the key check. Try again; this does not establish that your key is invalid.' };
+}
+
 export function redact(value, secrets) {
   let text = JSON.stringify(value);
   for (const secret of secrets.filter(Boolean)) {
@@ -111,7 +152,13 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
         secrets.push(key);
         if (!key || key.length > 512 || !/^[A-Za-z0-9_-]+$/.test(key)) throw new SessionError(400, 'Enter a valid Google Gemini API key.');
         const result = await sessions.connect(token, tab, key, async candidate => {
-          await createClient(candidate).models.get({ model: 'gemini-2.5-flash' });
+          // Validate credentials, not availability of one hard-coded model.
+          // Listing metadata generates no content and makes just one attempt.
+          await createClient(candidate).models.list({ config: {
+            pageSize: 1, abortSignal: controller.signal,
+            httpOptions: { timeout: 15_000, retryOptions: { attempts: 1 } },
+          } });
+          if (controller.signal.aborted) throw new SessionError(408, 'The key check was cancelled. Please try again.');
         });
         setCookie(result.token, Math.ceil(sessions.ttl / 1000));
         return send(200, { connected: true, expiresAt: result.expiresAt });
@@ -150,10 +197,11 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
       let parsed;
       try { parsed = JSON.parse(error.message)?.error; } catch { /* non-JSON upstream error */ }
       const code = Number(parsed?.code || error.status || 502);
-      const status = code >= 400 && code <= 599 ? code : (code === 8 ? 429 : code === 7 ? 403 : 502);
+      const status = code >= 400 && code <= 599 ? code : (code === 8 ? 429 : code === 7 ? 403 : code === 16 ? 401 : 502);
+      const keyFailure = path === '/api/gemini/connect' ? keyCheckFailure(error, parsed, code) : null;
       return send(status, { error: {
         code: status, status: parsed?.status || RPC_STATUSES[code] || 'GOOGLE_REQUEST_FAILED',
-        message: parsed?.message || 'Google could not complete this request. Check your connection, API access, billing and quota, then try again.',
+        ...(keyFailure ? keyFailure : { message: parsed?.message || 'Google could not complete this request. Check your connection, API access, billing and quota, then try again.' }),
       } });
     }
   };

@@ -14,6 +14,24 @@ interface GeminiConnectionProps {
 function readableConnectionError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? '');
   const normalized = message.toLowerCase();
+  let failure: { kind?: string; code?: number } = {};
+  try { failure = JSON.parse(message)?.error || {}; } catch { /* Local/transport errors are plain text. */ }
+
+  const keyFailures: Record<string, string> = {
+    KEY_WEBSITE_RESTRICTED: 'Google blocked this website-restricted key. Use a separate Gemini API key configured for server-side use; keep the Gemini API service restriction.',
+    KEY_IP_RESTRICTED: 'Google blocked this server under the key’s IP restrictions. Review the allowed server IPs for this hosting environment.',
+    KEY_SERVICE_DISABLED: 'Enable the Gemini (Generative Language) API in your Google project and allow that service in the key’s restrictions.',
+    KEY_BILLING_REQUIRED: 'Google requires billing to be enabled for this project or access tier. Review your Google project’s billing settings. No comic was generated.',
+    KEY_REGION_UNSUPPORTED: 'Google rejected the key check from the app server’s region. The app needs a supported hosting location; a different key may not fix this.',
+    KEY_INVALID: 'That key was not accepted. Check that it is copied correctly and belongs to a Google project with the Gemini API enabled.',
+    KEY_QUOTA: 'Google’s key check reached a usage limit. Wait for a rate limit to reset or review your Google project’s quota and billing. No comic was generated.',
+    KEY_CHECK_TIMEOUT: 'Google did not finish the key check in time. Try again; this does not mean your key is invalid.',
+    KEY_CHECK_NETWORK: 'The app server could not reach Google. Try again shortly; this does not mean your key is invalid.',
+    KEY_METADATA_UNAVAILABLE: 'Google’s model-list check is unavailable. Check Gemini API access or try again; this is not proof that the key is invalid.',
+    KEY_PERMISSION: 'Google denied Gemini API access. Check your Google project permissions and the key’s API restrictions.',
+  };
+  if (failure.kind && Object.prototype.hasOwnProperty.call(keyFailures, failure.kind)) return keyFailures[failure.kind];
+  if (/enter a valid google gemini api key/.test(normalized)) return 'Paste the complete Google Gemini API key, without spaces or extra text.';
 
   if (/app server|backend|session expired|session.*removed/.test(normalized)) {
     return 'The API session or app server is unavailable. Reconnect your key, or check your connection and try again.';
@@ -24,7 +42,9 @@ function readableConnectionError(error: unknown): string {
   if (/invalid.*key|api.?key.*invalid|api.?key.*not valid|key.*not valid|unauthenticated|permission.?denied|forbidden|401|403/.test(normalized)) {
     return 'That key was not accepted. Check that it is copied correctly and belongs to a Google project with the Gemini API enabled.';
   }
-  return 'Google could not check this key. Check your connection and the key’s API access, then try again.';
+  const code = Number(failure.code);
+  const diagnostic = Number.isInteger(code) && code >= 400 && code <= 599 ? ` (HTTP ${code})` : '';
+  return `Google could not complete the key check${diagnostic}. Try again; this failure does not establish that your key is invalid.`;
 }
 
 const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false }) => {

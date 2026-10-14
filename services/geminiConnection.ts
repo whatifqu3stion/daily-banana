@@ -56,14 +56,20 @@ export async function connectGeminiKey(input: string): Promise<void> {
   checkingKey = true;
   activeRequests++;
   notify();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20_000);
   try {
-    const result = await backend<{ expiresAt: number }>('connect', { key: candidateKey });
+    const result = await backend<{ expiresAt: number }>('connect', { key: candidateKey }, 'POST', controller.signal);
     connected = true;
     expiresAt = result.expiresAt;
     revision++;
     clearTimeout(expiryTimer);
     expiryTimer = setTimeout(clearConnection, Math.max(0, expiresAt - Date.now()));
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error(JSON.stringify({ error: { code: 504, kind: 'KEY_CHECK_TIMEOUT' } }));
+    throw error;
   } finally {
+    clearTimeout(timeout);
     candidateKey = '';
     checkingKey = false;
     activeRequests--;
