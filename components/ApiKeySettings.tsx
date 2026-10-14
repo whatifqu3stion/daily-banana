@@ -54,7 +54,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ disabled = false, onClo
         </button>
       </div>
       <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <GeminiConnection disabled={disabled} />
+        <GeminiConnection disabled={disabled} onConnected={() => dialogRef.current?.close()} />
       </div>
     </dialog>
   );

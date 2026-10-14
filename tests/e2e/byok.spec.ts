@@ -114,8 +114,38 @@ async function connect(page: Page, key = KEY) {
   await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(key);
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
   await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
 }
+
+test('API settings closes only after key approval and preserves the comic setup', async ({ page }) => {
+  const mock = await mockBackend(page);
+  let approve!: () => void;
+  const approval = new Promise<void>(resolve => { approve = resolve; });
+  await page.route('**/api/gemini/connect', async route => {
+    await approval;
+    await route.fallback();
+  });
+  await page.goto('/');
+  await page.getByLabel('Topic', { exact: true }).fill('Keep my comic idea');
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+  await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
+  await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Checking key…', exact: true })).toBeVisible();
+  await expect(dialog).toBeVisible();
+  expect(mock.sessions.size).toBe(0);
+  approve();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Generate Comic Plan' })).toBeFocused();
+  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my comic idea');
+  expect([...mock.sessions.values()]).toEqual([KEY]);
+  expect(mock.calls.filter(call => call.endpoint === 'content' || call.endpoint === 'interactions')).toHaveLength(0);
+  await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
+  await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
+});
 test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.clear()); });
 
 test('no key means no AI traffic; only connection sends a key, and refresh requires reconnection', async ({ page }) => {
@@ -145,6 +175,61 @@ test('no key means no AI traffic; only connection sends a key, and refresh requi
 });
 
 for (const width of [1440, 402]) {
+  test(`warnings share typography and styling but retain their intended alignment at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1100 });
+    await page.route('**/api/gemini/connect', route => route.fulfill({ status: 403, json: {
+      error: { code: 403, kind: 'KEY_PERMISSION', message: 'Forbidden' },
+    } }));
+    await page.goto('/');
+    await page.getByLabel('Comedic Angle', { exact: true }).click();
+    await page.getByRole('option', { name: 'Dark Comedy', exact: true }).click();
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await page.evaluate(() => document.fonts.ready);
+    const inspect = (element: HTMLElement) => {
+      const style = getComputedStyle(element);
+      const title = getComputedStyle(element.querySelector('p')!);
+      const body = getComputedStyle(element.querySelectorAll('p')[1]);
+      return {
+        shared: {
+          background: style.backgroundColor, border: style.borderTop, padding: style.padding,
+          titleFont: title.fontFamily, titleSize: title.fontSize, titleWeight: title.fontWeight,
+          bodyFont: body.fontFamily, bodySize: body.fontSize, bodyWeight: body.fontWeight,
+          iconWidth: element.querySelector('svg')!.getBoundingClientRect().width,
+        },
+        alignment: style.textAlign,
+        direction: style.flexDirection,
+      };
+    };
+    const entry = page.getByRole('alert').filter({ hasText: 'Connect your Google key to create a comic' });
+    const entryStyle = await entry.evaluate(inspect);
+    const limitsStyle = await page.getByRole('note').filter({ hasText: 'Content limits' }).evaluate(inspect);
+    expect(entryStyle.alignment).toBe('center');
+    expect(entryStyle.direction).toBe('column');
+    expect(limitsStyle.alignment).toBe('left');
+    expect(limitsStyle.shared).toEqual(entryStyle.shared);
+    const centered = await entry.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      const button = element.querySelector('button')!.getBoundingClientRect();
+      const icon = element.querySelector('svg')!.getBoundingClientRect();
+      return Math.max(Math.abs(button.x + button.width / 2 - (box.x + box.width / 2)),
+        Math.abs(icon.x + icon.width / 2 - (box.x + box.width / 2)));
+    });
+    expect(centered).toBeLessThan(2);
+    await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
+    await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
+    const connectionStyle = await dialog.getByRole('alert').evaluate(inspect);
+    expect(connectionStyle.alignment).toBe('left');
+    expect(connectionStyle.shared).toEqual(entryStyle.shared);
+    expect(connectionStyle.shared.titleFont).toContain('Special Elite');
+    expect(connectionStyle.shared.titleSize).toBe('20px');
+    expect(connectionStyle.shared.bodyFont).toContain('Open Sans');
+    expect(connectionStyle.shared.bodySize).toBe('16px');
+    expect(connectionStyle.shared.bodyWeight).toBe('400');
+    expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+  });
+
   test(`API settings typography follows the app hierarchy at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     const mock = await mockBackend(page);
@@ -180,6 +265,8 @@ for (const width of [1440, 402]) {
     expect(typography.hasOverflow).toBe(false);
     await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
     await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
     await expect(dialog.getByRole('heading', { name: 'Your Google key', exact: true })).toBeVisible();
     const connectedHelp = dialog.getByText('The metadata check confirms credential access only;', { exact: false });
     await expect(connectedHelp).toBeVisible();
@@ -218,13 +305,16 @@ for (const width of [1440, 402]) {
     await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveValue('');
     await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
     await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(generate).toBeFocused();
+    await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
     await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
     for (let step = 0; step < 10; step++) {
       await page.keyboard.press('Tab');
       expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true);
     }
     await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
-    await expect(generate).toBeFocused();
+    await expect(page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ })).toBeFocused();
     await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my comic idea');
     await page.getByLabel('Topic', { exact: true }).fill('');
     await generate.click();
@@ -278,6 +368,8 @@ test('failed replacement keeps connection; successful replacement and removal up
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
   await expect(page.getByRole('button', { name: 'Remove key', exact: true })).toBeVisible();
   expect([...mock.sessions.values()]).toEqual([OTHER_KEY]);
   await page.getByRole('button', { name: 'Remove key', exact: true }).click();

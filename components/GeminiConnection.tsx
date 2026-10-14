@@ -6,9 +6,11 @@ import {
   isGeminiBusy,
   subscribeGeminiConnection,
 } from '../services/geminiConnection';
+import WarningNotice from './WarningNotice';
 
 interface GeminiConnectionProps {
   disabled?: boolean;
+  onConnected?: () => void;
 }
 
 function readableConnectionError(error: unknown): string {
@@ -47,7 +49,7 @@ function readableConnectionError(error: unknown): string {
   return `Google could not complete the key check${diagnostic}. Try again; this failure does not establish that your key is invalid.`;
 }
 
-const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false }) => {
+const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, onConnected }) => {
   const connected = useSyncExternalStore(
     subscribeGeminiConnection,
     hasGeminiKey,
@@ -71,6 +73,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
       await connectGeminiKey(keyInput);
       setKeyInput('');
       setEditing(false);
+      onConnected?.();
     } catch (caught) {
       setError(readableConnectionError(caught));
     }
@@ -126,9 +129,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
       </div>
 
       {error && (
-        <p role="alert" className="mb-4 border border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-base font-bold leading-6 text-red-950">
-          {error}
-        </p>
+        <WarningNotice role="alert" title="Connection notice" className="mb-4" message={error} />
       )}
       {connected && !editing ? (
         <div className="space-y-4">
@@ -187,7 +188,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
                 : 'We check access with model metadata only; no comic is generated during connection.'}
           </p>
 
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-end gap-2.5 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="submit"
               disabled={locked || !keyInput.trim()}
