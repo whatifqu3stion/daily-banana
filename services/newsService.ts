@@ -1,128 +1,121 @@
-// services/newsService.ts
-// Fetches today's top news headlines using Gemini with Google Search grounding.
-// Results are cached in localStorage keyed by calendar date so repeated opens
-// of the NewsSelector within the same day reuse one API call. Concurrent
-// callers share a single in-flight promise (inflightRequest deduplication).
-import { NewsStory } from '../types';
+import type { NewsFeed, NewsStory } from '../types';
 import { generateContent, getConnectionRevision, hasGeminiKey } from './geminiConnection';
+import { describeNewsError, isTransientNewsError, newsError, NewsRequestError } from './newsErrors';
+import { normalizeNewsStories, parseGroundedNews } from './newsParsing';
 
-const CACHE_KEY = 'dailyBanana_news';
+const CACHE_KEY = 'dailyBanana_news_v2';
+const FRESH_FOR = 30 * 60 * 1000;
+const MAX_CACHED_AGE = 24 * 60 * 60 * 1000;
+const REQUEST_DEADLINE = 30_000;
 
-interface NewsCache {
-    date: string;
-    stories: NewsStory[];
+interface CachedFeed extends NewsFeed { version: 2 }
+let inflight: { revision: number; controller: AbortController; promise: Promise<NewsFeed> } | null = null;
+
+function readCache(maxAge: number): NewsFeed | null {
+  try {
+    const cached: CachedFeed = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    const age = Date.now() - cached?.fetchedAt;
+    if (cached?.version !== 2 || !Number.isFinite(cached.fetchedAt) || age < 0 || age > maxAge) return null;
+    const stories = normalizeNewsStories(cached.stories);
+    if (!stories.length || stories.length !== cached.stories.length) return null;
+    return {
+      stories, fetchedAt: cached.fetchedAt,
+      searchSuggestions: typeof cached.searchSuggestions === 'string' && cached.searchSuggestions.length <= 100_000
+        ? cached.searchSuggestions : undefined,
+    };
+  } catch { return null; }
 }
 
-function todayKey(): string {
-    return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+function saveCache(feed: NewsFeed) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...feed, version: 2 })); }
+  catch { /* Storage failure does not prevent using a valid live response. */ }
 }
 
-function loadCache(): NewsStory[] | null {
-    try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const cache: NewsCache = JSON.parse(raw);
-        if (cache.date === todayKey() && Array.isArray(cache.stories) && cache.stories.length > 0) {
-            return cache.stories;
-        }
-    } catch {
-        // ignore corrupt cache
-    }
-    return null;
+export function cancelNewsRequest() {
+  inflight?.controller.abort();
+  inflight = null;
 }
 
-function saveCache(stories: NewsStory[]): void {
-    try {
-        const cache: NewsCache = { date: todayKey(), stories };
-        localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-    } catch {
-        // ignore storage errors (e.g. private mode quota)
-    }
-}
-
-// Deduplicates concurrent callers — if two calls arrive before the first
-// resolves (e.g. idle prefetch races a manual open), only one API request is made.
-let inflightRequest: Promise<NewsStory[]> | null = null;
-let inflightRevision = -1;
-
-/**
- * Fetches today's top news headlines using the Gemini API with Google Search grounding.
- * Results are cached in localStorage for the rest of the calendar day to avoid
- * redundant API calls.
- */
-export const getTopStories = async (): Promise<NewsStory[]> => {
-    if (!hasGeminiKey()) throw new Error('Connect your Google API key before fetching headlines.');
-    const revision = getConnectionRevision();
-    const cached = loadCache();
+export async function getNewsFeed({ forceRefresh = false }: { forceRefresh?: boolean } = {}): Promise<NewsFeed> {
+  if (!hasGeminiKey()) throw new NewsRequestError(describeNewsError('Connect your Google API key before fetching headlines.'));
+  const revision = getConnectionRevision();
+  if (inflight?.revision === revision) return inflight.promise;
+  if (!forceRefresh) {
+    const cached = readCache(FRESH_FOR);
     if (cached) return cached;
+  }
+  const previous = readCache(MAX_CACHED_AGE);
+  const controller = new AbortController();
+  let timedOut = false;
+  const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_DEADLINE);
+  const now = new Date();
+  const prompt = `Use Google Search to find up to 10 recent news headlines reported in the past 24 hours.
+Current time: ${now.toISOString()}. The reader's local date is ${now.toLocaleDateString('en-US')}.
+Focus on politics, government, business, science, technology, international affairs and cultural events.
+Avoid sports scores, celebrity gossip and purely local crime. Prefer original reporting and identifiable publishers.
+Only include claims supported by the search results. Do not invent events, statistics, quotes, sources or dates.
+Return fewer than 10 if there are not enough usable, recent, distinct stories.
+Return a JSON array, optionally in a JSON code fence, with these fields per story:
+"title": a concise headline (at most 120 characters);
+"description": 2-3 factual sentences (at most 500 characters), with a specific detail where supported;
+"source_urls": URLs of actual search results supporting this story.
+Do not include any unsourced story. Attribute each story's claims to its sources.`;
 
-    if (inflightRequest && inflightRevision === revision) return inflightRequest;
-    inflightRevision = revision;
-
-    inflightRequest = (async () => {
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-        const prompt = `Today is ${today}. Use Google Search to find the top 10 news headlines from today.
-
-Focus on: politics, government, business, science, technology, international affairs, and cultural events.
-Avoid: sports scores, celebrity gossip, and purely local crime stories.
-
-Return your answer as a valid JSON array only, with no other text before or after it.
-Each item must have exactly two fields:
-- "title": a concise headline, max 120 characters
-- "description": 2-3 sentences (max 500 characters) that include at least one of the following if the story contains it: a specific dollar figure or statistic, a named individual or organisation and what they said or did, or a short direct quote (max 15 words). The goal is to give enough concrete detail that a satirist could write a joke grounded in a real fact — not just a vague summary.
-
-Example format:
-[
-  {"title": "Congress Passes Major Climate Bill", "description": "The Senate approved sweeping new emissions targets in an 87-12 bipartisan vote late Thursday, the largest climate package since 2022. The bill mandates a 40% reduction in industrial emissions by 2035 and allocates $180 billion for clean energy infrastructure."},
-  {"title": "Tech Giant Reports Record Profits", "description": "A major Silicon Valley firm posted $34.2 billion in quarterly profit, up 28% year-on-year, even as it announced 6,000 layoffs earlier in the month. CEO Jensen Huang called the results 'a testament to disciplined cost management.'"}
-]`;
-
-        const result = await generateContent({
+  const promise = (async (): Promise<NewsFeed> => {
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (controller.signal.aborted || revision !== getConnectionRevision()) {
+          throw newsError('cancelled', 'News search closed', 'The news lookup is no longer active.', null);
+        }
+        try {
+          const result = await generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
             config: {
-                tools: [{ googleSearch: {} }],
-                temperature: 0.1,
-            }
-        });
-
-        const text = result.text?.trim() ?? '';
-
-        // Extract the JSON array from the response (handles cases where the model adds extra text)
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) {
-            console.error("Gemini news response did not contain a JSON array:", text);
-            throw new Error("Could not parse news headlines from the AI response.");
+              tools: [{ googleSearch: {} }],
+              temperature: 0.1,
+              abortSignal: controller.signal,
+              // Explicit limits prevent hidden SDK retries on quota/billing errors.
+              httpOptions: { timeout: 20_000, retryOptions: { attempts: 1 } },
+            },
+          });
+          if (controller.signal.aborted || revision !== getConnectionRevision()) {
+            throw newsError('cancelled', 'News search closed', 'The news lookup is no longer active.', null);
+          }
+          const parsed = parseGroundedNews(result);
+          const feed: NewsFeed = { ...parsed, fetchedAt: Date.now() };
+          saveCache(feed);
+          return feed;
+        } catch (error) {
+          if (controller.signal.aborted || attempt === 1 || !isTransientNewsError(error)) throw error;
+          await new Promise<void>(resolve => {
+            const finish = () => { clearTimeout(timer); controller.signal.removeEventListener('abort', finish); resolve(); };
+            const timer = setTimeout(finish, 600);
+            controller.signal.addEventListener('abort', finish, { once: true });
+          });
         }
+      }
+      throw newsError('service', 'News search unavailable', 'Please try again.');
+    } catch (error) {
+      if (controller.signal.aborted && !timedOut) throw newsError('cancelled', 'News search closed', 'The news lookup was closed.', null);
+      const issue = timedOut
+        ? describeNewsError('News request timed out')
+        : describeNewsError(error);
+      if (previous && !['key', 'cancelled'].includes(issue.code)) {
+        // A failed refresh must never masquerade as fresh current headlines.
+        return { ...previous, stale: true, warning: issue };
+      }
+      throw new NewsRequestError(issue);
+    } finally {
+      clearTimeout(deadline);
+      if (inflight?.controller === controller) inflight = null;
+    }
+  })();
+  inflight = { revision, controller, promise };
+  return promise;
+}
 
-        let stories: NewsStory[];
-        try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (!Array.isArray(parsed) || parsed.length === 0) {
-                throw new Error("Parsed result is not a non-empty array.");
-            }
-            stories = parsed
-                .filter((item: any) => typeof item?.title === 'string' && typeof item?.description === 'string')
-                .slice(0, 10)
-                .map((item: any) => ({
-                    title: item.title.trim(),
-                    description: item.description.trim(),
-                }));
-        } catch (e) {
-            console.error("Failed to parse news JSON:", e, "\nRaw text:", text);
-            throw new Error("The AI returned an unexpected format for the news headlines.");
-        }
-
-        if (stories.length === 0) {
-            throw new Error("No usable news stories were returned. Please try again.");
-        }
-
-        saveCache(stories);
-        return stories;
-    })().finally(() => {
-        if (inflightRevision === revision) inflightRequest = null;
-    });
-
-    return inflightRequest;
-};
+// Preserve the existing service interface used by other callers.
+export async function getTopStories(): Promise<NewsStory[]> {
+  return (await getNewsFeed()).stories;
+}

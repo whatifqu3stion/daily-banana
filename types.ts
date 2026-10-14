@@ -154,10 +154,31 @@ export interface ExplainerSource {
   title: string;
 }
 
-// Interface for a single news story fetched from an RSS feed.
+export interface NewsSource {
+  title: string;
+  url: string;
+}
+
+// Source links come from Google's grounding metadata, not invented model URLs.
 export interface NewsStory {
   title: string;
   description: string;
+  sources?: NewsSource[];
+}
+
+export interface NewsIssue {
+  code: string;
+  title: string;
+  message: string;
+  action: 'settings' | 'retry' | null;
+}
+
+export interface NewsFeed {
+  stories: NewsStory[];
+  fetchedAt: number;
+  searchSuggestions?: string;
+  stale?: boolean;
+  warning?: NewsIssue;
 }
 
 // Data passed from useComicGeneration to ReviewPlan after the first panel has

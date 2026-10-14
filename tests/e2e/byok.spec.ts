@@ -120,11 +120,17 @@ test('all live Gemini paths use the personal key and the stable image model', as
       return;
     }
     const prompt = JSON.stringify(body.contents);
-    const text = prompt.includes('top 10 news headlines')
+    const isNews = prompt.includes('news headlines');
+    const text = isNews
       ? JSON.stringify([{ title: 'News story', description: 'A grounded story.' }])
       : prompt.includes('Context Explanation') ? 'Factual context.' : JSON.stringify(plan);
     await route.fulfill({ json: { candidates: [{ content: { role: 'model', parts: body.generationConfig?.responseModalities?.includes('IMAGE')
-      ? [{ inlineData: { data: IMAGE, mimeType: 'image/png' } }] : [{ text }] } }] } });
+      ? [{ inlineData: { data: IMAGE, mimeType: 'image/png' } }] : [{ text }] },
+      ...(isNews ? { groundingMetadata: {
+        groundingChunks: [{ web: { uri: 'https://example.com/news', title: 'Example News' } }],
+        groundingSupports: [{ segment: { startIndex: 0, endIndex: new TextEncoder().encode(text).length }, groundingChunkIndices: [0] }],
+      } } : {}),
+    }] } });
   });
   await page.goto('/');
   await connect(page);
@@ -515,10 +521,12 @@ for (const width of [1440, 402]) {
     expect(typography.hasOverflow).toBe(false);
     await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
     await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
-    const connectedHelp = dialog.getByText('This confirms the credential was checked;', { exact: false });
+    await expect(dialog.getByRole('heading', { name: 'Your Google key', exact: true })).toBeVisible();
+    const connectedHelp = dialog.getByText('The metadata check confirms credential access only;', { exact: false });
     await expect(connectedHelp).toBeVisible();
     expect(await connectedHelp.evaluate(element => getComputedStyle(element).fontSize)).toBe('16px');
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
+    await expect(dialog.getByRole('heading', { name: 'Replace your Google key', exact: true })).toBeVisible();
     await dialog.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
     await expect(dialog.getByRole('alert')).toBeVisible();

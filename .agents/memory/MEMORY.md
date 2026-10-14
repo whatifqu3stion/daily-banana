@@ -2,3 +2,5 @@
 - [CSS pipeline restarts](css-pipeline-restarts.md) — restart the development workflow after CSS toolchain merges before judging visual regressions.
 - [BYOK placement](byok-placement.md) — the user wants API-key setup outside the main comic-creation workspace.
 - [Gemini docs compatibility](gemini-documentation-compatibility.md) — image examples may differ from SDK schemas; verify formats instead of bypassing types.
+- [News freshness](news-freshness-semantics.md) — retrieval timestamps are not verified article publication dates; label cached fallback honestly.
+- [Sandboxed embed keyboard](sandboxed-embed-keyboard.md) — Escape inside opaque frames needs a restricted bridge; parent modal listeners cannot see it.

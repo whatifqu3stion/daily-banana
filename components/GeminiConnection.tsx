@@ -81,46 +81,38 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
   return (
     <section
       aria-labelledby="gemini-connection-heading"
-      className="mx-auto w-full max-w-3xl border-2 border-black bg-paper-light p-5 sm:p-7"
+      className="mx-auto w-full"
     >
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b-2 border-black pb-4">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-black pb-4">
         <div className="min-w-0">
           <h3 id="gemini-connection-heading" className="font-special-elite text-xl font-bold leading-tight text-black sm:text-2xl">
-            Connect your Google key
+            {connected && !editing ? 'Your Google key' : editing ? 'Replace your Google key' : 'Connect your Google key'}
           </h3>
-          <p className="mt-1 font-open-sans text-base font-normal leading-7 text-gray-800">
-            Your key lets the newsroom make comics on your Google project.
-          </p>
         </div>
         <span
-          className={`inline-flex shrink-0 items-center gap-2 border-2 px-3 py-1.5 font-open-sans text-sm font-bold leading-5 tracking-wide ${
+          className={`inline-flex shrink-0 items-center gap-2 border border-black px-2.5 py-1 font-open-sans text-base font-bold leading-6 ${
             connected
-              ? 'border-black bg-banana text-black'
-              : 'border-black bg-white text-gray-800'
+              ? 'bg-banana text-black'
+              : 'bg-paper-light text-black'
           }`}
           aria-live="polite"
         >
-          <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full border border-black ${connected ? 'bg-black' : 'bg-transparent'}`} />
+          <span aria-hidden="true" className={`h-2 w-2 rounded-full border border-black ${connected ? 'bg-black' : 'bg-transparent'}`} />
           {connected ? 'Key connected · checked' : 'No key connected'}
         </span>
       </div>
 
       {connected && !editing ? (
         <div className="space-y-4">
-          <div className="border border-black bg-white px-4 py-3">
-            <p className="font-special-elite text-base font-bold leading-6 text-black">
-              Google accepted the key check.
-            </p>
-            <p className="mt-1 font-open-sans text-base font-normal leading-6 text-gray-800">
-              This confirms the credential was checked; it does not guarantee billing eligibility or that every model is available.
-            </p>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <p className="font-open-sans text-base font-normal leading-6 text-gray-800">
+            The metadata check confirms credential access only; it does not guarantee billing eligibility or model availability.
+          </p>
+          <div className="flex flex-col gap-2.5 sm:flex-row">
             <button
               type="button"
               onClick={startReplacing}
               disabled={locked}
-              className="min-h-11 border-2 border-black bg-white px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-black transition-colors hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Replace key
             </button>
@@ -128,16 +120,16 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
               type="button"
               onClick={handleRemove}
               disabled={locked}
-              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 border-2 border-black bg-paper-light px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-black transition-colors hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Please wait…' : 'Remove key'}
             </button>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleConnect} className="space-y-4">
+        <form onSubmit={handleConnect} className="space-y-3.5">
           <div>
-            <label htmlFor="google-api-key" className="mb-1.5 block font-special-elite text-base font-bold leading-6 tracking-wide text-black">
+            <label htmlFor="google-api-key" className="mb-1.5 block font-special-elite text-lg font-bold leading-6 text-black">
               Google API key
             </label>
             <input
@@ -159,19 +151,21 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
               placeholder="Paste your Google API key"
             />
           </div>
-          <p id="key-check-status" className="font-open-sans text-base font-normal leading-6 text-gray-800">
+          <p id="key-check-status" role={busy ? 'status' : undefined} className="font-open-sans text-base font-normal leading-6 text-gray-800">
             {busy
-              ? 'A Google AI request is in progress. Key editing is paused until it finishes.'
-              : 'We check access using a model metadata request only. No comic content is generated during connection.'}
+              ? 'A Google AI request is in progress; key changes are paused until it finishes.'
+              : connected && editing
+                ? 'We check access with model metadata only; no comic is generated. Your current key stays active unless this replacement passes.'
+                : 'We check access with model metadata only; no comic is generated during connection.'}
           </p>
 
           {error && (
-            <p role="alert" className="border-2 border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-base font-bold leading-6 text-red-950">
+            <p role="alert" className="border border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-base font-bold leading-6 text-red-950">
               {error}
             </p>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <button
               type="submit"
               disabled={locked || !keyInput.trim()}
@@ -189,21 +183,15 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
                 Keep current key
               </button>
             )}
-            {busy && (
-              <span role="status" className="font-open-sans text-base font-semibold leading-6 text-gray-800">
-                Key changes are paused while a Google AI request is in progress.
-              </span>
-            )}
           </div>
         </form>
       )}
 
-      <div id="key-privacy" className="mt-5 border-t-2 border-dotted border-black pt-4">
-        <p className="font-open-sans text-base font-semibold leading-7 text-black">
-          Your key stays in this browser tab only. Refreshing removes it. It is sent directly to Google; all AI calls are billed to your personal Google project.
+      <div id="key-privacy" className="mt-5 border-t border-black pt-4">
+        <p className="font-open-sans text-base font-semibold leading-6 text-black">
+          This key stays in this browser tab and is removed on refresh. It goes directly to Google; AI calls are billed to your Google project.
         </p>
         <p className="mt-2 font-open-sans text-base font-normal leading-6 text-gray-800">
-          Get a key at{' '}
           <a
             href="https://aistudio.google.com/apikey"
             target="_blank"
@@ -212,7 +200,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
           >
             Google AI Studio
           </a>
-          . Review{' '}
+          {' '}for a key. Check{' '}
           <a
             href="https://ai.google.dev/gemini-api/docs/pricing"
             target="_blank"
@@ -221,9 +209,9 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
           >
             Gemini API pricing
           </a>
-          {' '}and your project’s quotas before generating.
+          {' '}and project quotas before generating.
         </p>
-        <div className="mt-3 flex flex-col gap-1.5 border-l-4 border-black bg-banana/35 px-3 py-2.5 font-open-sans text-base font-normal leading-6 text-black">
+        <div className="mt-4 space-y-1 border-t border-dotted border-black pt-3 font-open-sans text-base leading-6 text-black">
           <p><span className="font-special-elite font-bold">Default image model:</span> Nano Banana 2.1, the latest stable model.</p>
           <p><span className="font-special-elite font-bold">Alternative:</span> Nano Banana 2.5. Both require paid API image access; availability and quotas depend on your Google project.</p>
         </div>

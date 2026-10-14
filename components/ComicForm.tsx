@@ -3,10 +3,11 @@
 // style, image model, optional reference images, and an optional news context
 // string sourced from the NewsSelector modal. Handles a sensitive-topic
 // gate (ConfirmationModal) before submitting to the parent's onSubmit handler.
-import React, { useState, useRef, useEffect } from 'react';
-import { ComicFormData, Stance, ComedicStyle, ImageModel, ReferenceImage, NewsStory } from '../types';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ComicFormData, Stance, ComedicStyle, ImageModel, ReferenceImage, NewsStory, NewsFeed, NewsIssue } from '../types';
 import { STANCE_OPTIONS, COMEDIC_STYLE_OPTIONS, ILLUSTRATION_STYLE_OPTIONS, IMAGE_MODEL_OPTIONS } from '../constants';
-import { getTopStories } from '../services/newsService';
+import { getNewsFeed, cancelNewsRequest } from '../services/newsService';
+import { describeNewsError } from '../services/newsErrors';
 import SparklesIcon from './icons/SparklesIcon';
 import NewspaperIcon from './icons/NewspaperIcon';
 import NewsSelector from './NewsSelector';
@@ -97,9 +98,21 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
-  const [newsStories, setNewsStories] = useState<NewsStory[]>([]);
+  const [newsFeed, setNewsFeed] = useState<NewsFeed | null>(null);
   const [isNewsLoading, setIsNewsLoading] = useState(false);
-  const [newsError, setNewsError] = useState<string | null>(null);
+  const [newsError, setNewsError] = useState<NewsIssue | null>(null);
+  const newsRequestId = useRef(0);
+  useEffect(() => () => {
+    newsRequestId.current++;
+    cancelNewsRequest();
+  }, []);
+
+  const handleCloseNews = useCallback(() => {
+    newsRequestId.current++;
+    cancelNewsRequest();
+    setIsNewsModalOpen(false);
+    setIsNewsLoading(false);
+  }, []);
   // Whether the Background Context textarea is expanded.
   // Persisted independently so "expanded but empty" survives reload.
   const [showContextField, setShowContextField] = useState<boolean>(() => {
@@ -255,28 +268,32 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
     setIsConfirmationModalOpen(false);
   };
 
-  const handleFetchNewsClick = async () => {
+  const handleFetchNewsClick = async (forceRefresh = false) => {
+    const requestId = ++newsRequestId.current;
     setIsNewsModalOpen(true);
     setNewsError(null);
-    setNewsStories([]);
+    if (!forceRefresh) setNewsFeed(null);
     setIsNewsLoading(true);
     try {
-      // Reuse the background prefetch if it's in-flight or already done;
-      // fall back to a fresh call only if no prefetch exists.
-      const promise = getTopStories();
-      const stories = await promise;
-      setNewsStories(stories);
-    } catch (error: any) {
-      setNewsError(error.message || "An unknown error occurred.");
+      const feed = await getNewsFeed({ forceRefresh });
+      if (newsRequestId.current === requestId) setNewsFeed(feed);
+    } catch (error) {
+      const issue = describeNewsError(error);
+      if (newsRequestId.current === requestId && issue.code !== 'cancelled') setNewsError(issue);
     } finally {
-      setIsNewsLoading(false);
+      if (newsRequestId.current === requestId) setIsNewsLoading(false);
     }
   };
 
-  const handleSelectStory = (title: string, description?: string) => {
-    setFormData(prev => ({ ...prev, topic: title, newsContext: description ?? '' }));
+  const handleSelectStory = (story: NewsStory) => {
+    let context = story.description;
+    for (const source of story.sources || []) {
+      const line = `\nSource: ${source.title} — ${source.url}`;
+      if (context.length + line.length <= 3000) context += line;
+    }
+    setFormData(prev => ({ ...prev, topic: story.title, newsContext: context }));
     setShowContextField(true);
-    setIsNewsModalOpen(false);
+    handleCloseNews();
   };
 
 
@@ -284,11 +301,17 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
     <>
       {isNewsModalOpen && (
         <NewsSelector 
-          stories={newsStories}
+          feed={newsFeed}
           isLoading={isNewsLoading}
           error={newsError}
           onSelectStory={handleSelectStory}
-          onClose={() => setIsNewsModalOpen(false)}
+          onClose={handleCloseNews}
+          onRetry={() => void handleFetchNewsClick(true)}
+          onRefresh={() => void handleFetchNewsClick(true)}
+          onOpenApiSettings={() => {
+            handleCloseNews();
+            onOpenApiSettings?.();
+          }}
         />
       )}
       
@@ -404,7 +427,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
           {/* Path B — news picker */}
           <button
             type="button"
-            onClick={handleFetchNewsClick}
+            onClick={() => void handleFetchNewsClick()}
             className="w-full flex items-center justify-center gap-2 p-3 bg-white text-black border-2 border-black hover:bg-stone-200 transition-colors rounded-lg font-open-sans font-semibold text-base"
           >
             <NewspaperIcon className="w-5 h-5 flex-shrink-0" />

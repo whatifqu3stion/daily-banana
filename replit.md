@@ -57,6 +57,10 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 - Browser-only BYOK is unchanged by this API migration. Google's production guidance recommends backend key handling; do not describe tab-only memory as server-side security.
 - Image API models require paid access. Do not promise a fixed free-generation quota; Google AI Studio allowances are separate.
 - Headlines are fetched only on explicit user action, not automatically at page load.
+- News requires usable Google Search grounding sources; it filters malformed, blank, duplicate, and unsupported stories rather than displaying unsourced output as current news.
+- News caches validated feeds for 30 minutes. Failed refreshes may show saved results up to 24 hours old with a visible warning and the original retrieval timestamp. Older/invalid caches are ignored.
+- News has a 30-second overall deadline and at most one retry for transient network/service failures; quota, permission, and response-validation errors are not automatically retried. Closing stops waiting but does not undo Google usage charges.
+- Source links are retained when a news story becomes comic background. Google Search Suggestions render in an opaque-origin sandboxed iframe, never directly in app HTML. A nonce-restricted Escape bridge is the only permitted script; provider scripts are blocked.
 
 ## Running the App
 ```bash
