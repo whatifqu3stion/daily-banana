@@ -85,15 +85,15 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
     >
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b-2 border-black pb-4">
         <div className="min-w-0">
-          <h2 id="gemini-connection-heading" className="font-masthead text-2xl leading-tight text-black sm:text-3xl">
+          <h3 id="gemini-connection-heading" className="font-special-elite text-xl font-bold leading-tight text-black sm:text-2xl">
             Connect your Google key
-          </h2>
-          <p className="mt-1 font-open-sans text-base font-semibold leading-6 text-gray-800">
+          </h3>
+          <p className="mt-1 font-open-sans text-base font-normal leading-7 text-gray-800">
             Your key lets the newsroom make comics on your Google project.
           </p>
         </div>
         <span
-          className={`inline-flex shrink-0 items-center gap-2 border-2 px-3 py-1.5 font-open-sans text-sm font-bold ${
+          className={`inline-flex shrink-0 items-center gap-2 border-2 px-3 py-1.5 font-open-sans text-sm font-bold leading-5 tracking-wide ${
             connected
               ? 'border-black bg-banana text-black'
               : 'border-black bg-white text-gray-800'
@@ -108,10 +108,10 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
       {connected && !editing ? (
         <div className="space-y-4">
           <div className="border border-black bg-white px-4 py-3">
-            <p className="font-open-sans text-base font-bold leading-6 text-black">
+            <p className="font-special-elite text-base font-bold leading-6 text-black">
               Google accepted the key check.
             </p>
-            <p className="mt-1 font-open-sans text-sm font-semibold leading-6 text-gray-800">
+            <p className="mt-1 font-open-sans text-base font-normal leading-6 text-gray-800">
               This confirms the credential was checked; it does not guarantee billing eligibility or that every model is available.
             </p>
           </div>
@@ -120,7 +120,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
               type="button"
               onClick={startReplacing}
               disabled={locked}
-              className="min-h-11 border-2 border-black bg-white px-5 py-2.5 font-open-sans text-base font-bold text-black transition-colors hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 border-2 border-black bg-white px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-black transition-colors hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Replace key
             </button>
@@ -128,7 +128,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
               type="button"
               onClick={handleRemove}
               disabled={locked}
-              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Please wait…' : 'Remove key'}
             </button>
@@ -137,7 +137,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
       ) : (
         <form onSubmit={handleConnect} className="space-y-4">
           <div>
-            <label htmlFor="google-api-key" className="mb-1.5 block font-special-elite text-base font-bold text-black">
+            <label htmlFor="google-api-key" className="mb-1.5 block font-special-elite text-base font-bold leading-6 tracking-wide text-black">
               Google API key
             </label>
             <input
@@ -155,18 +155,18 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
               disabled={locked}
               aria-describedby="key-privacy key-check-status"
               aria-invalid={Boolean(error)}
-              className="min-h-12 w-full min-w-0 border-2 border-black bg-white px-3 py-2 font-open-sans text-base font-semibold text-black placeholder:font-normal placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-gray-600"
+              className="min-h-12 w-full min-w-0 border-2 border-black bg-white px-3 py-2 font-open-sans text-base font-normal leading-6 text-black placeholder:font-normal placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-gray-600"
               placeholder="Paste your Google API key"
             />
           </div>
-          <p id="key-check-status" className="font-open-sans text-sm font-semibold leading-6 text-gray-800">
+          <p id="key-check-status" className="font-open-sans text-base font-normal leading-6 text-gray-800">
             {busy
               ? 'A Google AI request is in progress. Key editing is paused until it finishes.'
               : 'We check access using a model metadata request only. No comic content is generated during connection.'}
           </p>
 
           {error && (
-            <p role="alert" className="border-2 border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-sm font-bold leading-6 text-red-950">
+            <p role="alert" className="border-2 border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-base font-bold leading-6 text-red-950">
               {error}
             </p>
           )}
@@ -175,7 +175,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
             <button
               type="submit"
               disabled={locked || !keyInput.trim()}
-              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy ? 'Checking key…' : connected ? 'Replace key' : 'Connect key'}
             </button>
@@ -184,13 +184,13 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
                 type="button"
                 onClick={keepCurrentKey}
                 disabled={locked}
-                className="min-h-11 border-2 border-black bg-white px-5 py-2.5 font-open-sans text-base font-bold text-black transition-colors hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 border-2 border-black bg-white px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-black transition-colors hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Keep current key
               </button>
             )}
             {busy && (
-              <span role="status" className="font-open-sans text-sm font-bold text-gray-800">
+              <span role="status" className="font-open-sans text-base font-semibold leading-6 text-gray-800">
                 Key changes are paused while a Google AI request is in progress.
               </span>
             )}
@@ -199,10 +199,10 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
       )}
 
       <div id="key-privacy" className="mt-5 border-t-2 border-dotted border-black pt-4">
-        <p className="font-open-sans text-base font-semibold leading-6 text-black">
+        <p className="font-open-sans text-base font-semibold leading-7 text-black">
           Your key stays in this browser tab only. Refreshing removes it. It is sent directly to Google; all AI calls are billed to your personal Google project.
         </p>
-        <p className="mt-2 font-open-sans text-sm font-semibold leading-6 text-gray-800">
+        <p className="mt-2 font-open-sans text-base font-normal leading-6 text-gray-800">
           Get a key at{' '}
           <a
             href="https://aistudio.google.com/apikey"
@@ -223,9 +223,9 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
           </a>
           {' '}and your project’s quotas before generating.
         </p>
-        <div className="mt-3 flex flex-col gap-1.5 border-l-4 border-black bg-banana/35 px-3 py-2.5 font-open-sans text-sm font-semibold leading-6 text-black">
-          <p><span className="font-bold">Default image model:</span> Nano Banana 2.1, the latest stable model.</p>
-          <p><span className="font-bold">Alternative:</span> Nano Banana 2.5. Both require paid API image access; availability and quotas depend on your Google project.</p>
+        <div className="mt-3 flex flex-col gap-1.5 border-l-4 border-black bg-banana/35 px-3 py-2.5 font-open-sans text-base font-normal leading-6 text-black">
+          <p><span className="font-special-elite font-bold">Default image model:</span> Nano Banana 2.1, the latest stable model.</p>
+          <p><span className="font-special-elite font-bold">Alternative:</span> Nano Banana 2.5. Both require paid API image access; availability and quotas depend on your Google project.</p>
         </div>
       </div>
     </section>

@@ -137,11 +137,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-[100dvh] px-3 py-3 sm:px-6 sm:py-6 font-sans">
       <header className={`mx-auto w-full max-w-6xl ${isSetup ? 'mb-10 sm:mb-14' : 'mb-6'}`}>
-        {isSetup && (
-          <div className="mb-3 flex justify-end">
-            <ApiSettingsButton connected={hasApiKey} onClick={() => setIsApiSettingsOpen(true)} />
-          </div>
-        )}
         {!isSetup && (
           <div className="compact-masthead grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-y-2 border-black py-2.5 sm:py-3 lg:grid-cols-[minmax(22rem,1fr)_auto_minmax(10rem,1fr)] lg:gap-5">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
@@ -150,7 +145,6 @@ const App: React.FC = () => {
             </div>
             <span className="hidden whitespace-nowrap text-center text-lg font-bold font-special-elite uppercase tracking-[0.1em] text-gray-900 lg:block">{today}</span>
             <div className="flex items-center justify-self-end gap-2">
-              <ApiSettingsButton connected={hasApiKey} onClick={() => setIsApiSettingsOpen(true)} />
               <button type="button" onClick={requestNewComic} className="border-2 border-black bg-paper-light px-3 py-2 text-xs font-bold uppercase tracking-wide hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black">
                 New comic
               </button>
@@ -194,6 +188,11 @@ const App: React.FC = () => {
           <p className="text-xs mt-2 max-w-3xl mx-auto">
             All content is the sole view of the creator, not the tool owner, by using this service you agree to comply with Google’s T.O.S. and all other applicable laws.
           </p>
+          {hasApiKey && (
+            <div className="mt-4 flex justify-center">
+              <ApiSettingsButton connected={hasApiKey} onClick={() => setIsApiSettingsOpen(true)} />
+            </div>
+          )}
       </footer>
       <ConfirmationModal
         isOpen={isDiscardConfirmationOpen}
@@ -207,7 +206,16 @@ const App: React.FC = () => {
       {isApiSettingsOpen && (
         <ApiKeySettings
           disabled={isLoading || isCustomPremiseLoading || [0, 1, 2, 3].some(isPanelLoading)}
-          onClose={() => setIsApiSettingsOpen(false)}
+          onClose={() => {
+            setIsApiSettingsOpen(false);
+            // Connecting removes the error launcher. Restore a useful focus
+            // target when the dialog's original opener no longer exists.
+            requestAnimationFrame(() => {
+              if (document.activeElement === document.body) {
+                document.getElementById('generate-comic-plan')?.focus();
+              }
+            });
+          }}
         />
       )}
     </div>

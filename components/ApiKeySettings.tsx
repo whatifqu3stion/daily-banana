@@ -41,13 +41,13 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ disabled = false, onClo
       className="m-auto max-h-[min(92dvh,48rem)] w-[calc(100%-1.5rem)] max-w-3xl overflow-y-auto border-2 border-black bg-paper-light p-0 text-black shadow-xl backdrop:bg-black/60"
     >
       <div className="flex items-center justify-between gap-4 border-b-2 border-black px-4 py-3 sm:px-6">
-        <h2 id="api-settings-title" className="font-masthead text-2xl leading-tight sm:text-3xl">
+        <h2 id="api-settings-title" className="font-special-elite text-2xl font-bold leading-tight sm:text-3xl">
           API settings
         </h2>
         <button
           type="button"
           onClick={() => dialogRef.current?.close()}
-          className="shrink-0 border-2 border-black bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
+          className="min-h-11 shrink-0 border-2 border-black bg-white px-3 py-2 font-open-sans text-sm font-bold hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
         >
           Close API settings
         </button>

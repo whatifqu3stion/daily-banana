@@ -2,7 +2,8 @@
 //   • Comic plan generation  (single plan + multi-plan brainstorm)
 //   • Panel image generation and refinement
 //   • News context explainer
-import { Type, Modality } from "@google/genai";
+import { Type } from "@google/genai";
+import { generatePanelInteraction } from './geminiImageInteractions';
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource, AspectRatio, PanelContext } from '../types';
 import { extractDomain } from '../utils/urlUtils';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
@@ -611,9 +612,6 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
     }
 };
 
-const IMAGE_GENERATION_ATTEMPTS = 3;
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const generatePanelImageWithReferences = async (
     visual_prompt: string,
     consistency_tags: string[],
@@ -629,43 +627,7 @@ const generatePanelImageWithReferences = async (
     setDescription?: string,
 ): Promise<string> => {
     const prompt = constructImagePrompt(visual_prompt, consistency_tags, illustrationStyle, comedicStyle, undefined, stance, aspectRatio, overlayTexts, panelContext, prevSceneState, setDescription);
-    // Each reference image is preceded by its tag text so the model understands
-    // what role that image plays (style sheet, previous panel, user character, etc.).
-    const parts = [
-        { text: prompt },
-        ...userProvidedImages.flatMap(img => [
-            { text: img.tag || 'User-supplied reference image — match the style, characters, or setting shown.' },
-            { inlineData: { data: img.base64, mimeType: img.mimeType } }
-        ])
-    ];
-
-    for (let attempt = 1; attempt <= IMAGE_GENERATION_ATTEMPTS; attempt++) {
-        if (attempt > 1) await sleep(1000 * (attempt - 1));
-
-        const result = await generateContent({
-            model: imageModel,
-            contents: { parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-                imageConfig: {
-                    aspectRatio: aspectRatio ?? '1:1',
-                    ...(imageModel === 'gemini-2.5-flash-image' ? {} : { imageSize: '2K' }),
-                },
-            }
-        });
-
-        // Safety blocks are definitive — do not retry.
-        assertNotSafetyBlocked(result, 'generatePanelImageWithReferences');
-
-        const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (imagePart?.inlineData?.data) return imagePart.inlineData.data;
-
-        // Log what the model said instead of the image — helps diagnose soft refusals.
-        const textPart = result.candidates?.[0]?.content?.parts?.find(p => p.text);
-        console.error(`generatePanelImageWithReferences attempt ${attempt}/${IMAGE_GENERATION_ATTEMPTS}: no image returned. Model text: "${textPart?.text ?? '(none)'}"`);
-    }
-
-    throw new Error('Image generation failed: The AI did not return an image after multiple attempts. Please try regenerating.');
+    return generatePanelInteraction(prompt, userProvidedImages, imageModel, aspectRatio);
 };
 
 const refinePanelImage = async (
@@ -698,40 +660,7 @@ const refinePanelImage = async (
         setDescription,
     );
 
-    const parts = [
-        { inlineData: { data: baseImage, mimeType: 'image/png' } },
-        { text: prompt },
-        ...userProvidedImages.flatMap(img => [
-            { text: img.tag || 'User-supplied reference image — match the style, characters, or setting shown.' },
-            { inlineData: { data: img.base64, mimeType: img.mimeType } }
-        ])
-    ];
-
-    for (let attempt = 1; attempt <= IMAGE_GENERATION_ATTEMPTS; attempt++) {
-        if (attempt > 1) await sleep(1000 * (attempt - 1));
-
-        const result = await generateContent({
-            model: imageModel,
-            contents: { parts },
-            config: {
-                responseModalities: [Modality.IMAGE, Modality.TEXT],
-                imageConfig: {
-                    aspectRatio: aspectRatio ?? '1:1',
-                    ...(imageModel === 'gemini-2.5-flash-image' ? {} : { imageSize: '2K' }),
-                },
-            }
-        });
-
-        assertNotSafetyBlocked(result, 'refinePanelImage');
-
-        const imagePart = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (imagePart?.inlineData?.data) return imagePart.inlineData.data;
-
-        const textPart = result.candidates?.[0]?.content?.parts?.find(p => p.text);
-        console.error(`refinePanelImage attempt ${attempt}/${IMAGE_GENERATION_ATTEMPTS}: no image returned. Model text: "${textPart?.text ?? '(none)'}"`);
-    }
-
-    throw new Error('Image refinement failed: The AI did not return an image after multiple attempts. Please try again.');
+    return generatePanelInteraction(prompt, userProvidedImages, imageModel, aspectRatio, baseImage);
 };
 
 const generateContextExplainer = async (

@@ -83,6 +83,16 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
   const [customStanceError, setCustomStanceError] = useState<string | null>(null);
   const [customStyleError, setCustomStyleError] = useState<string | null>(null);
   const [customIllustrationError, setCustomIllustrationError] = useState<string | null>(null);
+  const [showApiKeyError, setShowApiKeyError] = useState(false);
+  const apiKeyErrorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (hasApiKey) setShowApiKeyError(false);
+  }, [hasApiKey]);
+  useEffect(() => {
+    if (showApiKeyError && !hasApiKey) {
+      apiKeyErrorRef.current?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [showApiKeyError, hasApiKey]);
   const [referenceImages, setReferenceImages] = useState<ReferenceImageState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -211,7 +221,10 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasApiKey) return;
+    if (!hasApiKey) {
+      setShowApiKeyError(true);
+      return;
+    }
     // Validate custom free-text fields before proceeding
     if (showFreeTextStance && !formData.stance.trim()) {
       setCustomStanceError('Please describe your custom stance.');
@@ -235,6 +248,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
   const handleConfirmSensitive = () => {
     setIsConfirmationModalOpen(false);
     if (hasApiKey) onSubmit(formData);
+    else setShowApiKeyError(true);
   };
   
   const handleCancelSensitive = () => {
@@ -294,7 +308,7 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
         }
       />
 
-      <form onSubmit={handleSubmit} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-3 border-black bg-paper-light shadow-xl rounded-lg">
+      <form onSubmit={handleSubmit} noValidate={!hasApiKey} className="w-full max-w-3xl mx-auto space-y-8 p-8 md:p-10 border-3 border-black bg-paper-light shadow-xl rounded-lg">
         
         {/* ── Topic: two-path entry point ─────────────────────────────── */}
         <div className="space-y-0">
@@ -641,26 +655,31 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
 
         <div className="pt-4 border-t-4 border-black">
           <button
+            id="generate-comic-plan"
             type="submit"
-            disabled={isLoading || !hasApiKey}
+            disabled={isLoading}
+            aria-describedby={showApiKeyError && !hasApiKey ? 'missing-api-key-message' : undefined}
              className="w-full group inline-flex items-center justify-center gap-3 px-8 py-4 bg-banana text-black font-bangers text-2xl tracking-wider border-2 border-t-black border-l-black border-r-black border-b-8 border-b-black hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <SparklesIcon className={`w-6 h-6 ${isLoading ? 'animate-spin' : 'group-hover:animate-spin-once'}`} />
             {isLoading ? 'Generating...' : 'Generate Comic Plan'}
           </button>
-          {!hasApiKey && (
-            <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-base font-open-sans">
-              <span>Connect a Google API key to generate a comic.</span>
+          {showApiKeyError && !hasApiKey && (
+            <div ref={apiKeyErrorRef} role="alert" className="mt-4 border-2 border-black bg-banana/25 p-4 text-center font-open-sans">
+              <p className="text-lg font-bold text-black">Connect your Google key to create a comic</p>
+              <p id="missing-api-key-message" className="mt-2 text-base leading-6 text-black">
+                Add your Google API key in API settings, then try Generate again. Your topic and choices will stay right here.
+              </p>
               {onOpenApiSettings && (
                 <button
                   type="button"
                   onClick={onOpenApiSettings}
-                  className="font-bold underline decoration-2 underline-offset-2 hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
+                  className="mt-4 min-h-11 border-2 border-black bg-black px-5 py-2.5 text-base font-bold text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
                 >
                   Open API settings
                 </button>
               )}
-            </p>
+            </div>
           )}
         </div>
       </form>

@@ -51,6 +51,10 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 - Creators connect their own Gemini key in the app. It is held only in memory for the current tab, cleared on refresh/removal, and sent directly to Google.
 - Do not embed an owner key in the Vite bundle or persist personal keys in browser storage.
 - Connection validates model metadata without generating content; billing and image-model access are checked by Google when generating.
+- Panel generation, regeneration, and refinement use `client.interactions.create` through the same BYOK connection. Text planning, context, and news retain `generateContent`.
+- Image requests use `store: false`, inline delivery, and tagged references; refinements send the current panel explicitly rather than continuing stored server history.
+- Generated JPEGs are normalized to PNG before entering the comic/export pipeline. Nano Banana 2.1 requests 2K; legacy 2.5 omits unsupported resolution settings.
+- Browser-only BYOK is unchanged by this API migration. Google's production guidance recommends backend key handling; do not describe tab-only memory as server-side security.
 - Image API models require paid access. Do not promise a fixed free-generation quota; Google AI Studio allowances are separate.
 - Headlines are fetched only on explicit user action, not automatically at page load.
 

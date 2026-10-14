@@ -2,7 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function startComic(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: /^API settings/ }).click();
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill('test-key-not-a-secret');
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
   await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
