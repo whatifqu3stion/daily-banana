@@ -51,6 +51,20 @@ const checkForSensitiveContent = (topic: string): boolean => {
 
 const STORAGE_KEY = 'dailyBanana_formState';
 
+const WarningIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path d="M12 3.5 22 20.5H2L12 3.5Z" fill="#F4D44D" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="M12 9v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="12" cy="17" r="1" fill="currentColor" />
+  </svg>
+);
+
 const loadSavedForm = (): Partial<ComicFormData> => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -501,9 +515,15 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
               </>
             )}
             {formData.comedicStyle === 'dark-comedy' && !showFreeTextComedicStyle && (
-              <p className="mt-2 text-sm font-open-sans leading-5 text-amber-900 bg-amber-50 border border-amber-300 rounded px-3 py-2">
-                Stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence or tragedy may be blocked by content filters.
-              </p>
+              <div role="note" className="mt-3 flex items-start gap-3 border-2 border-black bg-banana/30 px-3 py-3 text-black">
+                <WarningIcon className="mt-0.5 h-6 w-6 flex-none" />
+                <div className="min-w-0">
+                  <p className="font-special-elite text-xl font-bold leading-snug">Content limits</p>
+                  <p className="mt-1 font-open-sans text-base leading-6">
+                    Stays within editorial-cartoon bounds — think cynical and nihilistic, not graphic or shocking. Topics involving violence or tragedy may be blocked by content filters.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -688,20 +708,23 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
             {isLoading ? 'Generating...' : 'Generate Comic Plan'}
           </button>
           {showApiKeyError && !hasApiKey && (
-            <div ref={apiKeyErrorRef} role="alert" className="mt-4 border-2 border-black bg-banana/25 p-4 text-center font-open-sans">
-              <p className="text-lg font-bold text-black">Connect your Google key to create a comic</p>
-              <p id="missing-api-key-message" className="mt-2 text-base leading-6 text-black">
-                Add your Google API key in API settings, then try Generate again. Your topic and choices will stay right here.
-              </p>
-              {onOpenApiSettings && (
-                <button
-                  type="button"
-                  onClick={onOpenApiSettings}
-                  className="mt-4 min-h-11 border-2 border-black bg-black px-5 py-2.5 text-base font-bold text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-                >
-                  Open API settings
-                </button>
-              )}
+            <div ref={apiKeyErrorRef} role="alert" className="mt-4 flex items-start gap-3 border-2 border-black bg-banana/30 p-4 font-open-sans text-black">
+              <WarningIcon className="mt-0.5 h-7 w-7 flex-none" />
+              <div className="min-w-0 flex-1">
+                <p className="font-special-elite text-xl font-bold leading-snug">Connect your Google key to create a comic</p>
+                <p id="missing-api-key-message" className="mt-1 text-base leading-6">
+                  Add your Google API key in API settings, then try Generate again. Your topic and choices will stay right here.
+                </p>
+                {onOpenApiSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenApiSettings}
+                    className="mt-3 min-h-11 border-2 border-black bg-black px-5 py-2.5 text-base font-bold text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+                  >
+                    Open API settings
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
