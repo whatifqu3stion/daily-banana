@@ -1,0 +1,235 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import { randomUUID } from 'node:crypto';
+import { createGeminiApi, redact } from '../../server/gemini-api.mjs';
+import { CredentialSessions, cookieName } from '../../server/sessions.mjs';
+
+async function fixture(t, options = {}) {
+  const calls = [];
+  const client = key => ({
+    models: {
+      get: async params => {
+        calls.push({ key, operation: 'metadata', params });
+        if (key === 'bad-key') throw new Error(JSON.stringify({ error: { code: 403, status: 'PERMISSION_DENIED', message: `Invalid API key: ${key}` } }));
+        await options.validate?.(key);
+      },
+      generateContent: async params => {
+        calls.push({ key, operation: 'text', params });
+        await options.generate?.(key, params);
+        return { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'story' }] } }], get text() { return `story ${key}`; } };
+      },
+    },
+    interactions: { create: async params => {
+      calls.push({ key, operation: 'image', params });
+      return options.image || { status: 'completed', steps: [], get output_image() { return { data: 'base64', mime_type: 'image/jpeg' }; }, get output_text() { return ''; } };
+    } },
+  });
+  const api = createGeminiApi({ createClient: client, ...options });
+  const server = http.createServer((req, res) => { void api.handler(req, res, () => res.writeHead(404).end()); });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  t.after(async () => { api.close(); await new Promise(resolve => server.close(resolve)); });
+  const browser = (tab = randomUUID()) => {
+    let cookie = '';
+    return {
+      tab, get cookie() { return cookie; },
+      async request(endpoint, body, { method = 'POST', headers = {}, cookieOverride, signal } = {}) {
+        const response = await fetch(`${url}/api/gemini/${endpoint}`, {
+          method, signal, headers: { 'Content-Type': 'application/json', 'X-Gemini-Tab': tab, cookie: cookieOverride ?? cookie, ...headers },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        });
+        const setCookie = response.headers.get('set-cookie');
+        if (setCookie) cookie = setCookie.split(';')[0];
+        const text = await response.text();
+        return { status: response.status, body: JSON.parse(text), text, setCookie, cache: response.headers.get('cache-control') };
+      },
+    };
+  };
+  return { api, browser, calls };
+}
+const content = { model: 'gemini-2.5-flash', contents: 'A story', config: { systemInstruction: 'Be funny', tools: [{ googleSearch: {} }] } };
+const image = model => ({ model, input: [{ type: 'text', text: 'banana' }, { type: 'image', data: 'png', mime_type: 'image/png' }], response_format: { aspect_ratio: '16:9' }, store: true, stream: true, previous_interaction_id: 'private-history' });
+
+test('isolated users and tabs cannot borrow credentials; cookies are secure and opaque', async t => {
+  const { browser, calls } = await fixture(t);
+  const alice = browser(), bob = browser(), empty = browser();
+  const connected = await alice.request('connect', { key: 'alice-key' });
+  assert.equal(connected.status, 200);
+  assert.match(connected.setCookie, /HttpOnly; SameSite=Strict; Max-Age=1800; Secure/);
+  assert.equal(connected.cache, 'no-store');
+  assert.ok(!connected.text.includes('alice-key') && !connected.setCookie.includes('alice-key'));
+  assert.equal((await empty.request('content', content)).status, 401);
+  assert.equal((await bob.request('content', content, { cookieOverride: alice.cookie })).status, 401);
+  await bob.request('connect', { key: 'bob-key' });
+  await Promise.all([alice.request('content', content), bob.request('interactions', image('gemini-nano-banana-2.1'))]);
+  assert.deepEqual(calls.filter(call => call.operation !== 'metadata').map(call => call.key).sort(), ['alice-key', 'bob-key']);
+  assert.ok(alice.cookie.startsWith(cookieName(alice.tab)));
+});
+
+test('failed replacement keeps the old credential; success rotates it and revokes old token', async t => {
+  const { browser, calls } = await fixture(t);
+  const user = browser();
+  await user.request('connect', { key: 'working-key' });
+  const oldCookie = user.cookie;
+  const failed = await user.request('connect', { key: 'bad-key' });
+  assert.equal(failed.status, 403);
+  assert.match(failed.body.error.status, /PERMISSION_DENIED/);
+  assert.ok(!failed.text.includes('bad-key'));
+  assert.equal(user.cookie, oldCookie);
+  await user.request('content', content);
+  assert.equal(calls.at(-1).key, 'working-key');
+  await user.request('connect', { key: 'replacement-key' });
+  assert.notEqual(user.cookie, oldCookie);
+  assert.equal((await user.request('content', content, { cookieOverride: oldCookie })).status, 401);
+  await user.request('content', content);
+  assert.equal(calls.at(-1).key, 'replacement-key');
+});
+
+test('removal is idempotent and refresh cannot restore a session; expiry is enforced server-side', async t => {
+  let now = 1000;
+  const sessions = new CredentialSessions({ now: () => now, ttl: 100 });
+  const { browser, api } = await fixture(t, { sessions });
+  const user = browser();
+  await user.request('connect', { key: 'personal-key' });
+  const refreshed = browser();
+  assert.equal((await refreshed.request('content', content, { cookieOverride: user.cookie })).status, 401);
+  now = 1100;
+  assert.equal((await user.request('content', content)).status, 401);
+  assert.equal(api.sessions.sessions.size, 0);
+  await user.request('connect', { key: 'personal-key' });
+  const saved = user.cookie;
+  assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+  assert.equal((await user.request('content', content, { cookieOverride: saved })).status, 401);
+  assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+  assert.equal(api.sessions.sessions.size, 0);
+});
+
+test('server blocks replacement and removal during generation, even after expiry', async t => {
+  let release, started;
+  let now = 0;
+  const signal = new Promise(resolve => { started = resolve; });
+  const held = new Promise(resolve => { release = resolve; });
+  const { browser, calls, api } = await fixture(t, {
+    sessions: new CredentialSessions({ now: () => now, ttl: 100 }),
+    generate: async () => { started(); await held; },
+  });
+  const user = browser();
+  await user.request('connect', { key: 'active-key' });
+  const running = user.request('content', content);
+  await signal;
+  assert.equal((await user.request('connect', { key: 'new-key' })).status, 409);
+  assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 409);
+  now = 100;
+  assert.equal((await user.request('content', content)).status, 401);
+  release();
+  assert.equal((await running).status, 200);
+  assert.equal(calls.filter(call => call.operation === 'metadata').length, 1);
+  assert.equal(api.sessions.sessions.size, 0);
+});
+
+test('metadata check locks concurrent connect, remove and generation; cleanup survives rejection', async t => {
+  let release, started;
+  const signal = new Promise(resolve => { started = resolve; });
+  const held = new Promise(resolve => { release = resolve; });
+  const { browser } = await fixture(t, { validate: async key => { if (key === 'slow-key') { started(); await held; } } });
+  const user = browser();
+  await user.request('connect', { key: 'old-key' });
+  const running = user.request('connect', { key: 'slow-key' });
+  await signal;
+  for (const [endpoint, body, method] of [['connect', { key: 'other-key' }, 'POST'], ['session', undefined, 'DELETE'], ['content', content, 'POST']]) {
+    assert.equal((await user.request(endpoint, body, { method })).status, 409);
+  }
+  release();
+  assert.equal((await running).status, 200);
+  assert.equal((await user.request('content', content)).status, 200);
+});
+
+test('text, grounded news and image requests use the server key and disallow transport overrides', async t => {
+  const { browser, calls } = await fixture(t);
+  const user = browser();
+  await user.request('connect', { key: 'server-only-key' });
+  const output = await user.request('content', { ...content, httpOptions: { baseUrl: 'http://attacker' }, config: { ...content.config, httpOptions: { headers: { 'x-goog-api-key': 'attacker' } } } });
+  assert.match(output.body.text, /story \[redacted\]/);
+  assert.equal(calls.at(-1).params.config.systemInstruction, 'Be funny');
+  assert.deepEqual(calls.at(-1).params.config.tools, [{ googleSearch: {} }]);
+  assert.deepEqual(calls.at(-1).params.config.httpOptions, { timeout: 180000, retryOptions: { attempts: 1 } });
+  for (const model of ['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']) {
+    const result = await user.request('interactions', image(model));
+    assert.equal(result.status, 200);
+    assert.equal(result.body.output_image.data, 'base64');
+    const params = calls.at(-1).params;
+    assert.equal(params.store, false);
+    assert.equal(params.stream, false);
+    assert.equal(params.previous_interaction_id, undefined);
+    assert.equal(params.response_format.image_size, model.endsWith('flash-image') ? undefined : '2K');
+    assert.equal(params.response_format.delivery, 'inline');
+    assert.equal(params.response_format.aspect_ratio, '16:9');
+  }
+  assert.equal((await user.request('content', { ...content, config: { tools: [{ urlContext: {} }] } })).status, 400);
+  assert.equal((await user.request('content', { ...content, model: 'unapproved' })).status, 400);
+});
+
+test('upstream errors are redacted, retain billing/quota codes, and never reach logs', async t => {
+  const logs = [];
+  const original = { log: console.log, error: console.error, warn: console.warn };
+  for (const method of Object.keys(original)) console[method] = (...args) => logs.push(args.join(' '));
+  t.after(() => Object.assign(console, original));
+  const { browser } = await fixture(t, {
+    generate: async key => { throw new Error(JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: `Billing quota exceeded for ${key}` } })); },
+    image: { status: 'failed', steps: [{ type: 'model_output', error: { code: 8, message: 'Quota personal-key' } }] },
+  });
+  const user = browser();
+  await user.request('connect', { key: 'personal-key' });
+  for (const [endpoint, body] of [['content', content], ['interactions', image('gemini-nano-banana-2.1')]]) {
+    const result = await user.request(endpoint, body);
+    assert.equal(result.status, 429);
+    assert.equal(result.body.error.status, 'RESOURCE_EXHAUSTED');
+    assert.ok(!result.text.includes('personal-key'));
+  }
+  assert.deepEqual(logs, []);
+  assert.ok(!redact({ message: 'key/encoded key%2Fencoded' }, ['key/encoded']).includes('key'));
+});
+
+test('cross-origin, missing tab, oversized and malformed requests cannot reach Google', async t => {
+  const { browser, calls } = await fixture(t);
+  const user = browser();
+  for (const headers of [{ Origin: 'https://attacker.example' }, { 'Sec-Fetch-Site': 'cross-site' }]) {
+    assert.equal((await user.request('connect', { key: 'never-used' }, { headers })).status, 403);
+  }
+  assert.equal((await user.request('connect', { key: 'never-used' }, { headers: { 'X-Gemini-Tab': '' } })).status, 400);
+  assert.equal((await user.request('connect', { key: 'a'.repeat(513) })).status, 400);
+  assert.equal((await user.request('content', { contents: 'a'.repeat(26 * 1024 * 1024) })).status, 413);
+  assert.equal(calls.length, 0);
+});
+
+test('cancelling a browser lookup aborts Google and releases its active-session lock', async t => {
+  let started, aborted;
+  const startedSignal = new Promise(resolve => { started = resolve; });
+  const abortedSignal = new Promise(resolve => { aborted = resolve; });
+  const { browser, api } = await fixture(t, { generate: async (_key, params) => {
+    assert.equal(params.config.httpOptions.timeout, 20000);
+    assert.deepEqual(params.config.httpOptions.retryOptions, { attempts: 1 });
+    started();
+    await new Promise((_, reject) => {
+      const cancel = () => { aborted(); reject(new Error('Cancelled')); };
+      if (params.config.abortSignal.aborted) cancel();
+      else params.config.abortSignal.addEventListener('abort', cancel, { once: true });
+    });
+  } });
+  const user = browser();
+  await user.request('connect', { key: 'news-key' });
+  const controller = new AbortController();
+  const running = user.request('content', { ...content, config: { ...content.config, httpOptions: { timeout: 20000, retryOptions: { attempts: 99 } } } }, { signal: controller.signal });
+  // Handle rejection immediately so Node never observes an unhandled abort.
+  const cancelled = assert.rejects(running, error => error.name === 'AbortError');
+  await startedSignal;
+  assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 409);
+  controller.abort();
+  await cancelled;
+  await abortedSignal;
+  // Let the request's finally block release the key before checking removal.
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+  assert.equal(api.sessions.sessions.size, 0);
+});

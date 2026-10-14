@@ -29,13 +29,21 @@ const openNews = (page: Page) => page.getByRole('button', { name: 'Get ideas fro
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
+  await page.route('**/api/gemini/connect', async route => {
+    await route.fulfill({ json: { connected: true, expiresAt: Date.now() + 1_800_000 } });
+  });
+  await page.route('**/api/gemini/session', async route => {
+    await route.fulfill({ json: { connected: false } });
+  });
+  // This suite must never send browser requests directly to Google.
+  await page.route('https://generativelanguage.googleapis.com/**', route => route.abort());
 });
 
 test('missing key explains recovery without API traffic or losing the topic', async ({ page }) => {
   let calls = 0;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+  await page.route('**/api/gemini/connect', async route => {
     calls++;
-    await route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+    await route.fulfill({ json: { connected: true, expiresAt: Date.now() + 1_800_000 } });
   });
   await page.goto('/');
   await page.getByLabel('Topic', { exact: true }).fill('Keep my idea');
@@ -58,10 +66,10 @@ for (const width of [1440, 402]) {
     await page.setViewportSize({ width, height: 1000 });
     let calls = 0;
     let body: any;
-    await page.route('https://generativelanguage.googleapis.com/**', async route => {
-      if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+    await page.route('**/api/gemini/content', async route => {
       calls++;
-      expect(route.request().headers()['x-goog-api-key']).toBe(KEY);
+      expect(route.request().headers()['x-goog-api-key']).toBeUndefined();
+      expect(route.request().postData()).not.toContain(KEY);
       body = route.request().postDataJSON();
       await route.fulfill({ json: response() });
     });
@@ -71,7 +79,7 @@ for (const width of [1440, 402]) {
     const dialog = newsDialog(page);
     await expect(dialog.getByRole('list', { name: 'Recent news headlines' }).locator('li')).toHaveCount(1);
     await expect(dialog.getByRole('link', { name: /Example News/ })).toHaveAttribute('href', SOURCE.url);
-    expect(body.tools).toEqual([{ googleSearch: {} }]);
+    expect(body.config.tools).toEqual([{ googleSearch: {} }]);
     expect(JSON.stringify(body)).toContain('past 24 hours');
     const frame = dialog.locator('iframe');
     await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
@@ -101,8 +109,7 @@ for (const width of [1440, 402]) {
 for (const status of [429, 403]) {
   test(`Google ${status} shows actionable guidance without retrying`, async ({ page }) => {
     let calls = 0;
-    await page.route('https://generativelanguage.googleapis.com/**', async route => {
-      if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+    await page.route('**/api/gemini/content', async route => {
       calls++;
       await route.fulfill({ status, json: { error: { code: status, status: status === 429 ? 'RESOURCE_EXHAUSTED' : 'PERMISSION_DENIED', message: 'Google rejected this lookup' } } });
     });
@@ -117,8 +124,7 @@ for (const status of [429, 403]) {
 
 test('transient failure retries once and explicit refresh preserves results', async ({ page }) => {
   let calls = 0;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     calls++;
     await route.fulfill(calls === 1
       ? { status: 503, json: { error: { code: 503, status: 'UNAVAILABLE', message: 'Try later' } } }
@@ -136,8 +142,7 @@ test('transient failure retries once and explicit refresh preserves results', as
 
 test('failed refresh visibly labels saved data and keeps its original timestamp', async ({ page }) => {
   let calls = 0;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     calls++;
     await route.fulfill(calls === 1 ? { json: response() }
       : { status: 429, json: { error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota reached' } } });
@@ -157,8 +162,7 @@ test('failed refresh visibly labels saved data and keeps its original timestamp'
 
 test('malformed and ungrounded responses explain the issue and allow a manual retry', async ({ page }) => {
   let calls = 0;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     calls++;
     const data = response(STORIES, calls !== 2);
     if (calls === 1) data.candidates[0].content.parts[0].text = 'No JSON here';
@@ -211,8 +215,7 @@ test('parser filters blanks and duplicates and attributes UTF-8 citations per st
 for (const kind of ['corrupt', 'old-schema', 'expired', 'future', 'invalid-stories']) {
   test(`cache ignores ${kind} entries and fetches validated replacements`, async ({ page }) => {
     let calls = 0;
-    await page.route('https://generativelanguage.googleapis.com/**', async route => {
-      if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+    await page.route('**/api/gemini/content', async route => {
       calls++;
       await route.fulfill({ json: response() });
     });
@@ -234,8 +237,7 @@ for (const kind of ['corrupt', 'old-schema', 'expired', 'future', 'invalid-stori
 
 test('concurrent callers share one lookup and storage failures do not lose results', async ({ page }) => {
   let calls = 0;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     calls++;
     await route.fulfill({ json: response() });
   });
@@ -256,8 +258,7 @@ test('concurrent callers share one lookup and storage failures do not lose resul
 test('closing during lookup aborts waiting and a late result cannot overwrite a reopened dialog', async ({ page }) => {
   let calls = 0;
   let release: (() => void) | undefined;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     calls++;
     const callNumber = calls;
     if (callNumber === 1) await new Promise<void>(resolve => { release = resolve; });
@@ -284,8 +285,7 @@ test('closing during lookup aborts waiting and a late result cannot overwrite a 
 test('overall timeout releases the connection and offers retry', async ({ page }) => {
   await page.clock.install();
   let pending: (() => void) | undefined;
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     await new Promise<void>(resolve => { pending = resolve; });
     try { await route.abort(); } catch { /* Already aborted by the deadline. */ }
   });
@@ -304,8 +304,7 @@ test('overall timeout releases the connection and offers retry', async ({ page }
 });
 
 test('suggestions block provider scripts and reject forged close messages', async ({ page }) => {
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') return route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/content', async route => {
     const data = response();
     data.candidates[0].groundingMetadata!.searchEntryPoint.renderedContent = `${SUGGESTIONS}
       <script>window.providerScriptRan = true;</script>

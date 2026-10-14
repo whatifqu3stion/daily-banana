@@ -4,9 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/index.mjs",
     "build": "vite build",
-    "preview": "vite preview",
+    "start": "node server/index.mjs --production",
+    "preview": "npm run start",
+    "test:server": "node --test tests/server/*.test.mjs",
     "test:e2e": "playwright install chromium && playwright test"
   },
   "dependencies": {

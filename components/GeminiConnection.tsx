@@ -15,6 +15,9 @@ function readableConnectionError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error ?? '');
   const normalized = message.toLowerCase();
 
+  if (/app server|backend|session expired|session.*removed/.test(normalized)) {
+    return 'The API session or app server is unavailable. Reconnect your key, or check your connection and try again.';
+  }
   if (/quota|rate.?limit|resource_exhausted|429|billing/.test(normalized)) {
     return 'Google could not validate this key right now. Check that billing and paid image-generation access are enabled for its project, then try again.';
   }
@@ -53,11 +56,11 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
     }
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
     if (locked) return;
     setError(null);
     try {
-      disconnectGeminiKey();
+      await disconnectGeminiKey();
       setKeyInput('');
       setEditing(false);
     } catch (caught) {
@@ -102,6 +105,11 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
         </span>
       </div>
 
+      {error && (
+        <p role="alert" className="mb-4 border border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-base font-bold leading-6 text-red-950">
+          {error}
+        </p>
+      )}
       {connected && !editing ? (
         <div className="space-y-4">
           <p className="font-open-sans text-base font-normal leading-6 text-gray-800">
@@ -159,12 +167,6 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
                 : 'We check access with model metadata only; no comic is generated during connection.'}
           </p>
 
-          {error && (
-            <p role="alert" className="border border-red-800 bg-red-50 px-3 py-2.5 font-open-sans text-base font-bold leading-6 text-red-950">
-              {error}
-            </p>
-          )}
-
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <button
               type="submit"
@@ -189,7 +191,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false })
 
       <div id="key-privacy" className="mt-5 border-t border-black pt-4">
         <p className="font-open-sans text-base font-semibold leading-6 text-black">
-          This key stays in this browser tab and is removed on refresh. It goes directly to Google; AI calls are billed to your Google project.
+          Your key is sent securely to this app’s server and held only in memory for this tab’s session, for up to 30 minutes. It is never saved in a database or browser storage, returned to your browser, or logged. Refreshing requires reconnecting. AI calls go through the server to Google and are billed to your Google project.
         </p>
         <p className="mt-2 font-open-sans text-base font-normal leading-6 text-gray-800">
           <a

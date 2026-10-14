@@ -19,7 +19,8 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 ├── index.html               # HTML shell (Tailwind CDN, Google Fonts, favicon)
 ├── types.ts                 # All shared TypeScript interfaces and union types
 ├── constants.ts             # Stance, comedic style, illustration style, image model options
-├── vite.config.ts           # Vite config (port 5000, host 0.0.0.0, API key defines)
+├── vite.config.ts           # Vite frontend middleware config; no credential defines
+├── server/                 # Same-origin HTTP server, memory-only BYOK sessions, Google SDK
 ├── components/
 │   ├── ComicForm.tsx        # Primary input form with sensitive-topic gate
 │   ├── StorySwiper.tsx      # Brainstorm card-swipe UI (multi-plan selection)
@@ -48,13 +49,17 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 ```
 
 ## Personal API Keys (BYOK)
-- Creators connect their own Gemini key in the app. It is held only in memory for the current tab, cleared on refresh/removal, and sent directly to Google.
-- Do not embed an owner key in the Vite bundle or persist personal keys in browser storage.
+- Creators connect their own Gemini key in API settings, outside the comic workspace. The key is submitted once over HTTPS to the same-origin backend and kept only in that process's memory.
+- All metadata validation, image Interactions, text, context and grounded news requests go through `/api/gemini/`. Never embed an owner key, store personal keys in a database/browser storage, return them to clients, or log requests/Google exceptions.
+- Each tab has a random memory-only ID and its own opaque HttpOnly, Secure, SameSite=Strict cookie. Both are required to use its credential. Sessions expire after 30 minutes (not sliding), on removal, or server restart. Refresh uses a fresh tab ID and requires reconnecting; pagehide revocation is best effort, with hard expiry as the fallback.
+- Successful replacement rotates the token and revokes the old key; failed validation leaves the old session intact. Both client and backend block key changes during active requests. Already-started requests may finish after expiry; new ones cannot start.
+- SDK output getters are explicitly serialized; errors and responses are redacted. Backend parameters are allowlisted to prevent caller-supplied transport URLs, headers or stored-history continuations.
+- Text/news cancellation aborts the browser fetch and propagates disconnects to Google's SDK. Bounded request timeouts are preserved, and server-side text retries are disabled so the news service's explicit retry policy remains authoritative.
 - Connection validates model metadata without generating content; billing and image-model access are checked by Google when generating.
 - Panel generation, regeneration, and refinement use `client.interactions.create` through the same BYOK connection. Text planning, context, and news retain `generateContent`.
 - Image requests use `store: false`, inline delivery, and tagged references; refinements send the current panel explicitly rather than continuing stored server history.
 - Generated JPEGs are normalized to PNG before entering the comic/export pipeline. Nano Banana 2.1 requests 2K; legacy 2.5 omits unsupported resolution settings.
-- Browser-only BYOK is unchanged by this API migration. Google's production guidance recommends backend key handling; do not describe tab-only memory as server-side security.
+- This is a backend application, not a static-only site. Google keys reach the app server; the privacy text must not claim requests go directly from the browser to Google.
 - Image API models require paid access. Do not promise a fixed free-generation quota; Google AI Studio allowances are separate.
 - Headlines are fetched only on explicit user action, not automatically at page load.
 - News requires usable Google Search grounding sources; it filters malformed, blank, duplicate, and unsupported stories rather than displaying unsourced output as current news.
@@ -67,15 +72,22 @@ An AI-powered web application that generates satirical, newspaper-style comic st
 npm install
 npm run dev   # Dev server on http://0.0.0.0:5000
 npm run build # Production build → dist/
+npm start     # Production backend + dist/ on port 5000 (or PORT)
+npm run test:server # Isolated HTTP/session/security tests, no live keys
+npx playwright test -c playwright.byok.config.ts # Same-origin BYOK browser tests
 ```
 
 ## Image Pricing
 Hard-coded in `constants.ts` (`pricePerImage`). Image-output estimates checked October 7, 2026: $0.0504 per Nano Banana 2.1 2K image, $0.039 per legacy 2.5 image. They exclude text/input tokens, edits, retries and search. Verify at https://ai.google.dev/gemini-api/docs/pricing.
 
 ## Deployment
-- **Type:** Static site
+- **Required type:** Application with a Node backend, not static hosting
 - **Build:** `npm run build` → outputs to `dist/`
-- Deployed via Replit static deployment
+- **Run:** `npm start`
+- Existing production deployment settings are deliberately unchanged. Before publishing this version, explicitly switch from static hosting to a backend deployment.
+- Credentials are deliberately process-local. Use a single running instance (for example a reserved VM) or guaranteed sticky routing; do not horizontally scale across workers or move keys into a database. Restarts require users to reconnect.
+- Production and proxied HTTPS preview cookies are always Secure. `--local-test-http` is only for loopback browser tests and is ignored in production. Serve production over HTTPS; cookies will not authenticate plain-HTTP clients.
+- No owner Google key or database is required. Session IDs are cryptographically random opaque tokens rather than signed client state; no session secret is needed for this design.
 
 ## Key Features
 - Topic, stance, comedic style, and illustration style inputs

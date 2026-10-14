@@ -28,9 +28,11 @@ async function reachStrip(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
-  await page.route('https://generativelanguage.googleapis.com/**', async route => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({ json: { name: 'models/gemini-2.5-flash' } });
+  await page.route('**/api/gemini/**', async route => {
+    if (route.request().url().endsWith('/connect')) {
+      await route.fulfill({ json: { connected: true, expiresAt: Date.now() + 1_800_000 } });
+    } else if (route.request().method() === 'DELETE') {
+      await route.fulfill({ json: { connected: false } });
     } else {
       await route.abort();
     }

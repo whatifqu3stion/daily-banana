@@ -20,7 +20,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'VITE_E2E_MOCKS=true npm run dev -- --port 4173',
+    command: 'VITE_E2E_MOCKS=true npm run dev -- --port 4173 --local-test-http',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
     timeout: 120_000,
