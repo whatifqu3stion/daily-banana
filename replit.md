@@ -75,6 +75,7 @@ npm run build # Production build → dist/
 npm start     # Production backend + dist/ on port 5000 (or PORT)
 npm run test:server # Isolated HTTP/session/security tests, no live keys
 npx playwright test -c playwright.byok.config.ts # Same-origin BYOK browser tests
+npm run test:google-live # Separate paid smoke, SKIPPED unless explicitly enabled; see tests/live/README.md
 ```
 
 ## Image Pricing

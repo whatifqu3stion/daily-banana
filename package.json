@@ -9,6 +9,7 @@
     "start": "node server/index.mjs --production",
     "preview": "npm run start",
     "test:server": "node --test tests/server/*.test.mjs",
+    "test:google-live": "playwright test -c playwright.google-live.config.ts",
     "test:e2e": "playwright install chromium && playwright test"
   },
   "dependencies": {
