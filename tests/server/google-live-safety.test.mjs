@@ -22,7 +22,7 @@ test('live smoke requires both explicit paid approval and a dedicated credential
 test('live adapter uses production requests, disables SDK retries and caps paid calls at two', async t => {
   const calls = [];
   const session = await startLiveSession('fake-test-key', key => ({
-    models: { get: async () => { assert.equal(key, 'fake-test-key'); } },
+    models: { list: async () => { assert.equal(key, 'fake-test-key'); } },
     interactions: {
       create: async (params, options) => {
         calls.push({ params, options });
@@ -51,7 +51,7 @@ test('live adapter uses production requests, disables SDK retries and caps paid 
 test('missing-image frontend retry is blocked before another Google call', async t => {
   let paidCalls = 0;
   const session = await startLiveSession('fake-test-key', () => ({
-    models: { get: async () => {} },
+    models: { list: async () => {} },
     interactions: { create: async () => { paidCalls++; return { status: 'completed' }; } },
   }));
   t.after(() => session.close());
@@ -65,7 +65,7 @@ test('missing-image frontend retry is blocked before another Google call', async
 
 test('live bridge redacts echoed credentials and rejects invalid image signatures', async t => {
   const session = await startLiveSession('fake-test-key', () => ({
-    models: { get: async () => { throw new Error(JSON.stringify({ error: { code: 403, message: 'fake-test-key' } })); } },
+    models: { list: async () => { throw new Error(JSON.stringify({ error: { code: 403, message: 'fake-test-key' } })); } },
   }));
   t.after(() => session.close());
   const response = await session.forward('connect', TAB);

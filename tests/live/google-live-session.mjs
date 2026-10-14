@@ -28,7 +28,7 @@ export async function startLiveSession(key, makeClient = candidate => new Google
     createClient: candidate => {
       const client = makeClient(candidate);
       return {
-        models: { get: params => client.models.get(params) },
+        models: { list: params => client.models.list(params) },
         interactions: {
           create: async params => {
             // A missing-image frontend retry must NOT trigger extra paid calls.

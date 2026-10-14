@@ -8,3 +8,11 @@ Check both Google's current documentation and the installed SDK's types when mig
 **Why:** During the Interactions migration, Google's JavaScript guide showed PNG output while the installed SDK's image response-format schema only accepted JPEG. Copying the example directly would not type-check.
 
 **How to apply:** Recheck this discrepancy when updating the SDK. Use a supported output format and explicitly convert images where the comic pipeline requires another format, rather than assuming the returned bytes match the requested format.
+
+## Verify failure contracts as well as request schemas
+
+Google SDK compatibility checks must exercise the installed SDK's failure behavior, not just successful image payloads or hand-written error mocks.
+
+**Why:** Text and image clients within the same SDK can use different error representations and retry options. Losing the provider explanation produced a generic image rejection and misleading advice to simplify the creator's topic.
+
+**How to apply:** During SDK or transport changes, use intercepted, credential-free SDK requests to verify that provider diagnostics survive, credentials are redacted, and paid requests stay bounded. Keep explicitly authorized live tests separate.

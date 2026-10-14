@@ -3,6 +3,22 @@ import { CredentialSessions, SessionError, SESSION_TTL, TAB_PATTERN, cookieName 
 
 const IMAGE_MODELS = new Set(['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']);
 const RPC_STATUSES = { 3: 'INVALID_ARGUMENT', 5: 'NOT_FOUND', 7: 'PERMISSION_DENIED', 8: 'RESOURCE_EXHAUSTED', 13: 'INTERNAL', 14: 'UNAVAILABLE', 16: 'UNAUTHENTICATED' };
+const RPC_HTTP_CODES = { 3: 400, 5: 404, 7: 403, 8: 429, 13: 500, 14: 503, 16: 401 };
+const HTTP_STATUSES = { 400: 'INVALID_ARGUMENT', 401: 'UNAUTHENTICATED', 403: 'PERMISSION_DENIED', 404: 'NOT_FOUND', 429: 'RESOURCE_EXHAUSTED', 500: 'INTERNAL', 503: 'UNAVAILABLE', 504: 'DEADLINE_EXCEEDED' };
+
+// Models errors serialize JSON in message; Interactions errors carry the
+// provider body in error/body and prefix message with an HTTP status.
+function providerError(error) {
+  for (const value of [error.error, error.body, error.message]) {
+    try {
+      const parsed = typeof value === 'string' ? JSON.parse(value.replace(/^\d{3}\s+/, '')) : value;
+      const detail = parsed?.error || parsed;
+      if (detail && typeof detail === 'object' && !Array.isArray(detail) &&
+          (typeof detail.message === 'string' || detail.code !== undefined)) return detail;
+    } catch { /* Try the next SDK representation, without logging it. */ }
+  }
+  return {};
+}
 
 function keyCheckFailure(error, parsed, code) {
   const reason = Array.isArray(parsed?.details)
@@ -181,7 +197,9 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
           // SDK convenience getters are not included by JSON.stringify.
           return { ...output, text: output.text };
         }
-        const output = await client.interactions.create(params);
+        const output = await client.interactions.create(params, {
+          maxRetries: 0, timeout: 180_000, signal: controller.signal,
+        });
         for (const step of output.steps || []) {
           if (step.type === 'model_output' && step.error) {
             throw new Error(JSON.stringify({ error: { ...step.error, status: RPC_STATUSES[step.error.code] || 'IMAGE_GENERATION_FAILED' } }));
@@ -194,13 +212,13 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
     } catch (error) {
       // Never log upstream exceptions, bodies, headers, keys, or session IDs.
       if (error instanceof SessionError) return send(error.status, { error: { code: error.status, message: error.message } });
-      let parsed;
-      try { parsed = JSON.parse(error.message)?.error; } catch { /* non-JSON upstream error */ }
-      const code = Number(parsed?.code || error.status || 502);
-      const status = code >= 400 && code <= 599 ? code : (code === 8 ? 429 : code === 7 ? 403 : code === 16 ? 401 : 502);
+      const parsed = providerError(error);
+      const code = Number(parsed?.code || error.status || error.statusCode || 502);
+      const status = code >= 400 && code <= 599 ? code : (RPC_HTTP_CODES[code] || 502);
       const keyFailure = path === '/api/gemini/connect' ? keyCheckFailure(error, parsed, code) : null;
       return send(status, { error: {
-        code: status, status: parsed?.status || RPC_STATUSES[code] || 'GOOGLE_REQUEST_FAILED',
+        code: status, status: parsed?.status || RPC_STATUSES[code] || HTTP_STATUSES[status] || 'GOOGLE_REQUEST_FAILED',
+        operation: path.endsWith('/interactions') ? 'image' : path.endsWith('/content') ? 'text' : 'key-check',
         ...(keyFailure ? keyFailure : { message: parsed?.message || 'Google could not complete this request. Check your connection, API access, billing and quota, then try again.' }),
       } });
     }

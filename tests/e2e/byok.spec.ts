@@ -353,6 +353,64 @@ test('planning, panels, edits, context and grounded news all use the same-origin
   expect(mock.direct).toHaveLength(0);
 });
 
+test('initial AI thinking keeps status feedback without yellow dots', async ({ page }) => {
+  const mock = await mockBackend(page);
+  await page.goto('/');
+  await connect(page);
+  await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
+  let release!: () => void;
+  mock.control.hold = new Promise<void>(resolve => { release = resolve; });
+  await page.getByLabel('Topic', { exact: true }).fill('Office automation');
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  const thinking = page.locator('[aria-busy="true"]');
+  await expect(thinking).toBeVisible();
+  await expect(thinking.getByText('The newsroom is at work', { exact: true })).toBeVisible();
+  await expect(thinking.getByRole('status')).toContainText('Preparing the next stage.');
+  await expect(thinking.locator('span.rounded-full.bg-banana')).toHaveCount(0);
+  await expect(thinking.getByRole('progressbar')).toHaveCount(0);
+  await expect(page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ })).toHaveCount(0);
+  const masthead = page.locator('.compact-masthead');
+  await expect(masthead).toBeVisible();
+  const title = masthead.getByText('The Daily Banana', { exact: true });
+  const date = masthead.locator(':scope > span');
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expect(date).toBeVisible();
+    const titleBounds = (await title.boundingBox())!;
+    const dateBounds = (await date.boundingBox())!;
+    expect(dateBounds.x).toBeGreaterThanOrEqual(titleBounds.x + titleBounds.width);
+    expect(dateBounds.y).toBeLessThan(titleBounds.y + titleBounds.height);
+    expect(dateBounds.y + dateBounds.height).toBeGreaterThan(titleBounds.y);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({ path: '/tmp/compact-build-header.png' });
+  await thinking.screenshot({ path: '/tmp/initial-thinking-no-dots.png' });
+  release();
+  await expect(page.getByRole('heading', { name: 'Choose Your Story' })).toBeVisible();
+  await expect(page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ })).toHaveCount(0);
+});
+
+test('phase 02 image rejection shows the provider explanation without blaming the topic', async ({ page }) => {
+  const mock = await mockBackend(page);
+  await page.route('**/api/gemini/interactions', route => route.fulfill({ status: 400, json: { error: {
+    code: 400, status: 'INVALID_ARGUMENT', operation: 'image',
+    message: 'Unsupported image setting for model; width 403 is not supported.',
+  } } }));
+  await page.goto('/');
+  await connect(page);
+  await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
+  await page.getByLabel('Topic', { exact: true }).fill('Office automation');
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  await page.getByRole('button', { name: 'Choose This Story' }).click();
+  await expect(page.getByRole('heading', { name: 'Google rejected the image request' })).toBeVisible();
+  await expect(page.getByText(/Unsupported image setting for model; width 403/)).toBeVisible();
+  await expect(page.getByText(/Please try simplifying your topic/)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Return to the desk' }).click();
+  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Office automation');
+  expect([...mock.sessions.values()]).toEqual([KEY]);
+});
+
 test('failed replacement keeps connection; successful replacement and removal update server session', async ({ page }) => {
   const mock = await mockBackend(page);
   await page.goto('/');

@@ -23,6 +23,7 @@ async function fixture(t, options = {}) {
     },
     interactions: { create: async params => {
       calls.push({ key, operation: 'image', params });
+      await options.interact?.(key, params);
       return options.image || { status: 'completed', steps: [], get output_image() { return { data: 'base64', mime_type: 'image/jpeg' }; }, get output_text() { return ''; } };
     } },
   });
@@ -51,6 +52,71 @@ async function fixture(t, options = {}) {
 }
 const content = { model: 'gemini-2.5-flash', contents: 'A story', config: { systemInstruction: 'Be funny', tools: [{ googleSearch: {} }] } };
 const image = model => ({ model, input: [{ type: 'text', text: 'banana' }, { type: 'image', data: 'png', mime_type: 'image/png' }], response_format: { aspect_ratio: '16:9' }, store: true, stream: true, previous_interaction_id: 'private-history' });
+
+for (const representation of ['error', 'body', 'prefixed-message', 'flat-message']) {
+  test(`Interactions ${representation} errors retain safe provider details instead of GOOGLE_REQUEST_FAILED`, async t => {
+    const { browser, calls } = await fixture(t, { interact: async key => {
+      const detail = { code: 400, message: `Unsupported image setting; echoed credential ${key}` };
+      const failure = Object.assign(new Error('400 Request rejected'), { status: 400 });
+      if (representation === 'error') failure.error = detail;
+      if (representation === 'body') failure.body = JSON.stringify({ error: detail });
+      if (representation === 'prefixed-message') failure.message = `400 ${JSON.stringify({ error: detail })}`;
+      if (representation === 'flat-message') failure.message = JSON.stringify(detail);
+      throw failure;
+    } });
+    const user = browser();
+    await user.request('connect', { key: 'private-test-key' });
+    const result = await user.request('interactions', image('gemini-nano-banana-2.1'));
+    assert.equal(result.status, 400);
+    assert.equal(result.body.error.status, 'INVALID_ARGUMENT');
+    assert.equal(result.body.error.operation, 'image');
+    assert.match(result.body.error.message, /Unsupported image setting/);
+    assert.ok(!result.text.includes('private-test-key'));
+    assert.equal(calls.filter(call => call.operation === 'image').length, 1);
+    assert.equal((await user.request('session', undefined, { method: 'DELETE' })).status, 200);
+  });
+}
+
+test('invalid-argument image steps preserve RPC details and use HTTP 400', async t => {
+  const { browser } = await fixture(t, { image: { status: 'failed', steps: [
+    { type: 'model_output', error: { code: 3, message: 'Unsupported image input' } },
+  ] } });
+  const user = browser();
+  await user.request('connect', { key: 'test-key' });
+  const response = await user.request('interactions', image('gemini-nano-banana-2.1'));
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error.status, 'INVALID_ARGUMENT');
+  assert.match(response.body.error.message, /Unsupported image input/);
+});
+
+test('real SDK Interactions HTTP 400 retains provider diagnostics and makes no automatic retries', async t => {
+  const methods = [];
+  const { browser } = await fixture(t, { createClient: key => new GoogleGenAI({
+    apiKey: key, httpOptions: { fetch: async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      const url = new URL(request.url);
+      methods.push(request.method);
+      if (request.method === 'GET' && url.pathname.endsWith('/models')) {
+        return new Response(JSON.stringify({ models: [{ name: 'models/example' }] }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      assert.ok(url.pathname.endsWith('/interactions'));
+      assert.equal(request.method, 'POST');
+      return new Response(JSON.stringify({ error: {
+        code: 400, status: 'INVALID_ARGUMENT', message: `Unsupported image setting; ${key}`,
+      } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    } },
+  }) });
+  const user = browser();
+  assert.equal((await user.request('connect', { key: 'sdk-image-test-key' })).status, 200);
+  const response = await user.request('interactions', image('gemini-nano-banana-2.1'));
+  assert.equal(response.status, 400);
+  assert.equal(response.body.error.status, 'INVALID_ARGUMENT');
+  assert.match(response.body.error.message, /Unsupported image setting/);
+  assert.ok(!response.text.includes('sdk-image-test-key'));
+  assert.deepEqual(methods, ['GET', 'POST']);
+});
 
 test('key validation lists metadata once, without a model dependency or generated content', async t => {
   const { browser, calls } = await fixture(t);

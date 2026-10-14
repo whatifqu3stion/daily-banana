@@ -10,20 +10,33 @@ interface ErrorStateProps {
   onOpenApiSettings?: () => void;
 }
 
+const errorClassification = (error: string): string => {
+  try {
+    const value = JSON.parse(error);
+    const detail = value?.error || value;
+    if (detail?.code) {
+      const keyError = /API_KEY_INVALID|API key not valid/i.test(String(detail.message || '')) ? 'API_KEY_INVALID' : '';
+      return `${detail.code} ${detail.status || ''} ${keyError}`;
+    }
+  } catch { /* Legacy plain-text errors still need keyword classification. */ }
+  return error;
+};
+
 const parseErrorMessage = (error: string): { title: string; message: string } => {
-  if (/API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(error)) {
+  const classification = errorClassification(error);
+  if (/API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(classification)) {
     return {
       title: 'Check your Google API access',
       message: 'Open API settings to replace your key. Check that the Gemini API is enabled and the key’s Google project has billing and permission to use the selected model. Your topic is not the problem.',
     };
   }
-  if (/RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)/i.test(error)) {
+  if (/RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)/i.test(classification)) {
     return {
       title: 'Google API usage limit reached',
       message: 'Check billing, credits, and quotas in your Google API project, or wait for a rate limit to reset. You can replace your key in API settings. This is not a problem with your topic.',
     };
   }
-  if (/NOT_FOUND|(?:^|\D)404(?:\D|$)/i.test(error)) {
+  if (/NOT_FOUND|(?:^|\D)404(?:\D|$)/i.test(classification)) {
     return {
       title: 'Image model unavailable',
       message: 'Check whether your Google project can access this model, or return to the desk and choose the other image model under More control.',
@@ -35,6 +48,16 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
     
     // The error object might be nested, e.g., { "error": { ... } }
     const innerError = errorData.error || errorData;
+
+    if (Number(innerError?.code) === 400) {
+      const detail = typeof innerError.message === 'string' && innerError.message.trim()
+        ? innerError.message.trim().slice(0, 1500)
+        : 'Google did not provide a specific explanation.';
+      return {
+        title: innerError.operation === 'image' ? 'Google rejected the image request' : 'Google rejected this request',
+        message: `${detail} (Code: 400${innerError.status ? ` — ${innerError.status}` : ''}). This can be an unsupported model, image setting, or input—not necessarily your topic.`,
+      };
+    }
 
     if (innerError && innerError.code && innerError.status) {
       const { code, status } = innerError;
@@ -51,7 +74,7 @@ const parseErrorMessage = (error: string): { title: string; message: string } =>
       if (code === 500) {
         userMessage += " This is often a temporary internal issue on the server's end. We recommend starting over or trying your request again in a moment.";
       } else if (String(code).startsWith('4')) {
-        userMessage += " There might be an issue with the request. Please try simplifying your topic.";
+        userMessage += " Check the selected model, request settings, and Google API access. Changing your topic may not resolve this.";
       }
       
       return {
@@ -74,8 +97,9 @@ const ErrorState: React.FC<ErrorStateProps> = ({ error, onStartOver, onOpenApiSe
   if (!error) return null;
 
   const { title, message } = parseErrorMessage(error);
-  const isBillingError = /RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)|billing|quota|credit/i.test(error);
-  const isKeyAccessError = /API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(error);
+  const classification = errorClassification(error);
+  const isBillingError = /RESOURCE_EXHAUSTED|(?:^|\D)(?:402|429)(?:\D|$)|billing|quota|credit/i.test(classification);
+  const isKeyAccessError = /API_KEY_INVALID|API key not valid|UNAUTHENTICATED|PERMISSION_DENIED|(?:^|\D)(?:401|403)(?:\D|$)/i.test(classification);
 
   return (
     <div className="w-full max-w-3xl mx-auto p-8 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center shadow-xl rounded-lg text-center">
