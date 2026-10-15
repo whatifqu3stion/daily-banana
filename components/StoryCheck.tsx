@@ -1,11 +1,13 @@
 import React from 'react';
 import type { ComicPlan } from '../types';
 import { assignEffect, inspectStory } from '../services/storyContract';
+import NumericFactReview from './NumericFactReview';
 
 /** Readable evidence, not a claim that semantic or visual correctness is proven. */
 export default function StoryCheck({ plan, onChange }: { plan: ComicPlan; onChange?: (plan: ComicPlan) => void }) {
-  const issues = inspectStory(plan);
+  const issues = inspectStory(plan).filter(issue => !issue.code.startsWith('amount-'));
   return <section aria-label="Story checks" className="space-y-3 font-open-sans text-base leading-6">
+    <NumericFactReview plan={plan} onChange={onChange} />
     {issues.length > 0 && <div role={issues.some(issue => issue.blocking) ? 'alert' : 'status'} className="border-2 border-black bg-banana p-3 text-black">
       <p className="font-special-elite font-bold">Check before drawing</p>
       <ul className="mt-2 list-disc space-y-1 pl-5">{issues.map((issue, index) => <li key={`${issue.code}-${index}`}>{issue.message}</li>)}</ul>

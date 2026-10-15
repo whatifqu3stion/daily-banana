@@ -19,6 +19,7 @@ import { toBase64 } from '../utils/fileUtils';
 import { layoutAdapter } from '../utils/layoutAdapter';
 import { PanelRun } from '../shared/panel-run.mjs';
 import { assertDrawableStory, panelStoryContext } from '../services/storyContract';
+import { checkArchiveAmounts, inspectNumericFacts, stripAsNumericPlan } from '../services/numericFacts';
 
 const getGeminiService = async () => (await import('../services/geminiService')).geminiService;
 
@@ -128,6 +129,7 @@ export default function useComicGeneration() {
     const { illustrationStyle, comedicStyle, imageModel } = formDataCache;
 
     if (plan.panels.length <= 1 || reviewData.continuityWarning) return () => run.invalidate();
+    try { assertDrawableStory(plan); } catch { return () => run.invalidate(); }
 
     const globalTags = poolConsistencyTags(plan);
 
@@ -224,7 +226,14 @@ export default function useComicGeneration() {
       return;
     }
     try { assertDrawableStory(plan); }
-    catch (error) { _setError(error instanceof Error ? error.message : 'Check the story before drawing.'); return; }
+    catch {
+      // Keep the rejected concept editable, and other brainstorm choices usable.
+      setComicPlans(current => current.some(item => item.id === plan.id) ? current.map(item => item.id === plan.id ? plan : item) : [...current, plan]);
+      setAppStage('story-swipe');
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
     const epoch = ++generationEpoch.current;
     panelRunRef.current?.invalidate();
 
@@ -317,6 +326,14 @@ export default function useComicGeneration() {
       _setError("Review data is missing. Cannot continue.");
       return;
     }
+    try { assertDrawableStory(reviewData.plan); }
+    catch {
+      panelRunRef.current?.invalidate();
+      setComicPlans(current => current.some(item => item.id === reviewData.plan.id) ? current.map(item => item.id === reviewData.plan.id ? reviewData.plan : item) : [...current, reviewData.plan]);
+      setAppStage('story-swipe');
+      setIsLoading(false);
+      return;
+    }
 
     const epoch = generationEpoch.current;
     // Stop background scheduling, but JOIN already-started work instead of
@@ -384,15 +401,22 @@ export default function useComicGeneration() {
     // Later research, not the original planning input or a story validator.
     let contextText: string | undefined = undefined;
     let contextSources: ExplainerSource[] = [];
+    let archiveWarning: string | undefined;
     if (formDataCache.includeContext) {
       setLoadingMessages(["Checking the archives for context..."]);
-      const explainerResult = await (await getGeminiService()).generateContextExplainer(
-        reviewData.plan.title,
-        reviewData.plan.summary,
-        formDataCache.newsContext,
-      );
-      contextText = explainerResult.text;
-      contextSources = explainerResult.sources;
+      try {
+        const explainerResult = await (await getGeminiService()).generateContextExplainer(
+          reviewData.plan.title,
+          reviewData.plan.summary,
+          formDataCache.newsContext,
+          reviewData.plan,
+        );
+        archiveWarning = ('warning' in explainerResult ? explainerResult.warning : undefined) || checkArchiveAmounts(explainerResult.text, reviewData.plan);
+        contextText = archiveWarning ? undefined : explainerResult.text;
+        contextSources = explainerResult.sources;
+      } catch {
+        archiveWarning = 'The optional archive note could not be completed. Your comic and supplied monetary evidence are preserved.';
+      }
     }
     if (epoch !== generationEpoch.current || !run.active) return;
 
@@ -468,6 +492,10 @@ export default function useComicGeneration() {
       generationId: reviewData.generationId,
       brief: reviewData.plan.brief,
       story: reviewData.plan.story,
+      numericFacts: reviewData.plan.numericFacts,
+      numericUses: reviewData.plan.numericUses,
+      numericApprovals: reviewData.plan.numericApprovals,
+      archiveWarning,
       title: reviewData.plan.title,
       premise: reviewData.plan.premise,
       set_description: reviewData.plan.set_description,
@@ -491,6 +519,11 @@ export default function useComicGeneration() {
 
   const handleRegeneratePanelImage = useCallback(async (panelIndex: number) => {
     if (!comicStripData || !formDataCache) return;
+    const numericProblems = inspectNumericFacts(stripAsNumericPlan(comicStripData)).filter(issue => issue.blocking);
+    if (numericProblems.length) {
+      handleUpdatePanel(panelIndex, { panelError: `Review source amounts before redrawing. ${numericProblems.map(issue => issue.message).join(' ')}` });
+      return;
+    }
     const epoch = generationEpoch.current;
 
     // Clear any previous per-panel error and start loading.
@@ -567,6 +600,11 @@ export default function useComicGeneration() {
 
   const handleRefinePanelImage = useCallback(async (panelIndex: number, refinementPrompt: string) => {
     if (!comicStripData || !formDataCache) return;
+    const numericProblems = inspectNumericFacts(stripAsNumericPlan(comicStripData)).filter(issue => issue.blocking);
+    if (numericProblems.length) {
+      handleUpdatePanel(panelIndex, { panelError: `Review source amounts before refining. ${numericProblems.map(issue => issue.message).join(' ')}` });
+      return;
+    }
     const epoch = generationEpoch.current;
 
     const panel = comicStripData.panels[panelIndex];

@@ -10,11 +10,27 @@ import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 import { generateContent } from './geminiConnection';
 import { attachStoryBrief, sanitizeStory } from './storyContract';
+import { checkArchiveAmounts, extractNumericFacts, factsForPlan, numericLocations, sanitizeNumericUses } from './numericFacts';
 
 // ─── Response schemas ────────────────────────────────────────────────────────
 const comicPlanSchema = {
     type: Type.OBJECT,
     properties: {
+        numeric_uses: {
+            type: Type.ARRAY,
+            description: 'Each monetary occurrence in planned text or prop instructions must reference its supplied amount id. Use [] if there are none. Never invent source ids or approve your own rounding.',
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    location: { type: Type.STRING, description: 'Exact field path: title, summary, premise, set_description, story:source_anchor, story:satirical_argument, story:setup, story:payoff, panel:SLUG:visual, panel:SLUG:text:INDEX (zero based), panel:SLUG:scene_state, panel:SLUG:tags, or panel:SLUG:action:description/before/after.' },
+                    quote: { type: Type.STRING, description: 'Exact monetary phrase as written in that field, e.g. twelve billion or $1.21 billion.' },
+                    fact_id: { type: Type.STRING, description: 'ID from the supplied amount ledger. Bind the same subject AND claim, not just a matching number. Empty only for a distinct fictional claim.' },
+                    intent: { type: Type.STRING, enum: ['source', 'fiction'], description: 'Source for any restatement of supplied figures. Fiction only for a distinct invented claim, never a changed source amount.' },
+                    approximation: { type: Type.STRING, enum: ['exact', 'rounded'], description: 'Prefer exact. Rounded amounts require creator approval before artwork.' },
+                },
+                required: ['location', 'quote', 'fact_id', 'intent', 'approximation'],
+            },
+        },
         story: {
             type: Type.OBJECT,
             description: 'Story contract: source, argument, setup and payoff. Complete and silently review this before finalizing the panels.',
@@ -101,7 +117,7 @@ const comicPlanSchema = {
             }
         }
     },
-    required: ['story', 'premise', 'title', 'summary', 'panels']
+    required: ['story', 'premise', 'title', 'summary', 'panels', 'numeric_uses']
 };
 
 const multipleComicPlansSchema = {
@@ -216,6 +232,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 9. **scene_state is your continuity contract.** For every non-final panel, populate scene_state with one sentence stating where each named character is at the END of this panel, what they are carrying or wearing, and which direction they are moving. The next panel's image model will open from this exact state. WRONG: "Characters are visible in the scene." RIGHT: "Sarah is walking LEFT through the glass office doors, a cardboard box held in both arms, glancing back over her shoulder at colleagues watching from the open-plan office." Leave scene_state empty on the final (punchline/button) panel.
 10. **Review the story contract within this response.** Identify a supported source anchor, the argument, setup and precise payoff. The source amount alone is insufficient if the subject of the event is lost. Make the distinctive situation recognizable in at least one panel without relying on a later archive note. Do not conflate paying a fine as a business expense with ignoring it: choose the intended argument and make every action express it. This is an example of causal clarity, not a mandatory banking plot.
 11. **Action and sound ownership.** Each panel has a unique action id and before/after state. Each SFX names the id of its visible producing action and lives in that SAME panel. A throwing sound does not belong to preparation or crumpling. Silent panels and nonliteral actions are valid; do not add SFX just to fill the schema.
+12. **Monetary evidence check BEFORE drawing.** Use the app-supplied monetary ledger below as the single reference for supplied amounts. In THIS response, compare every monetary phrase in dialogue, captions, props, actions, set dressing and story fields to the correct subject AND claim. $1.21 billion, $1,210,000,000 and one point two one billion are equivalent; twelve billion is NOT. Fix mismatches now, not in a later archive note. Record each occurrence in numeric_uses with its field location, exact phrase and source fact id. Totals, component fines and different subjects remain separate claims, even if values coincide. Prefer exact values; rounding must be explicit and needs creator approval. Fictional amounts must be distinct invented claims, not changes disguised as fiction. Never silently convert currencies. Unclear/missing sources must be surfaced for review, not invented.
 `;
 
 
@@ -290,6 +307,7 @@ export const constructPlanContents = (formData: ComicFormData, numPlans: number)
     const customPremiseBlock = customPremise
         ? `\nREQUIRED PREMISE (non-negotiable): "${customPremise}" — build the entire strip around this exact premise. Do not substitute, paraphrase, or reframe it. Every panel must serve this premise directly. The premise is locked; only the panel breakdown and visual execution are yours to design.\n`
         : '';
+    const numericBlock = `\nSUPPLIED MONETARY LEDGER (app-extracted; NOT independently verified):\n${JSON.stringify(extractNumericFacts({ topic, background: newsContext }))}\nUse these exact ids and evidence for numeric_uses. Empty ledger means there is no supplied monetary evidence; do not claim invented amounts are verified.\n`;
 
     if (numPlans > 1) {
         // Brainstorm mode: three structurally distinct delivery mechanisms, all within the user's chosen comedic register
@@ -303,6 +321,7 @@ Generate exactly 3 comic strip concepts about the topic below. Each concept MUST
 
 **Creative Brief:**
 ${topicBlock}
+${numericBlock}
 - **Angle:** ${stanceGuidance}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
@@ -318,6 +337,7 @@ Generate a single comic strip plan about the topic below.
 
 **Creative Brief:**
 ${topicBlock}
+${numericBlock}
 - **Angle:** ${stanceGuidance}
 - **Comedic Register:** ${styleCraftNote}
 - **Illustration Style:** ${styleDescription}
@@ -400,7 +420,10 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
     const storyContract = panelContext?.story
         ? `\nSTORY INTENT: ${panelContext.story.satirical_argument}\nREADER SETUP: ${panelContext.story.setup}\nPAYOFF INTENT: ${panelContext.story.payoff}\nSOURCE ANCHOR (${panelContext.brief?.sourceKind === 'provided-context' ? 'supplied background, not independently verified' : 'topic-based fiction; not verified reporting'}): ${panelContext.story.source_anchor}\nThis is context for drawing the requested panel, not permission to add future actions, characters or text.\n`
         : '';
-    return `${narrativeContextBlock}${storyContract}${actionContract}
+    const monetaryContract = panelContext?.numericFacts?.length
+        ? `\nMONETARY SOURCE CONTRACT (supplied evidence, not independent verification):\n${JSON.stringify(panelContext.numericFacts)}\nBOUND MONETARY USES:\n${JSON.stringify(panelContext.numericUses || [])}\nPreserve the bound subject, claim, currency and exact amount for in-world props. Do not invent, rescale or convert source figures. Approved approximations are marked rounded. Overlay text is still forbidden in the image. Text-only checks cannot verify your painted lettering.\n`
+        : '';
+    return `${narrativeContextBlock}${storyContract}${actionContract}${monetaryContract}
 OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.${overlayBlacklistBlock}
 ${setDescriptionBlock}
 PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
@@ -505,6 +528,7 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
   }
 
   if (typeof plan.premise === 'string') newPlan.premise = plan.premise.trim();
+  newPlan.numericUses = sanitizeNumericUses(plan.numeric_uses);
   newPlan.story = sanitizeStory(plan.story);
   if (typeof plan.title === 'string') newPlan.title = plan.title.trim();
   if (typeof plan.summary === 'string') newPlan.summary = plan.summary.trim();
@@ -709,7 +733,8 @@ const generateContextExplainer = async (
     title: string,
     summary: string,
     newsContext?: string,
-): Promise<{ text: string; sources: ExplainerSource[] }> => {
+    selectedPlan?: ComicPlan,
+): Promise<{ text: string; sources: ExplainerSource[]; warning?: string }> => {
     const contextSection = newsContext
         ? `\n**Background provided by user:** "${newsContext}"\n`
         : '';
@@ -718,6 +743,10 @@ The following is a fictional satirical comic strip. Write a 1–2 sentence conte
 
 **Comic Title:** "${title}"
 **Comic Summary:** "${summary}"${contextSection}
+${selectedPlan ? `SUPPLIED MONETARY EVIDENCE (distinct provenance from this later research): ${JSON.stringify(factsForPlan(selectedPlan))}
+ACTUAL PLANNED PANEL TEXT AND PROP INSTRUCTIONS: ${JSON.stringify(numericLocations(selectedPlan))}
+MONETARY BINDINGS: ${JSON.stringify(selectedPlan.numericUses || [])}
+Do not treat fictional dialogue as evidence. Do not silently replace a supplied amount with a different researched figure. Distinguish a conflicting research amount, its subject/claim and provenance. Avoid unrelated amounts; totals, components and other subjects are separate claims.` : ''}
 
 **Context Explanation:**
 `;
@@ -746,10 +775,11 @@ The following is a fictional satirical comic strip. Write a 1–2 sentence conte
             .filter((s, i, arr) => arr.findIndex(x => extractDomain(x.url) === extractDomain(s.url)) === i)
             .slice(0, 5);
 
-        return { text, sources };
+        const warning = selectedPlan ? checkArchiveAmounts(text, selectedPlan) : undefined;
+        return { text: warning ? '' : text, sources, warning };
     } catch (error) {
         console.error('Failed to generate context explainer:', error);
-        return { text: 'Could not generate context at this time.', sources: [] };
+        return { text: '', sources: [], warning: 'The optional archive note could not be completed. Your comic and supplied monetary evidence are preserved.' };
     }
 };
 

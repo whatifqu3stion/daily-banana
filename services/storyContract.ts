@@ -1,4 +1,5 @@
 import type { ComicFormData, ComicPlan, PanelContext, PlanPanel, StoryBrief, StoryIntent } from '../types';
+import { attachNumericFacts, inspectNumericFacts } from './numericFacts';
 
 export type StoryIssue = { code: string; message: string; blocking: boolean };
 const clean = (value: unknown, max = 1000) => typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -27,8 +28,10 @@ export function sanitizeStory(raw: unknown): StoryIntent | undefined {
 
 /** Bind the model plan to the actual input, never model-echoed settings. */
 export function attachStoryBrief(plan: ComicPlan, form: ComicFormData): ComicPlan {
-  return { ...plan, id: crypto.randomUUID(), brief: captureBrief(form),
-    panels: plan.panels.map(panel => ({ ...panel, id: crypto.randomUUID() })) };
+  const brief = captureBrief(form);
+  const snapshot = structuredClone(plan);
+  return attachNumericFacts({ ...snapshot, id: crypto.randomUUID(), brief,
+    panels: snapshot.panels.map(panel => ({ ...panel, id: crypto.randomUUID() })) }, brief);
 }
 
 export function inspectStory(plan: ComicPlan): StoryIssue[] {
@@ -63,7 +66,7 @@ export function inspectStory(plan: ComicPlan): StoryIssue[] {
     }
   }
   for (const note of plan.story?.review_notes || []) add('writer-note', `Writer’s review: ${note}`, false);
-  return issues;
+  return [...issues, ...inspectNumericFacts(plan)];
 }
 
 export function assertDrawableStory(plan: ComicPlan) {
@@ -85,8 +88,9 @@ export function assignEffect(plan: ComicPlan, panelIndex: number, elementIndex: 
   })) };
 }
 
-export function panelStoryContext(plan: Pick<ComicPlan, 'premise' | 'story' | 'brief'>, panel: { comedic_role?: string; action?: PlanPanel['action']; text_elements: { role: string; text: string; action_id?: string }[] }, index: number, total: number): PanelContext {
+export function panelStoryContext(plan: Pick<ComicPlan, 'premise' | 'story' | 'brief' | 'numericFacts' | 'numericUses'>, panel: { comedic_role?: string; action?: PlanPanel['action']; text_elements: { role: string; text: string; action_id?: string }[] }, index: number, total: number): PanelContext {
   return { premise: plan.premise, story: plan.story, brief: plan.brief, action: panel.action,
+    numericFacts: plan.numericFacts, numericUses: plan.numericUses,
     effects: panel.text_elements.filter(element => element.role === 'sfx').map(({ text, action_id }) => ({ text, action_id })),
     comedicRole: panel.comedic_role, panelIndex: index, totalPanels: total };
 }

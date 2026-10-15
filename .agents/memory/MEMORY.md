@@ -8,3 +8,4 @@
 - [Paid comic review](paid-comic-review.md) — improve clarity without silently adding paid judges, vision checks or automatic repair loops.
 - [React preview refresh](react-preview-refresh.md) — after custom-hook count changes, distinguish stale hot-reload errors from fresh-load failures.
 - [Parallel browser checks](parallel-browser-checks.md) — concurrent Playwright commands need distinct output directories to avoid deleting each other's traces.
+- [Numeric source provenance](numeric-source-provenance.md) — preserve supplied claims separately from later research; prevent amount drift before artwork, not with a post-art note.

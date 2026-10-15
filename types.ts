@@ -110,6 +110,9 @@ export interface ComicPlan {
     id?: string;
     brief?: StoryBrief;
     story?: StoryIntent;
+    numericFacts?: NumericFact[];
+    numericUses?: NumericUse[];
+    numericApprovals?: NumericApproval[];
     premise?: string; // Internal core-joke anchor used during generation
     title: string;
     summary: string;
@@ -128,6 +131,8 @@ export interface LayoutProps {
 export interface PanelContext {
   story?: StoryIntent;
   brief?: StoryBrief;
+  numericFacts?: NumericFact[];
+  numericUses?: NumericUse[];
   action?: PanelAction;
   effects?: { text: string; action_id?: string }[];
   premise?: string;
@@ -159,6 +164,10 @@ export interface ComicStripData {
   generationId?: string;
   brief?: StoryBrief;
   story?: StoryIntent;
+  numericFacts?: NumericFact[];
+  numericUses?: NumericUse[];
+  numericApprovals?: NumericApproval[];
+  archiveWarning?: string;
   title: string;
   premise?: string; // The core comedic premise — passed to image model for narrative context.
   set_description?: string; // Fixed background prop contract — injected into per-panel regens.
@@ -242,4 +251,31 @@ export interface StoryIntent {
   setup: string;
   payoff: string;
   review_notes: string[];
+}
+
+/** App-extracted monetary evidence: supplied text, never independent verification. */
+export interface NumericFact {
+  id: string;
+  subject: string;
+  claim: string;
+  evidence: string;
+  display: string;
+  value: string;
+  currency: string;
+  roundingPolicy: 'exact-unless-creator-approves-nearest-unit-within-1pct';
+  provenance: 'supplied-background' | 'supplied-topic';
+}
+
+export interface NumericUse {
+  location: string;
+  quote: string;
+  fact_id: string;
+  intent: 'source' | 'fiction';
+  approximation: 'exact' | 'rounded';
+}
+
+/** Only deliberate creator decisions, never accepted from model output. */
+export interface NumericApproval {
+  key: string;
+  kind: 'rounding' | 'fiction';
 }

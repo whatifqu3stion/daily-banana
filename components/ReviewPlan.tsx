@@ -8,7 +8,7 @@ import SparklesIcon from './icons/SparklesIcon';
 import NewComicIcon from './icons/NewComicIcon';
 import Tooltip from './Tooltip';
 import StoryCheck from './StoryCheck';
-import { panelStoryContext } from '../services/storyContract';
+import { assertDrawableStory, panelStoryContext } from '../services/storyContract';
 
 const getGeminiService = async () => (await import('../services/geminiService')).geminiService;
 
@@ -53,6 +53,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
         setIsLoading(true);
         setError(null);
         try {
+            assertDrawableStory(reviewData.plan);
             const newImage = await (await getGeminiService()).refinePanelImage(
                 reviewData.firstPanelImage,
                 refinementTags,
@@ -82,6 +83,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
         setIsLoading(true);
         setError(null);
         try {
+            assertDrawableStory(reviewData.plan);
             const userTags = refinementTags.split(',').map(t => t.trim()).filter(Boolean);
             const newImage = await (await getGeminiService()).generatePanelImageWithReferences(
                 firstPanelPlan.visual_prompt,

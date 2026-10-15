@@ -13,6 +13,8 @@ import TwitterIcon from './icons/TwitterIcon';
 import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
 import StoryCheck from './StoryCheck';
+import NumericConsistencyNotice from './NumericConsistencyNotice';
+import { checkArchiveAmounts, inspectNumericFacts, stripAsNumericPlan } from '../services/numericFacts';
 
 interface ComicStripProps {
   comicData: ComicStripData;
@@ -40,6 +42,14 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   const downloadInFlightRef = useRef(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const numericPlan = stripAsNumericPlan(comicData);
+  const numericIssues = inspectNumericFacts(numericPlan);
+  const archiveWarning = comicData.archiveWarning || (comicData.context
+    ? numericIssues.some(issue => issue.blocking)
+      ? 'Archive note hidden while edited panel amounts conflict with supplied evidence. Correct the text to restore the note; no artwork has been changed.'
+      : checkArchiveAmounts(comicData.context, numericPlan)
+    : undefined);
+  const checkedComicData = { ...comicData, archiveWarning };
 
   const handleDownload = async () => {
     if (!comicRef.current || downloadInFlightRef.current) return;
@@ -134,7 +144,12 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           ))}
         </div>
         </div>
-         {comicData.context && (
+          <NumericConsistencyNotice comicData={checkedComicData} />
+          {archiveWarning && comicData.contextSources?.length ? <p className="mt-3 break-words font-open-sans text-sm">
+            Later research sources (not confirmation of the supplied figures):{' '}
+            {comicData.contextSources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="mr-3 underline">{extractDomain(source.url)}</a>)}
+          </p> : null}
+          {comicData.context && !archiveWarning && (
            <aside className="mt-7 grid gap-3 border-y border-black/50 py-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-6 md:py-5">
              <div>
                <h4 className="font-special-elite text-lg font-bold leading-tight text-black">A Note from the Archives</h4>
@@ -181,10 +196,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
         </p>
       )}
       {comicData.story && <div className="w-full">
-        <StoryCheck plan={{ ...comicData, summary: '', panels: comicData.panels.map(panel => ({
-          id: panel.id, slug: panel.planSlug || panel.id, action: panel.action, visual_prompt: panel.visual_prompt,
-          text_elements: panel.text_elements, consistency_tags: panel.consistency_tags, size: 'medium', aspect_ratio: panel.layoutProps.aspectRatio,
-        })) }} />
+         <StoryCheck plan={numericPlan} />
       </div>}
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
          <Tooltip text="Start with a new topic and settings">
