@@ -7,9 +7,10 @@ import React, { useState, useEffect } from 'react';
 interface LoadingStateProps {
   messages: string[];
   progress?: { current: number; total: number } | null;
+  showDots?: boolean;
 }
 
-const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
+const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress, showDots = true }) => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
 
@@ -50,7 +51,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({ messages, progress }) => {
   return (
     <div className="w-full max-w-3xl mx-auto p-6 md:p-10 border-3 border-black bg-paper-light flex flex-col items-center justify-center min-h-[260px] shadow-xl rounded-lg" aria-busy="true" aria-live="polite">
       <div className="w-full max-w-xl text-center">
-        {progressPercent !== null && (
+        {showDots && progressPercent !== null && (
           <div className="mb-6 flex justify-center gap-2" aria-hidden="true">
             {[0, 1, 2].map(i => <span key={i} className="h-3 w-3 rounded-full bg-banana border-2 border-black" />)}
           </div>

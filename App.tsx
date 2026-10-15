@@ -78,7 +78,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (isLoading && appStage !== 'strip') {
-      return <LoadingState messages={loadingMessages} progress={progress} />;
+      return <LoadingState messages={loadingMessages} progress={progress} showDots={appStage !== 'review'} />;
     }
 
     if (error) {
