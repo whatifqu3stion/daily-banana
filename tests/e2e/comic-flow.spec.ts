@@ -6,7 +6,7 @@ async function startComic(page: Page) {
   await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill('test-key-not-a-secret');
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
   await page.getByLabel('Topic').fill('Office automation gone wrong');
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   await expect(page.getByRole('heading', { name: 'Choose Your Story' })).toBeVisible();

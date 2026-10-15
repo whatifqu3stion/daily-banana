@@ -12,7 +12,7 @@ for (const width of [1440, 402]) {
     await expect(missingKey.getByRole('button', { name: 'Open API settings' })).toBeVisible();
     expect(await missingKey.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
     await missingKey.getByRole('button', { name: 'Open API settings' }).click();
-    await expect(page.getByRole('dialog', { name: 'API settings' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Connect your Google Key' })).toBeVisible();
     await page.getByRole('button', { name: 'Close API settings' }).click();
 
     await page.locator('#comedicStyle').click();

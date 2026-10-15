@@ -20,13 +20,13 @@ for (const [kind, code, expected] of [
     await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
     await page.getByLabel('Google API key', { exact: true }).fill(KEY);
     await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-    const alert = page.getByRole('dialog', { name: 'API settings', exact: true }).getByRole('alert');
+    const alert = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true }).getByRole('alert');
     await expect(alert).toContainText(expected);
     await expect(alert).not.toContainText(KEY);
     await expect(page.getByRole('button', { name: 'Connect key', exact: true })).toBeEnabled();
-    await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+    await expect(page.getByText('No key connected', { exact: true })).toHaveCount(0);
     await page.clock.runFor(2000);
-    await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toBeVisible();
   });
 }
 
@@ -44,9 +44,9 @@ test('key-check deadline unlocks the form and reports timeout rather than an inv
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
   await expect.poll(() => Boolean(release)).toBe(true);
   await page.clock.fastForward(20_001);
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true }).getByRole('alert')).toContainText('did not finish the key check in time');
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true }).getByRole('alert')).toContainText('did not finish the key check in time');
   await expect(page.getByRole('button', { name: 'Connect key', exact: true })).toBeEnabled();
-  await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+  await expect(page.getByText('No key connected', { exact: true })).toHaveCount(0);
   release!();
 });
 
@@ -120,7 +120,7 @@ async function connect(page: Page, key = KEY) {
   await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(key);
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
   await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
   await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
 }
@@ -138,7 +138,7 @@ for (const width of [1440, 402]) {
     await page.goto('/');
     await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
     await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     const disclosure = dialog.getByRole('button', { name: 'Additional information' });
     const studio = dialog.getByRole('link', { name: 'Google AI Studio', includeHidden: true });
     const pricing = dialog.getByRole('link', { name: 'Gemini API pricing', includeHidden: true });
@@ -202,7 +202,7 @@ for (const width of [1440, 402]) {
     const setup = await page.evaluate(() => localStorage.getItem('dailyBanana_formState'));
     await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
     await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     const submit = dialog.getByRole('button', { name: 'Connect key', exact: true });
     await expect(submit).toBeDisabled();
     await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
@@ -216,11 +216,12 @@ for (const width of [1440, 402]) {
     await expect(dialog.getByRole('button', { name: 'Checking key…' })).toBeDisabled();
     await page.clock.runFor(5000);
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole('status').filter({ hasText: 'No key connected' })).toBeVisible();
+    await expect(dialog.getByText('No key connected', { exact: true })).toHaveCount(0);
+    await expect(dialog.getByText('Key connected · checked', { exact: true })).toHaveCount(0);
     approve();
     const status = dialog.getByRole('status').filter({ hasText: 'Key connected · checked' });
     await expect(status).toBeVisible();
-    await expect(status).toHaveClass(/bg-banana/);
+    await expect(status.locator('span').first()).toHaveClass(/bg-banana/);
     await expect(status).toHaveAttribute('aria-live', 'polite');
     await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeDisabled();
@@ -251,7 +252,7 @@ for (const closeWith of ['Close', 'Escape']) {
     await freezeClock(page);
     const trigger = page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ });
     await trigger.click();
-    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
     await dialog.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
@@ -268,7 +269,7 @@ for (const closeWith of ['Close', 'Escape']) {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeEnabled();
     await dialog.getByRole('button', { name: 'Remove key', exact: true }).click();
-    await expect(dialog.getByText('No key connected', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('No key connected', { exact: true })).toHaveCount(0);
     await page.clock.runFor(2000);
     await expect(dialog).toBeVisible();
     expect(mock.calls.map(call => call.endpoint)).toEqual(['connect', 'connect', 'session']);
@@ -285,7 +286,7 @@ test('approval arriving after manual close never dismisses a reopened dialog', a
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   const trigger = page.getByRole('button', { name: 'Open API settings', exact: true });
   await trigger.click();
-  const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
   await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
   await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Checking key…' })).toBeDisabled();
@@ -310,7 +311,7 @@ test('API settings closes only after key approval and preserves the comic setup'
   await page.getByLabel('Topic', { exact: true }).fill('Keep my comic idea');
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
   await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
   await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Checking key…', exact: true })).toBeVisible();
@@ -395,7 +396,7 @@ for (const width of [1440, 402]) {
     });
     expect(centered).toBeLessThan(2);
     await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
     await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
     const connectionStyle = await dialog.getByRole('alert').evaluate(inspect);
@@ -417,24 +418,24 @@ for (const width of [1440, 402]) {
     await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
     await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
     await page.evaluate(() => document.fonts.ready);
-    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     const typography = await dialog.evaluate(element => {
       const style = (selector: string) => {
         const computed = getComputedStyle(element.querySelector(selector)!);
         return { family: computed.fontFamily, size: parseFloat(computed.fontSize), weight: computed.fontWeight };
       };
       return {
-        title: style('#api-settings-title'), section: style('#gemini-connection-heading'),
+        title: style('#api-settings-title'),
         label: style('label[for="google-api-key"]'), help: style('#key-check-status'),
         input: style('#google-api-key'), action: style('button[type="submit"]'),
         hasOverflow: element.scrollWidth > element.clientWidth,
       };
     });
     expect(typography.title.family).toContain('Special Elite');
-    expect(typography.section.family).toContain('Special Elite');
     expect(typography.label.family).toContain('Special Elite');
-    expect(typography.title.size).toBeGreaterThan(typography.section.size);
-    expect(typography.section.size).toBeGreaterThan(typography.help.size);
+    expect(typography.title.size).toBeGreaterThan(typography.help.size);
+    await expect(dialog.getByRole('heading')).toHaveCount(1);
+    await expect(dialog.getByRole('heading')).toHaveText('Connect your Google Key');
     expect(typography.help.family).toContain('Open Sans');
     expect(typography.help.size).toBeGreaterThanOrEqual(16);
     expect(typography.help.weight).toBe('400');
@@ -445,12 +446,12 @@ for (const width of [1440, 402]) {
     await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
-    await expect(dialog.getByRole('heading', { name: 'Your Google key', exact: true })).toBeVisible();
-    const connectedHelp = dialog.getByText('The metadata check confirms credential access only;', { exact: false });
+    await expect(dialog.getByRole('heading')).toHaveText('Connect your Google Key');
+    const connectedHelp = dialog.getByText('Key checked. Billing and model access depend on your Google project.', { exact: true });
     await expect(connectedHelp).toBeVisible();
     expect(await connectedHelp.evaluate(element => getComputedStyle(element).fontSize)).toBe('16px');
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
-    await expect(dialog.getByRole('heading', { name: 'Replace your Google key', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('heading')).toHaveCount(1);
     await dialog.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
     await expect(dialog.getByRole('alert')).toBeVisible();
@@ -474,7 +475,7 @@ for (const width of [1440, 402]) {
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
     await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     await dialog.getByLabel('Google API key', { exact: true }).fill('unsaved-key');
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
@@ -600,12 +601,12 @@ test('failed replacement keeps connection; successful replacement and removal up
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('That key was not accepted');
   await page.clock.runFor(2000);
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toBeVisible();
   expect([...mock.sessions.values()]).toEqual([KEY]);
   await page.getByRole('button', { name: 'Keep current key' }).click();
   mock.control.rejectReplacement = false;
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
   await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveValue('');
   await page.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
@@ -615,14 +616,14 @@ test('failed replacement keeps connection; successful replacement and removal up
   await page.clock.runFor(1000);
   await expect(dialog).toBeVisible();
   await page.clock.runFor(300);
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
   await page.clock.runFor(32);
   await expect(page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ })).toBeFocused();
   await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
   await expect(page.getByRole('button', { name: 'Remove key', exact: true })).toBeVisible();
   expect([...mock.sessions.values()]).toEqual([OTHER_KEY]);
   await page.getByRole('button', { name: 'Remove key', exact: true }).click();
-  await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+  await expect(page.getByText('No key connected', { exact: true })).toHaveCount(0);
   await page.clock.runFor(2000);
   await expect(dialog).toBeVisible();
   expect(mock.sessions.size).toBe(0);
@@ -699,7 +700,7 @@ test('billing errors retain useful UI and an expired server session clears conne
     try { await connection.generateContent({ model: 'gemini-2.5-flash', contents: 'test' }); }
     catch (error) { return error.message; }
   })).toContain('session expired');
-  await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+  await expect(page.getByText('No key connected', { exact: true })).toHaveCount(0);
 });
 
 test('key changes pause during AI calls and resume after completion', async ({ page }) => {

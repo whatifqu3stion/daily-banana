@@ -130,28 +130,18 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
 
   return (
     <section
-      aria-labelledby="gemini-connection-heading"
+      aria-label="Google key connection"
       className="mx-auto w-full"
     >
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-black pb-4">
-        <div className="min-w-0">
-          <h3 id="gemini-connection-heading" className="font-special-elite text-xl font-bold leading-tight text-black sm:text-2xl">
-            {connected && !editing ? 'Your Google key' : editing ? 'Replace your Google key' : 'Connect your Google key'}
-          </h3>
-        </div>
+      <div className={connected ? 'mb-4' : undefined} role="status" aria-live="polite" aria-atomic="true">
+        {connected && (
         <span
-          className={`inline-flex shrink-0 items-center gap-2 border border-black px-2.5 py-1 font-open-sans text-base font-bold leading-6 ${
-            connected
-              ? 'bg-banana text-black'
-              : 'bg-paper-light text-black'
-          }`}
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
+          className="inline-flex shrink-0 items-center gap-2 border border-black bg-banana px-2.5 py-1 font-open-sans text-base font-bold leading-6 text-black"
         >
-          <span aria-hidden="true" className={`h-2 w-2 rounded-full border border-black ${connected ? 'bg-black' : 'bg-transparent'}`} />
-          {connected ? 'Key connected · checked' : 'No key connected'}
+          <span aria-hidden="true" className="h-2 w-2 rounded-full border border-black bg-black" />
+          Key connected · checked
         </span>
+        )}
       </div>
 
       {error && (
@@ -160,7 +150,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
       {connected && !editing ? (
         <div className="space-y-4">
           <p className="font-open-sans text-base font-normal leading-6 text-gray-800">
-            The metadata check confirms credential access only; it does not guarantee billing eligibility or model availability.
+            Key checked. Billing and model access depend on your Google project.
           </p>
           <div className="flex flex-col gap-2.5 sm:flex-row">
             <button
@@ -210,8 +200,8 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
             {busy
               ? 'A Google AI request is in progress; key changes are paused until it finishes.'
               : connected && editing
-                ? 'We check access with model metadata only; no comic is generated. Your current key stays active unless this replacement passes.'
-                : 'We check access with model metadata only; no comic is generated during connection.'}
+                ? 'Your current key stays active until the new key is checked. No comic is generated.'
+                : 'We’ll check your key without generating a comic.'}
           </p>
 
           <div className="flex flex-col items-end gap-2.5 sm:flex-row sm:items-center sm:justify-end">

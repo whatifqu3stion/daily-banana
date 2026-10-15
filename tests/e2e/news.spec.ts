@@ -14,7 +14,7 @@ async function connect(page: Page) {
   await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(KEY);
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -37,7 +37,7 @@ test('missing key offers recovery without losing the topic', async ({ page }) =>
   await newsDialog(page).getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(KEY);
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my idea');
 });
 

@@ -43,7 +43,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ disabled = false, onClo
     >
       <div className="flex items-center justify-between gap-4 border-b-2 border-black px-4 py-3.5 sm:px-6">
         <h2 id="api-settings-title" className="font-special-elite text-2xl font-bold leading-tight sm:text-3xl">
-          API settings
+          Connect your Google Key
         </h2>
         <button
           type="button"
