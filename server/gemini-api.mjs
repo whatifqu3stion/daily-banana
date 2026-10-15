@@ -126,7 +126,9 @@ function imageParams(body) {
   return {
     model: body.model,
     input: body.input.map(part => part.type === 'text' ? { type: 'text', text: part.text } : { type: 'image', data: part.data, mime_type: part.mime_type }),
-    response_format: { type: 'image', delivery: 'inline', mime_type: 'image/jpeg', aspect_ratio: format.aspect_ratio,
+    // Google rejects an explicit delivery override for these image models.
+    // Follow the documented default; output_image still contains inline data.
+    response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: format.aspect_ratio,
       ...(body.model === 'gemini-2.5-flash-image' ? {} : { image_size: '2K' }) },
     store: false, stream: false,
   };

@@ -550,6 +550,7 @@ test('image models preserve aspect ratio, tagged references and legacy resolutio
     const calls = mock.calls.filter(call => call.endpoint === 'interactions' && call.body.model === model);
     for (const call of calls) {
       expect(call.body.response_format.aspect_ratio).toBe('16:9');
+      expect(call.body.response_format).not.toHaveProperty('delivery');
       expect(call.body.response_format.image_size).toBe(model.endsWith('flash-image') ? undefined : '2K');
       expect(call.body.input.slice(-2)).toEqual([{ type: 'text', text: 'Character sheet: newsroom banana' }, { type: 'image', data: IMAGE, mime_type: 'image/webp' }]);
     }

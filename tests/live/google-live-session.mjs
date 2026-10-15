@@ -36,7 +36,7 @@ export async function startLiveSession(key, makeClient = candidate => new Google
             const correctFormat = params.model === 'gemini-nano-banana-2.1' &&
               params.store === false && params.stream === false &&
               params.response_format.type === 'image' &&
-              params.response_format.delivery === 'inline' &&
+              !Object.hasOwn(params.response_format, 'delivery') &&
               params.response_format.mime_type === 'image/jpeg' &&
               params.response_format.image_size === '2K' &&
               params.response_format.aspect_ratio === '1:1';

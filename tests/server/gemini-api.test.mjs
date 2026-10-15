@@ -129,6 +129,44 @@ test('key validation lists metadata once, without a model dependency or generate
   assert.ok(calls[0].params.config.abortSignal instanceof AbortSignal);
 });
 
+test('installed SDK omits unsupported image delivery in generation and refinement for both models', async t => {
+  const requests = [];
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+  const { browser } = await fixture(t, { createClient: key => new GoogleGenAI({
+    apiKey: key, httpOptions: { fetch: async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init);
+      if (request.method === 'GET') return new Response(JSON.stringify({ models: [] }), { headers: { 'Content-Type': 'application/json' } });
+      const params = await request.json();
+      requests.push(params);
+      if (Object.hasOwn(params.response_format, 'delivery')) {
+        return new Response(JSON.stringify({ error: { code: 400, status: 'INVALID_ARGUMENT', message: 'Image delivery mode is not supported.' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      }
+      return new Response(JSON.stringify({ id: 'test-interaction', model: params.model, status: 'completed',
+        steps: [{ type: 'model_output', content: [{ type: 'image', data: png, mime_type: 'image/png' }] }],
+      }), { headers: { 'Content-Type': 'application/json' } });
+    } },
+  }) });
+  const user = browser();
+  await user.request('connect', { key: 'sdk-delivery-test-key' });
+  for (const model of ['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']) {
+    for (const refine of [false, true]) {
+      const payload = image(model);
+      // Stale browser requests must not reintroduce the override either.
+      payload.response_format.delivery = 'inline';
+      payload.input = refine ? [{ type: 'image', data: png, mime_type: 'image/png' }, { type: 'text', text: 'A larger desk' }] : [{ type: 'text', text: 'A banana' }];
+      const result = await user.request('interactions', payload);
+      assert.equal(result.status, 200);
+      assert.equal(result.body.output_image.data, png);
+      assert.equal(requests.at(-1).response_format.aspect_ratio, '16:9');
+      assert.equal(requests.at(-1).response_format.image_size, model === 'gemini-2.5-flash-image' ? undefined : '2K');
+      assert.equal(requests.at(-1).response_format.mime_type, 'image/jpeg');
+      assert.equal(Object.hasOwn(requests.at(-1).response_format, 'delivery'), false);
+      assert.equal(requests.at(-1).input[0].type, refine ? 'image' : 'text');
+    }
+  }
+  assert.equal(requests.length, 4);
+});
+
 for (const [label, failure, expectedCode, expectedKind] of [
   ['network', () => Object.assign(new TypeError('fetch failed private-key'), { cause: { code: 'ENOTFOUND' } }), 502, 'GENERATION_NETWORK'],
   ['timeout', () => Object.assign(new Error('Request timed out private-key'), { name: 'APIConnectionTimeoutError' }), 504, 'GENERATION_TIMEOUT'],
@@ -391,7 +429,7 @@ test('text, grounded news and image requests use the server key and disallow tra
     assert.equal(params.stream, false);
     assert.equal(params.previous_interaction_id, undefined);
     assert.equal(params.response_format.image_size, model.endsWith('flash-image') ? undefined : '2K');
-    assert.equal(params.response_format.delivery, 'inline');
+    assert.equal(Object.hasOwn(params.response_format, 'delivery'), false);
     assert.equal(params.response_format.aspect_ratio, '16:9');
   }
   assert.equal((await user.request('content', { ...content, config: { tools: [{ urlContext: {} }] } })).status, 400);

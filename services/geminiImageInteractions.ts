@@ -50,7 +50,6 @@ export async function generatePanelInteraction(
       input,
       response_format: {
         type: 'image',
-        delivery: 'inline',
         mime_type: 'image/jpeg',
         aspect_ratio: aspectRatio,
         ...(model === 'gemini-2.5-flash-image' ? {} : { image_size: '2K' as const }),

@@ -9,6 +9,14 @@ Check both Google's current documentation and the installed SDK's types when mig
 
 **How to apply:** Recheck this discrepancy when updating the SDK. Use a supported output format and explicitly convert images where the comic pipeline requires another format, rather than assuming the returned bytes match the requested format.
 
+## Image delivery overrides
+
+Omit the image response-format delivery override for the currently supported Google image models.
+
+**Why:** A real provider request rejected explicit inline delivery with “Image delivery mode is not supported.” Google's image-generation examples omit the field even though the SDK's shared schema accepts it.
+
+**How to apply:** Trust model-specific provider behavior over the SDK's broader type surface. Keep default delivery for generation and refinement, and test the serialized SDK request to prevent reintroducing the override.
+
 ## Verify failure contracts as well as request schemas
 
 Google SDK compatibility checks must exercise the installed SDK's failure behavior, not just successful image payloads or hand-written error mocks.

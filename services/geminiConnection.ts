@@ -129,7 +129,6 @@ export interface ImageInteractionParameters {
   input: ImageInteractionInput[];
   response_format: {
     type: 'image';
-    delivery: 'inline';
     mime_type: 'image/jpeg';
     aspect_ratio: string;
     image_size?: '2K';
