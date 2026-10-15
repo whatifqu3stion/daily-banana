@@ -5,3 +5,5 @@
 - [News freshness](news-freshness-semantics.md) — retrieval timestamps are not verified article publication dates; label cached fallback honestly.
 - [Sandboxed embed keyboard](sandboxed-embed-keyboard.md) — Escape inside opaque frames needs a restricted bridge; parent modal listeners cannot see it.
 - [Comic quality scope](comic-quality-scope.md) — investigate all generation phases and setting variations, not just one story prompt or humor style.
+- [Paid comic review](paid-comic-review.md) — improve clarity without silently adding paid judges, vision checks or automatic repair loops.
+- [React preview refresh](react-preview-refresh.md) — after custom-hook count changes, distinguish stale hot-reload errors from fresh-load failures.

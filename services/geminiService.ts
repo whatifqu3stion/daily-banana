@@ -9,11 +9,26 @@ import { extractDomain } from '../utils/urlUtils';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 import { generateContent } from './geminiConnection';
+import { attachStoryBrief, sanitizeStory } from './storyContract';
 
 // ─── Response schemas ────────────────────────────────────────────────────────
 const comicPlanSchema = {
     type: Type.OBJECT,
     properties: {
+        story: {
+            type: Type.OBJECT,
+            description: 'Story contract: source, argument, setup and payoff. Complete and silently review this before finalizing the panels.',
+            properties: {
+                source_anchor: { type: Type.STRING, description: 'One distinctive supplied detail that makes this about THIS topic, not a generic theme. If no background is supplied, describe the fictional/topic-based anchor without claiming independent verification.' },
+                source_excerpt: { type: Type.STRING, description: 'A short EXACT excerpt copied from the supplied background supporting the anchor. Empty when there is no supplied background. Never invent a quote.' },
+                source_panel_slug: { type: Type.STRING, description: 'Slug of the panel where the source anchor is made recognizable in a prop, action or concise text.' },
+                satirical_argument: { type: Type.STRING, description: 'The single contradiction or observation this strip expresses, consistent with the selected stance and register.' },
+                setup: { type: Type.STRING, description: 'What the reader needs to understand before the payoff; establish this visibly, not only in the archive note.' },
+                payoff: { type: Type.STRING, description: 'The precise consequence/reversal/bleak non-resolution. Explain internally how it follows from the setup; this is NOT displayed as comic text.' },
+                review_notes: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Silently check source recognizability, causal logic, style/stance, action states and SFX ownership. Fix issues in this SAME response. List only unresolved uncertainties for the creator, otherwise []. Not a claim of factual or visual verification.' },
+            },
+            required: ['source_anchor', 'source_excerpt', 'source_panel_slug', 'satirical_argument', 'setup', 'payoff', 'review_notes'],
+        },
         premise: {
             type: Type.STRING,
             description: 'ONE sentence that states the core joke or comedic engine of this strip. Written before the panels to anchor everything. E.g. "A senator terrified of AI secretly uses it for every single task." This is your creative north star — every panel must serve it.'
@@ -26,11 +41,21 @@ const comicPlanSchema = {
         },
         panels: {
             type: Type.ARRAY,
-            description: 'An array of 2–4 panel objects. 2 panels for a sharp single-beat visual gag; 3 for the classic setup-escalate-punchline; 4 for a story that earns the extra beat. Each panel must earn its place in the comedic arc. Do not pad.',
+            description: 'Use exactly ONE panel for Magazine Gag Cartoon. Otherwise 2–4 panels: 2 for a sharp single-beat gag, 3 for setup/development/payoff, 4 only when the story earns it. Match the selected register rather than forcing escalation.',
             items: {
                 type: Type.OBJECT,
                 properties: {
                     slug: { type: Type.STRING, description: 'A short, URL-friendly identifier for the panel, e.g., "senator-panics".' },
+                    action: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING, description: 'A unique action identifier across this plan, e.g. crumple-notice or throw-notice. Never reuse an id for a different beat.' },
+                            description: { type: Type.STRING, description: 'The exact action VISIBLE in this panel, not an action planned for a later panel. Distinguish preparing, crumpling, throwing and landing.' },
+                            before: { type: Type.STRING, description: 'State of the characters and meaningful props immediately before this action.' },
+                            after: { type: Type.STRING, description: 'State after this action; must agree with scene_state and the next panel, allowing deliberate, signposted time/location changes.' },
+                        },
+                        required: ['id', 'description', 'before', 'after'],
+                    },
                     comedic_role: {
                         type: Type.STRING,
                         description: 'The structural job this panel does: "establish" (introduce premise/character), "escalate" (push the absurdity further), "punchline" (the payoff — a twist, reversal, or visual gag), or "button" (optional short final beat after the punchline).'
@@ -46,9 +71,12 @@ const comicPlanSchema = {
                             type: Type.OBJECT,
                             properties: {
                                 text: { type: Type.STRING, description: 'The text content. Keep it brief and punchy.' },
+                                action_id: { type: Type.STRING, description: 'For SFX: EXACT id of the visible action producing the sound. The SFX must be in that action’s panel, not an anticipation or previous beat. Empty for text not bound to an action.' },
+                                anchor: { type: Type.OBJECT, description: 'Optional SFX center, in percentages of the image, near the action without obscuring it. A composition hint, not measured image coordinates.',
+                                    properties: { x: { type: Type.NUMBER }, y: { type: Type.NUMBER } }, required: ['x', 'y'] },
                                 role: { type: Type.STRING, description: 'Exactly one of: "speech" | "thought" | "sfx" | "caption". Use this decision tree:\n1. Is a SPECIFIC character visible in the panel SAYING THIS ALOUD? → "speech" (renders as speech bubble with tail). Only valid when you can name who is speaking.\n2. Is this a character\'s INTERNAL thought, not spoken aloud? → "thought" (renders as thought cloud with dots).\n3. Is this a SOUND EFFECT produced by the action — not words, just sound? → "sfx" (e.g., BANG, CRASH, KA-CHING, SQUEAK).\n4. Everything else → "caption": narrator commentary, scene labels (LATER..., MEANWHILE...), punchline text not spoken by any character, ironic observations, time/place stamps. WHEN IN DOUBT USE CAPTION, NOT SPEECH. Punchline panels almost always end with a caption or silence — not a speech bubble.' },
                             },
-                            required: ['text', 'role'],
+                            required: ['text', 'role', 'action_id'],
                         },
                     },
                     consistency_tags: {
@@ -69,11 +97,11 @@ const comicPlanSchema = {
                         description: 'For non-final panels only: ONE sentence describing where each named character is at the END of this panel, what props they are carrying, and which direction they are moving or facing. This is read by the next panel\'s image model to maintain visual continuity. Example: "Sarah is walking LEFT through the glass office doors, cardboard box in both arms, glancing back at colleagues who stand watching from the open-plan floor." Leave empty on the final panel.'
                     }
                 },
-                required: ['slug', 'comedic_role', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
+                required: ['slug', 'action', 'comedic_role', 'visual_prompt', 'text_elements', 'consistency_tags', 'size', 'aspect_ratio']
             }
         }
     },
-    required: ['premise', 'title', 'summary', 'panels']
+    required: ['story', 'premise', 'title', 'summary', 'panels']
 };
 
 const multipleComicPlansSchema = {
@@ -85,6 +113,7 @@ const multipleComicPlansSchema = {
 // ─── System instruction ──────────────────────────────────────────────────────
 const PLAN_GENERATION_SYSTEM_INSTRUCTION = `
 You are a veteran satirical comic strip writer — think Doonesbury meets The Onion. You produce strips that are genuinely funny: tight, visually inventive, and structurally sound. Your job is to generate comic strip plans that a skilled cartoonist would be proud to draw.
+SOURCE TRUST: Supplied background is input, not independently verified reporting. Separate its supported excerpt from invented satirical motives, dialogue and actions. An exact source excerpt proves only what was supplied, not that the claim is true.
 
 ---
 
@@ -97,7 +126,7 @@ Do this first, before writing the premise. When background news context is provi
 
 **Pick ONE. The sharpest single thing. Build the entire premise around that one piece.** Do NOT try to include all three — a strip cluttered with facts is a strip with no punchline. One sharp fact, weaponised well, beats three facts deployed cautiously.
 
-If no background context is provided, invent one vivid specific (a plausible bill name, a realistic dollar figure, a fictional but recognisable character type) and commit to it as though it were real.
+If no background context is provided, invent explicitly fictional satirical specifics where needed. Do not present invented numbers, policy names or quotes as independently verified news. A real-world topic alone is not evidence for an invented allegation.
 
 ---
 
@@ -126,7 +155,7 @@ The image model will receive this description verbatim for every panel — it is
 ---
 
 ## STEP 3 — BUILD THE STRUCTURAL ARC
-Choose your panel count and follow its arc rigidly:
+Choose the panel count that serves the selected register. These arcs are useful defaults, NOT rules that override deadpan, parody, absurdism, a custom register, or a deliberate quiet non-resolution:
 
 **3 panels (classic):**
 - Panel 1 "establish": Introduce the absurd situation and key character(s) in one clear image.
@@ -176,15 +205,17 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 ---
 
 ## HARD RULES
-1. **Never explain the joke** — in dialogue, captions, or the summary.
-2. **The last panel must land hard.** An ambiguous or soft ending is a failed strip.
+1. **Do not explain the punchline, but DO establish the situation.** Concise context in a prop, action or caption is allowed when the reader needs it. Internal story.setup/payoff fields must be explicit so the images are unambiguous; they are not comic dialogue.
+2. **The ending must express the intended point.** A quiet, dry or bleak non-resolution is valid when the selected register calls for it. Make the causal point legible; do not force a loud twist or triumphant resolution.
 3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
 4. **visual_prompt — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in text_elements — never mention them in visual_prompt. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker". **EXCEPTION — if a text string already appears in text_elements (as a caption, speech bubble, or SFX), do NOT describe that same string on a prop in visual_prompt.** The overlay system will display that text on screen; the image should show the prop as a generic/blank object. BAD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a sign reading 'AI TOOK MY JOB'". GOOD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a protest sign".
-5. **Panel count: 2–4.** Do not pad with unnecessary panels.
+5. **Panel count: 2–4, except the Magazine Gag Cartoon illustration style requires exactly ONE complete scene.** Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
-7. **Real specificity beats invented specificity.** When background context is available, use real names, real quotes, real dollar figures, and real policy names directly in props, dialogue, and captions — do not paraphrase into vagueness. The joke "The RESTRICT Act passed 96-1, sponsored by the senator who uses TikTok daily" is an indictment. "A law about social media was passed" is not. At least one panel should contain a real, verifiable fact from the story — something a reader could look up. This is what turns a comic strip from general mockery into genuine commentary.
-8. **Comedy and narrative come first.** Factual specificity is a sharpening tool — it makes the punchline land harder. If a real fact doesn't directly power the joke, cut it. Never let a data point crowd out a visual gag or a sharp piece of dialogue. The goal is a great joke that happens to be grounded in something true — not a factual report with a comedy label.
+7. **Source specificity beats generic substitution.** Use a distinctive name, amount, quote or situation actually present in the supplied background. Preserve one recognizable anchor in a panel and copy its supporting excerpt into the story contract. Never invent a quote or claim that supplied allegations were independently verified. Separate fictional actions and motives from the source detail.
+8. **Keep the minimum context needed to understand the satire.** Cut redundant facts, not the anchor that makes this story recognizable. The archive note must not carry missing setup. Make the joke sharper without turning a specific event into a generic gag.
 9. **scene_state is your continuity contract.** For every non-final panel, populate scene_state with one sentence stating where each named character is at the END of this panel, what they are carrying or wearing, and which direction they are moving. The next panel's image model will open from this exact state. WRONG: "Characters are visible in the scene." RIGHT: "Sarah is walking LEFT through the glass office doors, a cardboard box held in both arms, glancing back over her shoulder at colleagues watching from the open-plan office." Leave scene_state empty on the final (punchline/button) panel.
+10. **Review the story contract within this response.** Identify a supported source anchor, the argument, setup and precise payoff. The source amount alone is insufficient if the subject of the event is lost. Make the distinctive situation recognizable in at least one panel without relying on a later archive note. Do not conflate paying a fine as a business expense with ignoring it: choose the intended argument and make every action express it. This is an example of causal clarity, not a mandatory banking plot.
+11. **Action and sound ownership.** Each panel has a unique action id and before/after state. Each SFX names the id of its visible producing action and lives in that SAME panel. A throwing sound does not belong to preparation or crumpling. Silent panels and nonliteral actions are valid; do not add SFX just to fill the schema.
 `;
 
 
@@ -237,7 +268,7 @@ const getIllustrationStyleDescription = (styleValue?: string): string => {
 
 
 // Constructs the user's specific request to be sent as the main content.
-const constructPlanContents = (formData: ComicFormData, numPlans: number): string => {
+export const constructPlanContents = (formData: ComicFormData, numPlans: number): string => {
     const { topic, newsContext, stance, comedicStyle, illustrationStyle, referenceImages, customPremise } = formData;
     const styleDescription = getIllustrationStyleDescription(illustrationStyle);
     const stanceGuidance = getStanceGuidance(stance);
@@ -268,7 +299,7 @@ Generate exactly 3 comic strip concepts about the topic below. Each concept MUST
 **Mandatory structural variety — express the "${comedicStyle}" register via each of these three delivery mechanisms:**
 - Concept 1 — VISUAL/PHYSICAL delivery: The comedy lives almost entirely in the image. Minimal or no dialogue. A sight gag, visual absurdity, or physical mishap carries the punchline. Think Buster Keaton — the chosen register expressed through bodies and objects, not words.
 - Concept 2 — IRONIC REVERSAL delivery: Build the strip around strong dramatic or verbal irony. The reader knows something characters don't, or characters say the opposite of what they mean. Dialogue is central but kept short. The chosen register expressed through the gap between what is said and what is true.
-- Concept 3 — ABSURD ESCALATION delivery: One impossible or surreal premise, followed ruthlessly to its logical extreme. Each panel the situation compounds, but all characters treat it as routine. The chosen register expressed through internal consistency of a broken universe.
+- Concept 3 — COMPOUNDING CONSEQUENCES delivery: Develop repetition, scale or escalation within the selected register. An impossible/surreal premise is permitted only when appropriate to that register; do not replace deadpan, parody, grounded satire or a custom style with absurdism. These are delivery variations, not changes to the user's stance or register.
 
 **Creative Brief:**
 ${topicBlock}
@@ -303,7 +334,7 @@ CRITICAL: No matter how much background context is provided, the comic's premise
  * otherwise it generates from scratch. `consistencyTags` is guarded against
  * null/undefined since the AI occasionally omits the field.
  */
-const constructImagePrompt = (
+export const constructImagePrompt = (
     basePrompt: string,
     consistencyTags: string[],
     illustrationStyle?: string,
@@ -342,7 +373,7 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
 
     const roleGuidance: Record<string, string> = {
         establish: 'ESTABLISH — Opening panel. Introduce the characters and situation with clarity. Prefer a wide or medium establishing shot so the reader grasps the premise at a glance.',
-        escalate: 'ESCALATE — The absurdity is intensifying. Composition should feel more pressured and dynamic than the opener — raise the stakes visually, build dread or comic tension.',
+        escalate: 'DEVELOP — Show the next consequence or repetition. Match the selected register: deadpan may stay static and restrained; grounded satire need not become absurd or frantic. Intensify visually only when the chosen style calls for it.',
         punchline: 'PUNCHLINE — The payoff. Compose for maximum visual impact: a sight gag, a reveal, or a juxtaposition that recontextualises everything before it. Choose the framing that makes the joke land hardest — go wide for a grand reveal or tight for a reaction shot.',
         button: 'BUTTON — A brief coda after the punchline. Keep the composition tight and punchy.',
     };
@@ -363,7 +394,13 @@ Key props, vehicles, buildings, and set pieces must maintain consistent spatial 
         ? `\nFIXED SET ELEMENTS — SPATIAL CONTRACT: The following background elements are fixed throughout the strip. Reproduce them in these exact positions whenever they are visible in this panel. Do not move, remove, or alter them unless the scene description or continuity note explicitly says they have changed.\n${setDescription.trim()}\n`
         : '';
 
-    return `${narrativeContextBlock}
+    const actionContract = panelContext?.action
+        ? `\nVISIBLE ACTION CONTRACT (${panelContext.action.id}): ${panelContext.action.description}\nBEFORE: ${panelContext.action.before}\nAFTER: ${panelContext.action.after}\nShow THIS action at its decisive moment. Do not replace it with the previous/next action. Continuity references describe appearance, not a different beat.\n`
+        : '';
+    const storyContract = panelContext?.story
+        ? `\nSTORY INTENT: ${panelContext.story.satirical_argument}\nREADER SETUP: ${panelContext.story.setup}\nPAYOFF INTENT: ${panelContext.story.payoff}\nSOURCE ANCHOR (${panelContext.brief?.sourceKind === 'provided-context' ? 'supplied background, not independently verified' : 'topic-based fiction; not verified reporting'}): ${panelContext.story.source_anchor}\nThis is context for drawing the requested panel, not permission to add future actions, characters or text.\n`
+        : '';
+    return `${narrativeContextBlock}${storyContract}${actionContract}
 OVERLAY TEXT — DO NOT RENDER IN IMAGE: Speech bubbles, thought clouds, dialogue, captions, narrator boxes, and sound-effect text must NOT appear anywhere in the artwork. These are composited on top of the image by a separate overlay system — any version you draw will be hidden under it and will only create visual noise. Leave all of that space clean.${overlayBlacklistBlock}
 ${setDescriptionBlock}
 PROP TEXT — RENDER ACCURATELY: Signs, screens, posters, newspapers, protest banners, name badges, labels, whiteboards, book covers, and any other in-world written props should show the exact text described below. The model is expected to produce legible, correctly-spelled prop text. "A placard reading 'HANDS OFF OUR DATA'" means render those exact words on that placard.
@@ -468,6 +505,7 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
   }
 
   if (typeof plan.premise === 'string') newPlan.premise = plan.premise.trim();
+  newPlan.story = sanitizeStory(plan.story);
   if (typeof plan.title === 'string') newPlan.title = plan.title.trim();
   if (typeof plan.summary === 'string') newPlan.summary = plan.summary.trim();
   if (typeof plan.set_description === 'string' && plan.set_description.trim()) {
@@ -491,6 +529,10 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
 
       if (typeof p.slug === 'string') newPanel.slug = p.slug;
       if (typeof p.visual_prompt === 'string') newPanel.visual_prompt = p.visual_prompt;
+      if (p.action && typeof p.action === 'object') {
+          const field = (name: string) => typeof p.action[name] === 'string' ? p.action[name].trim().slice(0, 1000) : '';
+          newPanel.action = { id: field('id'), description: field('description'), before: field('before'), after: field('after') };
+      }
       if (['small', 'medium', 'large'].includes(p.size)) newPanel.size = p.size;
       if (['establish', 'escalate', 'punchline', 'button'].includes(p.comedic_role)) {
           newPanel.comedic_role = p.comedic_role;
@@ -504,7 +546,9 @@ const sanitizeComicPlan = (plan: any): ComicPlan => {
               if (typeof el === 'object' && el !== null && typeof el.text === 'string') {
                   const text = el.text.trim();
                   const role = coerceRole(text, typeof el.role === 'string' ? el.role : '');
-                  newPanel.text_elements.push({ text, role });
+                  const anchor = el.anchor && Number.isFinite(el.anchor.x) && Number.isFinite(el.anchor.y)
+                      ? { x: Math.max(0, Math.min(100, el.anchor.x)), y: Math.max(0, Math.min(100, el.anchor.y)) } : undefined;
+                  newPanel.text_elements.push({ text, role, action_id: typeof el.action_id === 'string' ? el.action_id.trim().slice(0, 1000) : undefined, anchor });
               }
           }
       }
@@ -557,10 +601,9 @@ const generateSingleComicPlan = async (formData: ComicFormData, userProvidedImag
             throw new Error("The AI returned an empty response. Please try again.");
         }
         const rawPlan = JSON.parse(jsonText);
-        return sanitizeComicPlan(rawPlan);
+        return attachStoryBrief(sanitizeComicPlan(rawPlan), formData);
     } catch (e) {
-        console.error("Failed to parse comic plan JSON:", e);
-        console.error("Received text:", result.text);
+        console.warn("Could not parse the story plan; provider content omitted.");
         throw new Error("The AI returned an invalid story plan. Please try regenerating.");
     }
 };
@@ -603,11 +646,10 @@ const generateMultipleComicPlans = async (formData: ComicFormData, userProvidedI
         }
         
         // Sanitize each plan within the array.
-        return rawPlans.map(sanitizeComicPlan);
+        return rawPlans.map(plan => attachStoryBrief(sanitizeComicPlan(plan), formData));
 
     } catch (e) {
-        console.error("Failed to parse multiple comic plans JSON:", e);
-        console.error("Received text:", result.text);
+        console.warn("Could not parse the story choices; provider content omitted.");
         throw new Error("The AI returned an invalid set of story ideas. Please try regenerating.");
     }
 };
@@ -672,7 +714,7 @@ const generateContextExplainer = async (
         ? `\n**Background provided by user:** "${newsContext}"\n`
         : '';
     const contents = `
-The following is a satirical comic strip. Use Google Search to find the real-world news event or context this comic references, then write a 1–2 sentence factual explanation of it. Tone: dry, neutral, and informational — like a newspaper footnote. Do not editorialize or take sides.
+The following is a fictional satirical comic strip. Write a 1–2 sentence context note. When background is supplied, use that subject and distinguish supplied claims from facts supported by Google Search. Without background, search for related context, but do NOT infer that invented comic names, numbers, quotes or allegations really occurred. Say when no matching event can be established. Do not retrofit a different news event to justify the comic. This note is researched AFTER the artwork and is not proof of what the story planner knew. Tone: dry, neutral and informational.
 
 **Comic Title:** "${title}"
 **Comic Summary:** "${summary}"${contextSection}
@@ -722,6 +764,8 @@ const liveGeminiService = {
 
 const MOCK_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const mockPlan: ComicPlan = {
+    story: { source_anchor: 'Fictional office automation', source_excerpt: '', source_panel_slug: 'shortcut',
+        satirical_argument: 'Automation expands bureaucracy instead of removing it.', setup: 'A reporter automates work.', payoff: 'Meetings multiply.', review_notes: [] },
     premise: 'A banana discovers that every productivity shortcut creates two more meetings.',
     title: 'The Peel Deal',
     summary: 'An ambitious banana automates its work and accidentally automates the bureaucracy too.',
@@ -729,6 +773,7 @@ const mockPlan: ComicPlan = {
     panels: [
         {
             slug: 'shortcut',
+            action: { id: 'press', description: 'Press the automation button.', before: 'Reporter at the desk.', after: 'Automation is running.' },
             comedic_role: 'establish',
             visual_prompt: 'A banana reporter proudly presses a large automate button in a busy newsroom.',
             text_elements: [{ role: 'speech', text: 'I automated everything!' }],
@@ -739,6 +784,7 @@ const mockPlan: ComicPlan = {
         },
         {
             slug: 'meetings',
+            action: { id: 'meetings', description: 'React to multiplying meetings.', before: 'Automation is running.', after: 'Reporter is surrounded by meeting invitations.' },
             comedic_role: 'punchline',
             visual_prompt: 'The banana reporter is surrounded by calendar invitations pouring from a printer.',
             text_elements: [{ role: 'speech', text: 'Including the meetings?' }],
@@ -750,7 +796,12 @@ const mockPlan: ComicPlan = {
 };
 
 const mockGeminiService = {
-    generateSingleComicPlan: async () => structuredClone(mockPlan),
+    generateSingleComicPlan: async (form: ComicFormData) => {
+        const plan = structuredClone(mockPlan);
+        plan.premise = form.customPremise || plan.premise;
+        if (form.newsContext) plan.story = { ...plan.story!, source_anchor: form.topic, source_excerpt: form.newsContext.slice(0, 200) };
+        return attachStoryBrief(plan, form);
+    },
     generateMultipleComicPlans: async () => [
         structuredClone(mockPlan),
         { ...structuredClone(mockPlan), title: 'Deadline Split' },

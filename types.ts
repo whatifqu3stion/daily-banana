@@ -59,6 +59,8 @@ export interface ElementSize {
 // A unified interface for all text-based elements in a panel.
 export interface TextElementData {
   id: string;
+  action_id?: string;
+  anchor?: { x: number; y: number };
   text: string;
   role: 'speech' | 'thought' | 'sfx' | 'caption';
   position: ElementPosition;
@@ -81,6 +83,8 @@ export type AspectRatio = '1:1' | '16:9' | '4:3' | '9:16';
 
 // Data for a single generated panel from the AI plan.
 export interface PlanPanel {
+    id?: string;
+    action?: PanelAction;
     slug: string;
     comedic_role?: 'establish' | 'escalate' | 'punchline' | 'button';
     visual_prompt: string;
@@ -88,6 +92,8 @@ export interface PlanPanel {
     text_elements: {
         text: string;
         role: 'speech' | 'thought' | 'sfx' | 'caption';
+        action_id?: string;
+        anchor?: { x: number; y: number };
     }[];
     consistency_tags: string[];
     // Layout hints from the AI — used by layoutAdapter to select a template.
@@ -101,6 +107,9 @@ export interface PlanPanel {
 
 // Data for the entire comic plan from the AI.
 export interface ComicPlan {
+    id?: string;
+    brief?: StoryBrief;
+    story?: StoryIntent;
     premise?: string; // Internal core-joke anchor used during generation
     title: string;
     summary: string;
@@ -117,6 +126,10 @@ export interface LayoutProps {
 // Narrative context passed to the image model so it understands each panel's
 // role in the overall comic arc — not just its isolated visual description.
 export interface PanelContext {
+  story?: StoryIntent;
+  brief?: StoryBrief;
+  action?: PanelAction;
+  effects?: { text: string; action_id?: string }[];
   premise?: string;
   comedicRole?: string;
   panelIndex: number;
@@ -126,6 +139,9 @@ export interface PanelContext {
 // Enriched data for a panel within the application state.
 export interface PanelData {
   id: string;
+  planSlug?: string;
+  action?: PanelAction;
+  continuityWarning?: string;
   image: string; // base64 encoded image
   failed?: boolean; // true if image generation failed for this panel
   panelError?: string; // Human-readable error from the last failed operation on this panel
@@ -140,6 +156,9 @@ export interface PanelData {
 
 // Interface for the complete comic strip data used in the app.
 export interface ComicStripData {
+  generationId?: string;
+  brief?: StoryBrief;
+  story?: StoryIntent;
   title: string;
   premise?: string; // The core comedic premise — passed to image model for narrative context.
   set_description?: string; // Fixed background prop contract — injected into per-panel regens.
@@ -184,9 +203,43 @@ export interface NewsFeed {
 // Data passed from useComicGeneration to ReviewPlan after the first panel has
 // been generated and approved. Kept here so both sides share the same type.
 export interface ReviewData {
+  generationId?: string;
+  continuityWarning?: string;
   plan: ComicPlan;
   /** Base64 PNG of the generated panel 0 image. */
   firstPanelImage: string;
   userProvidedImages: ProcessedReferenceImage[];
   panelLayouts: LayoutProps[];
+}
+
+export interface PanelAction {
+  id: string;
+  description: string;
+  before: string;
+  after: string;
+}
+
+/** App-authored input snapshot, not a model's claim of fact verification. */
+export interface StoryBrief {
+  sourceKind: 'provided-context' | 'topic-only';
+  topic: string;
+  background?: string;
+  stance: string;
+  register: string;
+  illustrationStyle?: string;
+  imageModel: ImageModel;
+  customPremise?: string;
+  brainstormMode: boolean;
+  includeContext: boolean;
+  referenceTags: string[];
+}
+
+export interface StoryIntent {
+  source_anchor: string;
+  source_excerpt: string;
+  source_panel_slug: string;
+  satirical_argument: string;
+  setup: string;
+  payoff: string;
+  review_notes: string[];
 }

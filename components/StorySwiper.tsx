@@ -5,10 +5,13 @@ import React, { useState, useCallback } from 'react';
 import { ComicPlan } from '../types';
 import RefreshIcon from './icons/RefreshIcon';
 import SparklesIcon from './icons/SparklesIcon';
+import StoryCheck from './StoryCheck';
+import { inspectStory } from '../services/storyContract';
 
 interface StorySwiperProps {
     storyPlans: ComicPlan[];
     onSelectStory: (plan: ComicPlan) => void;
+    onUpdateStory?: (plan: ComicPlan) => void;
     onRegenerate: () => void;
     onReturnToForm: () => void;
     onCustomPremise: (premise: string) => void;
@@ -33,6 +36,7 @@ const COMEDIC_ROLE_LABELS: Record<string, string> = {
 const StorySwiper: React.FC<StorySwiperProps> = ({
     storyPlans,
     onSelectStory,
+    onUpdateStory,
     onRegenerate,
     onReturnToForm,
     onCustomPremise,
@@ -204,6 +208,7 @@ const StorySwiper: React.FC<StorySwiperProps> = ({
                             <p className="max-w-2xl mx-auto text-base md:text-lg font-open-sans leading-7 text-gray-700 mt-2">{currentPlan.summary}</p>
                         </header>
                         <div className="p-5 md:p-7 space-y-5">
+                            <StoryCheck plan={currentPlan} onChange={onUpdateStory} />
                             {currentPlan.premise && (
                                 <div className="rounded-md border border-yellow-600/50 bg-yellow-50 px-4 py-3">
                                     <p className="text-xs font-open-sans font-bold uppercase tracking-wider text-gray-700">Core joke</p>
@@ -266,7 +271,8 @@ const StorySwiper: React.FC<StorySwiperProps> = ({
                     </button>
                     <button
                         type="button"
-                        onClick={() => onSelectStory(currentPlan)}
+                                onClick={() => onSelectStory(currentPlan)}
+                                disabled={inspectStory(currentPlan).some(issue => issue.blocking)}
                         className="inline-flex items-center justify-center gap-3 px-7 py-3 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black hover:bg-yellow-300 transition-colors rounded-md"
                     >
                         <SparklesIcon className="w-6 h-6" />

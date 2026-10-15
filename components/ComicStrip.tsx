@@ -12,6 +12,7 @@ import DownloadIcon from './icons/DownloadIcon';
 import TwitterIcon from './icons/TwitterIcon';
 import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
+import StoryCheck from './StoryCheck';
 
 interface ComicStripProps {
   comicData: ComicStripData;
@@ -137,6 +138,9 @@ const ComicStrip: React.FC<ComicStripProps> = ({
            <aside className="mt-7 grid gap-3 border-y border-black/50 py-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-6 md:py-5">
              <div>
                <h4 className="font-special-elite text-lg font-bold leading-tight text-black">A Note from the Archives</h4>
+               {comicData.brief && <p className="mt-2 font-open-sans text-sm leading-5 text-gray-700">
+                 Later research, {comicData.brief.sourceKind === 'provided-context' ? 'starting from your supplied background' : 'related to your topic'}. Not a record of the planner’s sources.
+               </p>}
             {comicData.contextSources && comicData.contextSources.length > 0 && (
                <p className="mt-3 break-words text-sm font-open-sans leading-5 text-gray-700">
                 {'Sources: '}
@@ -176,6 +180,12 @@ const ComicStrip: React.FC<ComicStripProps> = ({
            Export issue: {downloadError}
         </p>
       )}
+      {comicData.story && <div className="w-full">
+        <StoryCheck plan={{ ...comicData, summary: '', panels: comicData.panels.map(panel => ({
+          id: panel.id, slug: panel.planSlug || panel.id, action: panel.action, visual_prompt: panel.visual_prompt,
+          text_elements: panel.text_elements, consistency_tags: panel.consistency_tags, size: 'medium', aspect_ratio: panel.layoutProps.aspectRatio,
+        })) }} />
+      </div>}
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
          <Tooltip text="Start with a new topic and settings">
           <button

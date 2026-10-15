@@ -48,11 +48,12 @@ test('key-check deadline unlocks the form and reports timeout rather than an inv
 });
 
 const plan = {
+  story: { source_anchor: 'Office automation', source_excerpt: '', source_panel_slug: 'start', satirical_argument: 'Automation creates bureaucracy.', setup: 'A banana automates work.', payoff: 'Meetings multiply.', review_notes: [] },
   title: 'Personal Edition', premise: 'Automation creates more meetings.',
   summary: 'A banana learns that automation has a downside.',
   panels: [
-    { slug: 'start', size: 'medium', comedic_role: 'establish', visual_prompt: 'A banana in a newsroom.', consistency_tags: ['banana'], text_elements: [] },
-    { slug: 'end', size: 'large', comedic_role: 'punchline', visual_prompt: 'A banana surrounded by meetings.', consistency_tags: ['banana'], text_elements: [] },
+    { slug: 'start', action: { id: 'start', description: 'Start automation.', before: 'At desk.', after: 'Automation running.' }, size: 'medium', comedic_role: 'establish', visual_prompt: 'A banana in a newsroom.', consistency_tags: ['banana'], text_elements: [] },
+    { slug: 'end', action: { id: 'end', description: 'Receive meetings.', before: 'Automation running.', after: 'Meetings multiply.' }, size: 'large', comedic_role: 'punchline', visual_prompt: 'A banana surrounded by meetings.', consistency_tags: ['banana'], text_elements: [] },
   ],
 };
 type Call = { endpoint: string; body: any; headers: Record<string, string> };

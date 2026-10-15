@@ -17,6 +17,8 @@ import {
 } from '../types';
 import { toBase64 } from '../utils/fileUtils';
 import { layoutAdapter } from '../utils/layoutAdapter';
+import { PanelRun } from '../shared/panel-run.mjs';
+import { assertDrawableStory, panelStoryContext } from '../services/storyContract';
 
 const getGeminiService = async () => (await import('../services/geminiService')).geminiService;
 
@@ -110,32 +112,29 @@ export default function useComicGeneration() {
   // Speculative background generation: pre-build panels 2+ while user reviews panel 1.
   // Indexed from 0 = panel[1], 1 = panel[2], etc.
   // null means the speculative attempt failed; undefined means not yet attempted.
-  const speculativePanelsRef = useRef<(string | null)[]>([]);
-  const speculativeAbortRef = useRef<boolean>(false);
+  const panelRunRef = useRef<PanelRun | null>(null);
+  const generationEpoch = useRef(0);
+  const customRequest = useRef(0);
 
   // Kick off speculative generation whenever the user enters the Review stage
   // (or when they refine/regenerate panel 1, since reviewData changes).
   useEffect(() => {
-    if (!reviewData || !formDataCache) {
-      speculativeAbortRef.current = true;
-      return;
-    }
-
-    // Reset state for new speculative run
-    speculativeAbortRef.current = false;
-    speculativePanelsRef.current = [];
+    if (!reviewData || !formDataCache || appStage !== 'review') return;
+    const run = new PanelRun(reviewData.generationId);
+    panelRunRef.current?.invalidate();
+    panelRunRef.current = run;
 
     const { plan, firstPanelImage, userProvidedImages, panelLayouts } = reviewData;
     const { illustrationStyle, comedicStyle, imageModel } = formDataCache;
 
-    if (plan.panels.length <= 1) return;
+    if (plan.panels.length <= 1 || reviewData.continuityWarning) return () => run.invalidate();
 
     const globalTags = poolConsistencyTags(plan);
 
     (async () => {
       let prevImage = firstPanelImage;
       for (let i = 1; i < plan.panels.length; i++) {
-        if (speculativeAbortRef.current) return;
+        if (!run.active || !run.scheduling) return;
         const panel = plan.panels[i];
         const prevRef = makeConsistencyRef(prevImage, i);
         // For panels 3+, re-anchor to the user-approved panel 0 as the
@@ -146,7 +145,7 @@ export default function useComicGeneration() {
           prevRef,
         ];
         try {
-          const img = await (await getGeminiService()).generatePanelImageWithReferences(
+          const img = await run.getOrStart(panel.id || panel.slug, async () => (await getGeminiService()).generatePanelImageWithReferences(
             panel.visual_prompt,
             globalTags,
             illustrationStyle,
@@ -156,25 +155,23 @@ export default function useComicGeneration() {
             formDataCache.stance,
             panelLayouts[i]?.aspectRatio,
             panel.text_elements?.map(el => el.text) ?? [],
-            { premise: plan.premise, comedicRole: panel.comedic_role, panelIndex: i, totalPanels: plan.panels.length },
+            panelStoryContext(plan, panel, i, plan.panels.length),
             plan.panels[i - 1]?.scene_state,
             plan.set_description,
-          );
-          if (speculativeAbortRef.current) return;
-          speculativePanelsRef.current[i - 1] = img;
+          ));
+          if (!run.active || !run.scheduling) return;
           prevImage = img;
         } catch {
-          if (!speculativeAbortRef.current) {
-            speculativePanelsRef.current[i - 1] = null;
-          }
+          // Cached failure is shown for explicit Retry, never silently charged again.
+          return;
         }
       }
     })();
 
     return () => {
-      speculativeAbortRef.current = true;
+      run.invalidate();
     };
-  }, [reviewData, formDataCache]);
+  }, [reviewData, formDataCache, appStage]);
 
   const _setError = useCallback((errorMessage: string | null) => {
     setError(errorMessage);
@@ -183,8 +180,10 @@ export default function useComicGeneration() {
   }, []);
 
   const handleStartNew = useCallback(() => {
-    speculativeAbortRef.current = true;
-    speculativePanelsRef.current = [];
+    generationEpoch.current++;
+    customRequest.current++;
+    setIsCustomPremiseLoading(false);
+    panelRunRef.current?.invalidate();
     setAppStage('form');
     setFormDataCache(null);
     setComicPlans([]);
@@ -196,6 +195,7 @@ export default function useComicGeneration() {
     setIsCustomPremiseLoading(false);
     setCustomPremiseError(null);
     activeComicReferences.current = [];
+    setPanelLoadingState(new Set());
   }, []);
 
   const isPanelLoading = useCallback((panelIndex: number) => {
@@ -223,6 +223,10 @@ export default function useComicGeneration() {
       setAppStage(currentFormData.brainstormMode ? 'story-swipe' : 'form');
       return;
     }
+    try { assertDrawableStory(plan); }
+    catch (error) { _setError(error instanceof Error ? error.message : 'Check the story before drawing.'); return; }
+    const epoch = ++generationEpoch.current;
+    panelRunRef.current?.invalidate();
 
     setIsLoading(true);
     setLoadingMessages([
@@ -238,6 +242,7 @@ export default function useComicGeneration() {
 
     try {
       const userImages = await processReferenceImages(currentFormData.referenceImages);
+      if (epoch !== generationEpoch.current) return;
       activeComicReferences.current = userImages;
 
       const firstPanelPlan = plan.panels[0];
@@ -253,21 +258,25 @@ export default function useComicGeneration() {
         currentFormData.stance,
         panelLayouts[0]?.aspectRatio,
         firstPanelPlan.text_elements?.map(el => el.text) ?? [],
-        { premise: plan.premise, comedicRole: firstPanelPlan.comedic_role, panelIndex: 0, totalPanels: plan.panels.length },
+        panelStoryContext(plan, firstPanelPlan, 0, plan.panels.length),
         undefined,
         plan.set_description,
       );
 
-      setReviewData({ plan, firstPanelImage, userProvidedImages: userImages, panelLayouts });
+      if (epoch !== generationEpoch.current) return;
+      setReviewData({ plan, firstPanelImage, userProvidedImages: userImages, panelLayouts, generationId: crypto.randomUUID() });
       setAppStage('review');
     } catch (err: any) {
-      _setError(err.message || 'Failed to generate the first panel image.');
+      if (epoch === generationEpoch.current) _setError(err.message || 'Failed to generate the first panel image.');
     } finally {
-      setIsLoading(false);
+      if (epoch === generationEpoch.current) setIsLoading(false);
     }
   }, [formDataCache, _setError, processReferenceImages]);
 
   const handleFormSubmit = useCallback(async (formData: ComicFormData) => {
+    const epoch = ++generationEpoch.current;
+    panelRunRef.current?.invalidate();
+    setReviewData(null);
     setIsLoading(true);
     setError(null);
     setFormDataCache(formData);
@@ -275,11 +284,13 @@ export default function useComicGeneration() {
 
     try {
       const userImages = await processReferenceImages(formData.referenceImages);
+      if (epoch !== generationEpoch.current) return;
       activeComicReferences.current = userImages;
 
       if (formData.brainstormMode) {
         setLoadingMessages(['Brainstorming story concepts...', 'Crafting witty dialogue...', 'Polishing the punchlines...']);
         const plans = await (await getGeminiService()).generateMultipleComicPlans(formData, userImages);
+        if (epoch !== generationEpoch.current) return;
         if (plans.length === 0) {
           throw new Error("The AI couldn't generate any story ideas. Please try a different topic.");
         }
@@ -290,13 +301,14 @@ export default function useComicGeneration() {
         // the AI concept or switch to the "Write Your Own Angle" card.
         setLoadingMessages(['Drafting a story concept...', 'Structuring the panels...', 'Finalizing the narrative...']);
         const plan = await (await getGeminiService()).generateSingleComicPlan(formData, userImages);
+        if (epoch !== generationEpoch.current) return;
         setComicPlans([plan]);
         setAppStage('story-swipe');
       }
     } catch (err: any) {
-      _setError(err.message || 'An unexpected error occurred during planning.');
+      if (epoch === generationEpoch.current) _setError(err.message || 'An unexpected error occurred during planning.');
     } finally {
-      setIsLoading(false);
+      if (epoch === generationEpoch.current) setIsLoading(false);
     }
   }, [processReferenceImages, _setError, handleSelectStory]);
 
@@ -306,8 +318,13 @@ export default function useComicGeneration() {
       return;
     }
 
-    // Stop any still-running speculative generation — results are no longer needed.
-    speculativeAbortRef.current = true;
+    const epoch = generationEpoch.current;
+    // Stop background scheduling, but JOIN already-started work instead of
+    // sending a second paid request for the same panel.
+    const run = panelRunRef.current?.active && panelRunRef.current.id === reviewData.generationId
+      ? panelRunRef.current : new PanelRun(reviewData.generationId);
+    panelRunRef.current = run;
+    run.stopScheduling();
 
     setIsLoading(true);
     setError(null);
@@ -323,40 +340,23 @@ export default function useComicGeneration() {
     setProgress({ current: 1, total: totalPanels });
     setLoadingMessages(["Inking the final panels..."]);
 
-    // Track whether the speculative chain is still valid.
-    // If any panel was not speculatively generated, all subsequent ones are invalidated
-    // (since they were built on that missing link in the chain).
-    let speculativeChainValid = true;
-
     for (const [index, panel] of remainingPanels.entries()) {
+      if (epoch !== generationEpoch.current || !run.active) return;
       const panelNumber = index + 2;
-      const speculativeImg = speculativeChainValid
-        ? speculativePanelsRef.current[index]
-        : undefined;
-
-      if (speculativeImg !== undefined && speculativeImg !== null) {
-        // Lucky — this panel was pre-built in the background
-        panelImages.push(speculativeImg);
-        setProgress({ current: panelNumber, total: totalPanels });
-        setLoadingMessages([`Panel ${panelNumber} of ${totalPanels} ready (pre-built)...`]);
-        continue;
-      }
-
-      // Speculative result unavailable or failed — generate now
-      speculativeChainValid = false;
       setLoadingMessages([`Generating panel ${panelNumber} of ${totalPanels}...`]);
 
-      const previousImageAsRef = makeConsistencyRef(panelImages[panelImages.length - 1], panelNumber - 1);
+      const previousImage = panelImages[panelImages.length - 1];
+      const previousImageRefs = previousImage ? [makeConsistencyRef(previousImage, panelNumber - 1)] : [];
       // For panels 3+, prepend the user-approved panel 0 as a primary style sheet
       // so character drift from the immediately preceding panel can't compound.
       const refs: ProcessedReferenceImage[] = [
         ...userReferences,
         ...(panelImages.length > 1 ? [makePrimaryStyleRef(panelImages[0])] : []),
-        previousImageAsRef,
+        ...previousImageRefs,
       ];
 
       try {
-        const newImage = await (await getGeminiService()).generatePanelImageWithReferences(
+        const newImage = await run.getOrStart(panel.id || panel.slug, async () => (await getGeminiService()).generatePanelImageWithReferences(
           panel.visual_prompt,
           globalTags,
           formDataCache.illustrationStyle,
@@ -366,20 +366,22 @@ export default function useComicGeneration() {
           formDataCache.stance,
           reviewData.panelLayouts[index + 1]?.aspectRatio,
           panel.text_elements?.map(el => el.text) ?? [],
-          { premise: reviewData.plan.premise, comedicRole: panel.comedic_role, panelIndex: index + 1, totalPanels: reviewData.plan.panels.length },
+          panelStoryContext(reviewData.plan, panel, index + 1, totalPanels),
           reviewData.plan.panels[index]?.scene_state,
           reviewData.plan.set_description,
-        );
+        ));
         panelImages.push(newImage);
       } catch {
         // Partial failure: mark this panel as failed but keep going
         panelImages.push('');
       }
 
+      if (epoch !== generationEpoch.current || !run.active) return;
       setProgress({ current: panelNumber, total: totalPanels });
     }
+    if (epoch !== generationEpoch.current || !run.active) return;
 
-    // Build context explainer in parallel with the last panel if needed
+    // Later research, not the original planning input or a story validator.
     let contextText: string | undefined = undefined;
     let contextSources: ExplainerSource[] = [];
     if (formDataCache.includeContext) {
@@ -392,6 +394,7 @@ export default function useComicGeneration() {
       contextText = explainerResult.text;
       contextSources = explainerResult.sources;
     }
+    if (epoch !== generationEpoch.current || !run.active) return;
 
     const finalPanels: PanelData[] = reviewData.plan.panels.map((planPanel, index) => {
       const image = panelImages[index] ?? '';
@@ -410,11 +413,12 @@ export default function useComicGeneration() {
         ? (isWidePanel ? BUBBLE_SLOTS_SINGLE_WIDE : BUBBLE_SLOTS_SINGLE)
         : BUBBLE_SLOTS_MULTI;
       let bubbleSlot = 0;
-      const textElements = (planPanel.text_elements || []).map(te => {
+      const textElements = (planPanel.text_elements || []).map((te, textIndex) => {
+        const textId = `${planPanel.id || planPanel.slug}:text:${textIndex}`;
         if (te.role === 'caption') {
           return {
             ...te,
-            id: crypto.randomUUID(),
+            id: textId,
             position: { x: '3%', y: '79%' },
             size: { width: '94%', height: '18%' },
             tailPosition: { x: '50%', y: '50%' },
@@ -424,8 +428,8 @@ export default function useComicGeneration() {
         if (te.role === 'sfx') {
           return {
             ...te,
-            id: crypto.randomUUID(),
-            position: { x: '20%', y: '28%' },
+            id: textId,
+            position: te.anchor ? { x: `${Math.max(0, Math.min(40, te.anchor.x - 30))}%`, y: `${Math.max(0, Math.min(72, te.anchor.y - 14))}%` } : { x: '20%', y: '28%' },
             size: { width: '60%', height: '28%' },
             tailPosition: { x: '50%', y: '50%' },
             invertedColors: false,
@@ -436,7 +440,7 @@ export default function useComicGeneration() {
         bubbleSlot++;
         return {
           ...te,
-          id: crypto.randomUUID(),
+          id: textId,
           position: slot.pos,
           size: slot.size,
           tailPosition: slot.tail,
@@ -445,7 +449,9 @@ export default function useComicGeneration() {
       });
 
       return {
-        id: crypto.randomUUID(),
+        id: planPanel.id || planPanel.slug,
+        planSlug: planPanel.slug,
+        action: planPanel.action,
         image,
         failed,
         visual_prompt: planPanel.visual_prompt,
@@ -459,6 +465,9 @@ export default function useComicGeneration() {
     });
 
     setComicStripData({
+      generationId: reviewData.generationId,
+      brief: reviewData.plan.brief,
+      story: reviewData.plan.story,
       title: reviewData.plan.title,
       premise: reviewData.plan.premise,
       set_description: reviewData.plan.set_description,
@@ -482,6 +491,7 @@ export default function useComicGeneration() {
 
   const handleRegeneratePanelImage = useCallback(async (panelIndex: number) => {
     if (!comicStripData || !formDataCache) return;
+    const epoch = generationEpoch.current;
 
     // Clear any previous per-panel error and start loading.
     handleUpdatePanel(panelIndex, { panelError: undefined });
@@ -516,6 +526,7 @@ export default function useComicGeneration() {
           )]
         : [];
 
+      const owner = comicStripData.generationId;
       const newImage = await (await getGeminiService()).generatePanelImageWithReferences(
         panel.visual_prompt,
         globalTags,
@@ -526,18 +537,26 @@ export default function useComicGeneration() {
         formDataCache.stance,
         panel.layoutProps.aspectRatio,
         panel.text_elements?.map(el => el.text) ?? [],
-        { premise: comicStripData.premise, comedicRole: panel.comedic_role, panelIndex, totalPanels: comicStripData.panels.length },
+        panelStoryContext(comicStripData, panel, panelIndex, comicStripData.panels.length),
         panelIndex > 0 ? comicStripData.panels[panelIndex - 1]?.scene_state : undefined,
         comicStripData.set_description,
       );
-      handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
+      setComicStripData(current => {
+        if (!current || current.generationId !== owner || current.panels[panelIndex]?.id !== panel.id) return current;
+        return { ...current, panels: current.panels.map((item, index) => index < panelIndex ? item : {
+          ...item, ...(index === panelIndex ? { image: newImage, failed: false, panelError: undefined } : {}),
+          continuityWarning: index === panelIndex ? 'Artwork changed. Check its planned action and text before marking it reviewed.' : 'An earlier reference image changed. Check continuity; this panel was not automatically redrawn.',
+        }) };
+      });
     } catch (err: any) {
+      if (epoch !== generationEpoch.current) return;
       // Surface as a per-panel error — do NOT use _setError which would destroy the
       // entire comic strip with a global ErrorState and force the user to start over.
       handleUpdatePanel(panelIndex, {
         panelError: err.message || `Failed to regenerate panel ${panelIndex + 1}.`,
       });
     } finally {
+      if (epoch !== generationEpoch.current) return;
       setPanelLoadingState(prev => {
         const newSet = new Set(prev);
         newSet.delete(panelIndex);
@@ -548,6 +567,7 @@ export default function useComicGeneration() {
 
   const handleRefinePanelImage = useCallback(async (panelIndex: number, refinementPrompt: string) => {
     if (!comicStripData || !formDataCache) return;
+    const epoch = generationEpoch.current;
 
     const panel = comicStripData.panels[panelIndex];
 
@@ -569,6 +589,7 @@ export default function useComicGeneration() {
         ...new Set<string>(comicStripData.panels.flatMap(p => [...p.consistency_tags, ...p.user_consistency_tags])),
       ];
 
+      const owner = comicStripData.generationId;
       const newImage = await (await getGeminiService()).refinePanelImage(
         panel.image,
         refinementPrompt,
@@ -581,17 +602,25 @@ export default function useComicGeneration() {
         formDataCache.stance,
         panel.layoutProps.aspectRatio,
         panel.text_elements?.map(el => el.text) ?? [],
-        { premise: comicStripData.premise, comedicRole: panel.comedic_role, panelIndex, totalPanels: comicStripData.panels.length },
+        panelStoryContext(comicStripData, panel, panelIndex, comicStripData.panels.length),
         panelIndex > 0 ? comicStripData.panels[panelIndex - 1]?.scene_state : undefined,
         comicStripData.set_description,
       );
-      handleUpdatePanel(panelIndex, { image: newImage, failed: false, panelError: undefined });
+      setComicStripData(current => {
+        if (!current || current.generationId !== owner || current.panels[panelIndex]?.id !== panel.id) return current;
+        return { ...current, panels: current.panels.map((item, index) => index < panelIndex ? item : {
+          ...item, ...(index === panelIndex ? { image: newImage, failed: false, panelError: undefined } : {}),
+          continuityWarning: index === panelIndex ? 'Artwork changed. Check its planned action and text before marking it reviewed.' : 'An earlier reference image changed. Check continuity; this panel was not automatically redrawn.',
+        }) };
+      });
     } catch (err: any) {
+      if (epoch !== generationEpoch.current) return;
       // Per-panel error — do NOT use _setError (would destroy the comic strip).
       handleUpdatePanel(panelIndex, {
         panelError: err.message || `Failed to refine panel ${panelIndex + 1}.`,
       });
     } finally {
+      if (epoch !== generationEpoch.current) return;
       setPanelLoadingState(prev => {
         const newSet = new Set(prev);
         newSet.delete(panelIndex);
@@ -615,6 +644,9 @@ export default function useComicGeneration() {
    */
   const handleCustomPremise = useCallback(async (premise: string) => {
     if (!formDataCache) return;
+    const request = ++customRequest.current;
+    const epoch = ++generationEpoch.current;
+    panelRunRef.current?.invalidate();
     setIsCustomPremiseLoading(true);
     setCustomPremiseError(null);
     try {
@@ -624,13 +656,14 @@ export default function useComicGeneration() {
       // form settings AND so onReturnFromReview restores the correct state.
       setFormDataCache(customFormData);
       const plan = await (await getGeminiService()).generateSingleComicPlan(customFormData, activeComicReferences.current);
+      if (epoch !== generationEpoch.current) return;
       // handleSelectStory takes over from here with the global loading screen
       // (it generates the panel 0 image before transitioning to review).
       await handleSelectStory(plan, customFormData);
     } catch (err: any) {
-      setCustomPremiseError(err.message || 'Failed to generate from your premise. Please try again.');
+      if (epoch === generationEpoch.current) setCustomPremiseError(err.message || 'Failed to generate from your premise. Please try again.');
     } finally {
-      setIsCustomPremiseLoading(false);
+      if (request === customRequest.current) setIsCustomPremiseLoading(false);
     }
   }, [formDataCache, handleSelectStory]);
 
@@ -641,30 +674,40 @@ export default function useComicGeneration() {
     }
   }, [formDataCache, handleFormSubmit]);
 
-  const onUpdateReviewImage = useCallback((newImage: string) => {
-    setReviewData(prev => prev ? { ...prev, firstPanelImage: newImage } : null);
+  const onUpdateReviewImage = useCallback((newImage: string, owner?: string) => {
+    setReviewData(prev => prev && (!owner || owner === prev.generationId) ? {
+      ...prev, firstPanelImage: newImage, generationId: crypto.randomUUID(),
+      continuityWarning: 'The first image changed. Check its action, planned text and resulting state before continuing. Later images will use this new proof.',
+    } : prev);
     // The useEffect watching reviewData will automatically restart speculative generation.
   }, []);
 
   const onUpdateSetDescription = useCallback((newDesc: string) => {
     setReviewData(prev => {
       if (!prev) return null;
-      return { ...prev, plan: { ...prev.plan, set_description: newDesc } };
+      return { ...prev, plan: { ...prev.plan, set_description: newDesc }, generationId: crypto.randomUUID(),
+        continuityWarning: 'Background direction changed. The first proof has not been redrawn; compare it with the new direction before continuing.' };
     });
   }, []);
 
   const onReturnFromSwiper = useCallback(() => {
+    generationEpoch.current++;
+    panelRunRef.current?.invalidate();
     setAppStage('form');
     setComicPlans([]);
   }, []);
 
   const onReturnFromReview = useCallback(() => {
-    speculativeAbortRef.current = true;
-    speculativePanelsRef.current = [];
+    generationEpoch.current++;
+    panelRunRef.current?.invalidate();
     // Both brainstorm and non-brainstorm now use StorySwiper, so "go back"
     // from review always returns to story-swipe rather than the raw form.
     setAppStage('story-swipe');
     setReviewData(null);
+  }, []);
+
+  const onUpdateStory = useCallback((updated: ComicPlan) => {
+    setComicPlans(plans => plans.map(plan => plan.id === updated.id ? updated : plan));
   }, []);
 
   return {
@@ -692,6 +735,7 @@ export default function useComicGeneration() {
     onRegenerateIdeas,
     onUpdateReviewImage,
     onUpdateSetDescription,
+    onUpdateStory,
     onReturnFromSwiper,
     onReturnFromReview,
   };
