@@ -247,8 +247,8 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
           Additional information <span aria-hidden="true">{showInformation ? '−' : '+'}</span>
         </button>
         <div id="key-privacy" hidden={!showInformation} className="pt-3">
-        <p className="font-open-sans text-base font-semibold leading-6 text-black">
-          Your key is sent securely to this app’s server and held only in memory for this tab’s session, for up to 30 minutes. It is never saved in a database or browser storage, returned to your browser, or logged. Refreshing requires reconnecting. AI calls go through the server to Google and are billed to your Google project.
+        <p className="font-open-sans text-base font-normal leading-6 text-black">
+          Your key stays in server memory for up to 30 minutes—never saved or logged. Reconnect after refreshing. Requests go through this server to Google and are billed to your Google project.
         </p>
         <p className="mt-2 font-open-sans text-base font-normal leading-6 text-gray-800">
           <a
