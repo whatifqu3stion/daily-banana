@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   connectGeminiKey,
   disconnectGeminiKey,
@@ -64,41 +64,33 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showInformation, setShowInformation] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const locked = disabled || busy || confirming;
+  const mounted = useRef(false);
+  const submitting = useRef(false);
+  const locked = disabled || busy;
 
   useEffect(() => {
-    if (!connected) {
-      setConfirming(false);
-      return;
-    }
-    if (!confirming || !onConnected) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let secondFrame: number | undefined;
-    // Start the readable interval only after the committed success UI has painted.
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        timer = setTimeout(onConnected, 1200);
-      });
-    });
+    mounted.current = true;
     return () => {
-      cancelAnimationFrame(firstFrame);
-      if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
-      clearTimeout(timer);
+      // A response belongs to this settings instance, not a later reopened one.
+      mounted.current = false;
     };
-  }, [connected, confirming, onConnected]);
+  }, []);
 
   const handleConnect = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (locked) return;
+    if (locked || submitting.current) return;
+    submitting.current = true;
     setError(null);
     try {
       await connectGeminiKey(keyInput);
+      if (!mounted.current) return;
       setKeyInput('');
       setEditing(false);
-      setConfirming(true);
+      onConnected?.();
     } catch (caught) {
-      setError(readableConnectionError(caught));
+      if (mounted.current) setError(readableConnectionError(caught));
+    } finally {
+      submitting.current = false;
     }
   };
 

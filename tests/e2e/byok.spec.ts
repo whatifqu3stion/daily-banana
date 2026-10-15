@@ -128,7 +128,8 @@ async function connect(page: Page, key = KEY) {
 async function freezeClock(page: Page) {
   const time = new Date('2026-10-15T12:00:00Z');
   await page.clock.install({ time });
-  await page.clock.pauseAt(new Date(time.getTime() + 100));
+  // Leave headroom for the install round trip on a busy runner, then freeze.
+  await page.clock.pauseAt(new Date(time.getTime() + 60_000));
 }
 
 for (const width of [1440, 402]) {
@@ -183,7 +184,7 @@ for (const width of [1440, 402]) {
     expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
   });
 
-  test(`approval visibly confirms before timed closure and retains setup at ${width}px`, async ({ page }) => {
+  test(`approval closes immediately without advancing the clock and retains setup at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await freezeClock(page);
     const mock = await mockBackend(page);
@@ -214,23 +215,16 @@ for (const width of [1440, 402]) {
     expect(await submit.evaluate(treatment)).toEqual(await page.getByRole('button', { name: 'Generate Comic Plan' }).evaluate(treatment));
     await submit.click();
     await expect(dialog.getByRole('button', { name: 'Checking key…' })).toBeDisabled();
+    await expect(dialog.getByLabel('Google API key', { exact: true })).toBeDisabled();
+    // Even a second submit event cannot start another pending key check.
+    await dialog.locator('form').evaluate(form => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
     await page.clock.runFor(5000);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText('No key connected', { exact: true })).toHaveCount(0);
     await expect(dialog.getByText('Key connected · checked', { exact: true })).toHaveCount(0);
     approve();
-    const status = dialog.getByRole('status').filter({ hasText: 'Key connected · checked' });
-    await expect(status).toBeVisible();
-    await expect(status.locator('span').first()).toHaveClass(/bg-banana/);
-    await expect(status).toHaveAttribute('aria-live', 'polite');
-    await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
-    await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeDisabled();
-    await expect(dialog.getByRole('button', { name: 'Remove key', exact: true })).toBeDisabled();
-    await page.keyboard.press('Enter');
-    await page.clock.runFor(1000);
-    await expect(status).toBeVisible();
-    await page.clock.runFor(300);
-    await expect(dialog).toHaveCount(0);
+    // No timer or animation frame is needed to close the native window.
+    await expect(dialog).not.toBeVisible();
     // Native dialog close dispatches asynchronously; the app then restores
     // fallback focus on the next animation frame.
     await page.clock.runFor(32);
@@ -240,31 +234,41 @@ for (const width of [1440, 402]) {
     await expect(page.getByLabel('Background Context', { exact: false })).toHaveValue('Keep these supporting facts.');
     expect(await page.evaluate(() => localStorage.getItem('dailyBanana_formState'))).toBe(setup);
     expect(mock.calls.map(call => call.endpoint)).toEqual(['connect']);
+    await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
+    const status = dialog.getByRole('status').filter({ hasText: 'Key connected · checked' });
+    await expect(status).toBeVisible();
+    await expect(status.locator('span').first()).toHaveClass(/bg-banana/);
+    await expect(status).toHaveAttribute('aria-live', 'polite');
+    await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeEnabled();
   });
 }
 
+for (const width of [1440, 402]) {
 for (const closeWith of ['Close', 'Escape']) {
-  test(`manual ${closeWith} during confirmation cancels closure of a later dialog`, async ({ page }) => {
+  test(`manual ${closeWith} during replacement never closes a later dialog at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
     const mock = await mockBackend(page);
     await page.goto('/');
     await connect(page);
     await page.getByRole('button', { name: 'Close API settings' }).click();
     await freezeClock(page);
+    let approve!: () => void;
+    const approval = new Promise<void>(resolve => { approve = resolve; });
+    await page.route('**/api/gemini/connect', async route => { await approval; await route.fallback(); });
     const trigger = page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ });
     await trigger.click();
     const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
     await dialog.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
     await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
-    await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
-    await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
-    // Cover both an already scheduled timer and closing before paint callbacks run.
-    if (closeWith === 'Close') await page.clock.runFor(500);
+    await expect(dialog.getByRole('button', { name: 'Checking key…' })).toBeDisabled();
     if (closeWith === 'Escape') await page.keyboard.press('Escape');
     else await dialog.getByRole('button', { name: 'Close API settings' }).click();
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await trigger.click();
+    approve();
+    await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeEnabled();
     await page.clock.runFor(2000);
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeEnabled();
@@ -275,8 +279,11 @@ for (const closeWith of ['Close', 'Escape']) {
     expect(mock.calls.map(call => call.endpoint)).toEqual(['connect', 'connect', 'session']);
   });
 }
+}
 
-test('approval arriving after manual close never dismisses a reopened dialog', async ({ page }) => {
+for (const width of [1440, 402]) {
+test(`approval arriving after manual close never dismisses a reopened dialog at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 844 });
   await freezeClock(page);
   await mockBackend(page);
   let approve!: () => void;
@@ -298,6 +305,7 @@ test('approval arriving after manual close never dismisses a reopened dialog', a
   await page.clock.runFor(2000);
   await expect(dialog).toBeVisible();
 });
+}
 
 test('API settings closes only after key approval and preserves the comic setup', async ({ page }) => {
   const mock = await mockBackend(page);
@@ -610,13 +618,7 @@ test('failed replacement keeps connection; successful replacement and removal up
   await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveValue('');
   await page.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
-  await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
-  await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Remove key', exact: true })).toBeDisabled();
-  await page.clock.runFor(1000);
-  await expect(dialog).toBeVisible();
-  await page.clock.runFor(300);
-  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
+  await expect(dialog).not.toBeVisible();
   await page.clock.runFor(32);
   await expect(page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ })).toBeFocused();
   await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
