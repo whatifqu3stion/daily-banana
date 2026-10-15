@@ -26,20 +26,48 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/gemini/content', route => route.fulfill({ status: 500, json: { error: { code: 500, message: 'Unexpected generic content call' } } }));
 });
 
-test('missing key offers recovery without losing the topic', async ({ page }) => {
-  let calls = 0;
-  await page.route('**/api/gemini/news', route => { calls++; return route.fulfill({ json: feed() }); });
-  await page.goto('/');
-  await page.getByLabel('Topic', { exact: true }).fill('Keep my idea');
-  await openNews(page);
-  await expect(newsDialog(page).getByRole('alert')).toContainText('Connect your Google key');
-  expect(calls).toBe(0);
-  await newsDialog(page).getByRole('button', { name: 'Open API settings', exact: true }).click();
-  await page.getByLabel('Google API key', { exact: true }).fill(KEY);
-  await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Connect your Google Key', exact: true })).toHaveCount(0);
-  await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my idea');
-});
+for (const width of [1440, 402]) {
+  test(`headlines without a key opens API entry directly and preserves setup at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 950 });
+    const calls: string[] = [];
+    await page.route('**/api/gemini/**', async route => {
+      calls.push(new URL(route.request().url()).pathname);
+      await route.fallback();
+    });
+    await page.route('**/api/gemini/news', route => { calls.push('/api/gemini/news'); return route.fulfill({ json: feed() }); });
+    await page.goto('/');
+    await page.getByLabel('Topic', { exact: true }).fill('Keep my idea');
+    await page.getByRole('button', { name: '+ Add background context', exact: true }).click();
+    await page.getByLabel('Background Context', { exact: false }).fill('Keep my background facts.');
+    const setup = await page.evaluate(() => localStorage.getItem('dailyBanana_formState'));
+    const trigger = page.getByRole('button', { name: /Get ideas from recent news/ });
+    await openNews(page);
+    const dialog = page.getByRole('dialog', { name: 'Connect your Google Key', exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel('Google API key', { exact: true })).toBeVisible();
+    await expect(newsDialog(page)).toHaveCount(0);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(calls).toEqual([]);
+    expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+    if (width === 402) await dialog.getByRole('button', { name: 'Close API settings' }).click();
+    else await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    expect(await page.evaluate(() => localStorage.getItem('dailyBanana_formState'))).toBe(setup);
+    await openNews(page);
+    await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
+    await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my idea');
+    await expect(page.getByLabel('Background Context', { exact: false })).toHaveValue('Keep my background facts.');
+    expect(await page.evaluate(() => localStorage.getItem('dailyBanana_formState'))).toBe(setup);
+    expect(calls).toEqual(['/api/gemini/connect']);
+    await openNews(page);
+    await expect(newsDialog(page).getByRole('list', { name: 'Recent news headlines' }).locator('li')).toHaveCount(1);
+    expect(calls).toEqual(['/api/gemini/connect', '/api/gemini/news']);
+  });
+}
 
 for (const width of [1440, 402]) {
   test(`sourced stories, cached reuse, safe suggestions and selection work at ${width}px`, async ({ page }) => {

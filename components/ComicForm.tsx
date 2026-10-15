@@ -270,6 +270,11 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
   };
 
   const handleFetchNewsClick = async (forceRefresh = false) => {
+    if (!hasApiKey && onOpenApiSettings) {
+      handleCloseNews();
+      onOpenApiSettings();
+      return;
+    }
     const requestId = ++newsRequestId.current;
     setIsNewsModalOpen(true);
     setNewsError(null);

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { NewsFeed, NewsIssue, NewsStory } from '../types';
+import WarningNotice from './WarningNotice';
 
 interface NewsSelectorProps {
   feed: NewsFeed | null;
@@ -166,7 +167,7 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-6"
           aria-busy={isLoading}
         >
-          <div className="mb-4 flex flex-col gap-3 border-b border-stone-400/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          {!(error?.action === 'settings' && !hasStories) && <div className="mb-4 flex flex-col gap-3 border-b border-stone-400/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               {fetchedAtLabel ? (
                 <p className="font-open-sans text-xs text-stone-600">
@@ -191,7 +192,7 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
             >
               {isLoading ? 'Refreshing…' : 'Refresh headlines'}
             </button>}
-          </div>
+          </div>}
 
           {isInitialLoading && (
             <div role="status" aria-live="polite" className="space-y-3 py-2">
@@ -214,7 +215,17 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
             </div>
           )}
 
-          {issue && (
+          {error?.action === 'settings' ? (
+            <WarningNotice role="alert" title={error.title} message={error.message} className="mb-5">
+              <button
+                type="button"
+                onClick={onOpenApiSettings}
+                className="mt-3 min-h-11 border-2 border-black bg-black px-5 py-2.5 text-base font-bold text-white hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+              >
+                Open API settings
+              </button>
+            </WarningNotice>
+          ) : issue && (
             <div
               role={error ? 'alert' : 'status'}
               aria-live={error ? 'assertive' : 'polite'}
@@ -222,15 +233,6 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
             >
               <h3 className="font-special-elite text-lg font-bold">{issue.title}</h3>
               <p className="mt-1 font-open-sans text-sm leading-relaxed">{issue.message}</p>
-              {error?.action === 'settings' && (
-                <button
-                  type="button"
-                  onClick={onOpenApiSettings}
-                  className="mt-3 min-h-11 border-2 border-black bg-banana px-4 py-2 font-open-sans text-sm font-bold hover:bg-[#f4bd19] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
-                >
-                  Open API settings
-                </button>
-              )}
               {error?.action === 'retry' && (
                 <button
                   type="button"
