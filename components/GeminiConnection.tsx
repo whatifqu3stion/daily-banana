@@ -1,4 +1,4 @@
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   connectGeminiKey,
   disconnectGeminiKey,
@@ -63,7 +63,30 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
   const [keyInput, setKeyInput] = useState('');
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const locked = disabled || busy;
+  const [showInformation, setShowInformation] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const locked = disabled || busy || confirming;
+
+  useEffect(() => {
+    if (!connected) {
+      setConfirming(false);
+      return;
+    }
+    if (!confirming || !onConnected) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let secondFrame: number | undefined;
+    // Start the readable interval only after the committed success UI has painted.
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        timer = setTimeout(onConnected, 1200);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
+      clearTimeout(timer);
+    };
+  }, [connected, confirming, onConnected]);
 
   const handleConnect = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -73,7 +96,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
       await connectGeminiKey(keyInput);
       setKeyInput('');
       setEditing(false);
-      onConnected?.();
+      setConfirming(true);
     } catch (caught) {
       setError(readableConnectionError(caught));
     }
@@ -99,6 +122,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
   };
 
   const keepCurrentKey = () => {
+    if (locked) return;
     setKeyInput('');
     setError(null);
     setEditing(false);
@@ -121,7 +145,9 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
               ? 'bg-banana text-black'
               : 'bg-paper-light text-black'
           }`}
+          role="status"
           aria-live="polite"
+          aria-atomic="true"
         >
           <span aria-hidden="true" className={`h-2 w-2 rounded-full border border-black ${connected ? 'bg-black' : 'bg-transparent'}`} />
           {connected ? 'Key connected · checked' : 'No key connected'}
@@ -174,7 +200,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
               autoCapitalize="none"
               spellCheck={false}
               disabled={locked}
-              aria-describedby="key-privacy key-check-status"
+              aria-describedby="key-check-status"
               aria-invalid={Boolean(error)}
               className="min-h-12 w-full min-w-0 border-2 border-black bg-white px-3 py-2 font-open-sans text-base font-normal leading-6 text-black placeholder:font-normal placeholder:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-gray-600"
               placeholder="Paste your Google API key"
@@ -192,7 +218,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
             <button
               type="submit"
               disabled={locked || !keyInput.trim()}
-              className="min-h-11 border-2 border-black bg-black px-5 py-2.5 font-open-sans text-base font-bold leading-6 text-white transition-colors hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 inline-flex items-center justify-center gap-3 px-8 py-4 bg-banana text-black font-bangers text-2xl tracking-wider border-2 border-t-black border-l-black border-r-black border-b-8 border-b-black hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {busy ? 'Checking key…' : connected ? 'Replace key' : 'Connect key'}
             </button>
@@ -210,7 +236,17 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
         </form>
       )}
 
-      <div id="key-privacy" className="mt-5 border-t border-black pt-4">
+      <div className="mt-5 border-t border-black pt-4">
+        <button
+          type="button"
+          aria-expanded={showInformation}
+          aria-controls="key-privacy"
+          onClick={() => setShowInformation(value => !value)}
+          className="min-h-11 py-2 text-left font-open-sans text-base font-bold leading-6 text-black underline underline-offset-2 hover:bg-banana focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+        >
+          Additional information <span aria-hidden="true">{showInformation ? '−' : '+'}</span>
+        </button>
+        <div id="key-privacy" hidden={!showInformation} className="pt-3">
         <p className="font-open-sans text-base font-semibold leading-6 text-black">
           Your key is sent securely to this app’s server and held only in memory for this tab’s session, for up to 30 minutes. It is never saved in a database or browser storage, returned to your browser, or logged. Refreshing requires reconnecting. AI calls go through the server to Google and are billed to your Google project.
         </p>
@@ -237,6 +273,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
         <div className="mt-4 space-y-1 border-t border-dotted border-black pt-3 font-open-sans text-base leading-6 text-black">
           <p><span className="font-special-elite font-bold">Default image model:</span> Nano Banana 2.1, the latest stable model.</p>
           <p><span className="font-special-elite font-bold">Alternative:</span> Nano Banana 2.5. Both require paid API image access; availability and quotas depend on your Google project.</p>
+        </div>
         </div>
       </div>
     </section>

@@ -11,6 +11,7 @@ for (const [kind, code, expected] of [
   ['KEY_CHECK_FAILED', 503, 'HTTP 503'],
 ] as const) {
   test(`key-check UI explains ${kind} without exposing the key`, async ({ page }) => {
+    await freezeClock(page);
     await page.route('**/api/gemini/connect', route => route.fulfill({ status: code, json: {
       error: { code, kind, status: 'GOOGLE_REQUEST_FAILED', message: `Private upstream text ${KEY}` },
     } }));
@@ -24,6 +25,8 @@ for (const [kind, code, expected] of [
     await expect(alert).not.toContainText(KEY);
     await expect(page.getByRole('button', { name: 'Connect key', exact: true })).toBeEnabled();
     await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+    await page.clock.runFor(2000);
+    await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toBeVisible();
   });
 }
 
@@ -121,6 +124,179 @@ async function connect(page: Page, key = KEY) {
   await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
   await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
 }
+
+async function freezeClock(page: Page) {
+  const time = new Date('2026-10-15T12:00:00Z');
+  await page.clock.install({ time });
+  await page.clock.pauseAt(new Date(time.getTime() + 100));
+}
+
+for (const width of [1440, 402]) {
+  test(`API information is optional, keyboard accessible and focus trapped at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await mockBackend(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const disclosure = dialog.getByRole('button', { name: 'Additional information' });
+    const studio = dialog.getByRole('link', { name: 'Google AI Studio', includeHidden: true });
+    const pricing = dialog.getByRole('link', { name: 'Gemini API pricing', includeHidden: true });
+    const close = dialog.getByRole('button', { name: 'Close API settings' });
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await dialog.screenshot({ path: `/tmp/api-settings-collapsed-${width}.png` });
+    await expect(studio).toBeHidden();
+    await expect(pricing).toBeHidden();
+    // Even a programmatic focus request cannot reach a collapsed link.
+    await disclosure.focus();
+    await studio.evaluate((element: HTMLAnchorElement) => element.focus());
+    await expect(disclosure).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(disclosure).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+    await expect(studio).toBeVisible();
+    await expect(pricing).toBeVisible();
+    await dialog.screenshot({ path: `/tmp/api-settings-expanded-${width}.png` });
+    await expect(studio).toHaveAttribute('href', 'https://aistudio.google.com/apikey');
+    await expect(pricing).toHaveAttribute('href', 'https://ai.google.dev/gemini-api/docs/pricing');
+    await expect(dialog.locator('#key-privacy')).toContainText('for up to 30 minutes');
+    await expect(dialog.locator('#key-privacy')).toContainText('Nano Banana 2.1, the latest stable model.');
+    await expect(dialog.locator('#key-privacy')).toContainText('Nano Banana 2.5. Both require paid API image access');
+    await page.keyboard.press('Tab');
+    await expect(studio).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(pricing).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(pricing).toBeFocused();
+    await disclosure.focus();
+    await page.keyboard.press('Space');
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await disclosure.click();
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+    await disclosure.click();
+    await expect(studio).toBeHidden();
+    expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+  });
+
+  test(`approval visibly confirms before timed closure and retains setup at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await freezeClock(page);
+    const mock = await mockBackend(page);
+    let approve!: () => void;
+    const approval = new Promise<void>(resolve => { approve = resolve; });
+    await page.route('**/api/gemini/connect', async route => {
+      await approval;
+      await route.fallback();
+    });
+    await page.goto('/');
+    await page.getByLabel('Topic', { exact: true }).fill('Keep my comic idea');
+    await page.getByLabel('Stance', { exact: true }).click();
+    await page.getByRole('option', { name: 'Neutral / Observational', exact: true }).click();
+    await page.getByRole('button', { name: '+ Add background context', exact: true }).click();
+    await page.getByLabel('Background Context', { exact: false }).fill('Keep these supporting facts.');
+    const setup = await page.evaluate(() => localStorage.getItem('dailyBanana_formState'));
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    const submit = dialog.getByRole('button', { name: 'Connect key', exact: true });
+    await expect(submit).toBeDisabled();
+    await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
+    // The settings primary action uses the same treatment as Generate Comic Plan.
+    const treatment = (element: HTMLElement) => {
+      const s = getComputedStyle(element);
+      return [s.backgroundColor, s.color, s.borderBottomWidth, s.borderBottomColor, s.fontFamily, s.fontSize, s.fontWeight, s.letterSpacing];
+    };
+    expect(await submit.evaluate(treatment)).toEqual(await page.getByRole('button', { name: 'Generate Comic Plan' }).evaluate(treatment));
+    await submit.click();
+    await expect(dialog.getByRole('button', { name: 'Checking key…' })).toBeDisabled();
+    await page.clock.runFor(5000);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('status').filter({ hasText: 'No key connected' })).toBeVisible();
+    approve();
+    const status = dialog.getByRole('status').filter({ hasText: 'Key connected · checked' });
+    await expect(status).toBeVisible();
+    await expect(status).toHaveClass(/bg-banana/);
+    await expect(status).toHaveAttribute('aria-live', 'polite');
+    await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: 'Remove key', exact: true })).toBeDisabled();
+    await page.keyboard.press('Enter');
+    await page.clock.runFor(1000);
+    await expect(status).toBeVisible();
+    await page.clock.runFor(300);
+    await expect(dialog).toHaveCount(0);
+    // Native dialog close dispatches asynchronously; the app then restores
+    // fallback focus on the next animation frame.
+    await page.clock.runFor(32);
+    await expect(page.getByRole('button', { name: 'Generate Comic Plan' })).toBeFocused();
+    await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my comic idea');
+    await expect(page.getByLabel('Stance', { exact: true })).toContainText('Neutral');
+    await expect(page.getByLabel('Background Context', { exact: false })).toHaveValue('Keep these supporting facts.');
+    expect(await page.evaluate(() => localStorage.getItem('dailyBanana_formState'))).toBe(setup);
+    expect(mock.calls.map(call => call.endpoint)).toEqual(['connect']);
+  });
+}
+
+for (const closeWith of ['Close', 'Escape']) {
+  test(`manual ${closeWith} during confirmation cancels closure of a later dialog`, async ({ page }) => {
+    const mock = await mockBackend(page);
+    await page.goto('/');
+    await connect(page);
+    await page.getByRole('button', { name: 'Close API settings' }).click();
+    await freezeClock(page);
+    const trigger = page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+    await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
+    await dialog.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
+    await dialog.getByRole('button', { name: 'Replace key', exact: true }).click();
+    await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
+    await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
+    // Cover both an already scheduled timer and closing before paint callbacks run.
+    if (closeWith === 'Close') await page.clock.runFor(500);
+    if (closeWith === 'Escape') await page.keyboard.press('Escape');
+    else await dialog.getByRole('button', { name: 'Close API settings' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await page.clock.runFor(2000);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Replace key', exact: true })).toBeEnabled();
+    await dialog.getByRole('button', { name: 'Remove key', exact: true }).click();
+    await expect(dialog.getByText('No key connected', { exact: true })).toBeVisible();
+    await page.clock.runFor(2000);
+    await expect(dialog).toBeVisible();
+    expect(mock.calls.map(call => call.endpoint)).toEqual(['connect', 'connect', 'session']);
+  });
+}
+
+test('approval arriving after manual close never dismisses a reopened dialog', async ({ page }) => {
+  await freezeClock(page);
+  await mockBackend(page);
+  let approve!: () => void;
+  const approval = new Promise<void>(resolve => { approve = resolve; });
+  await page.route('**/api/gemini/connect', async route => { await approval; await route.fallback(); });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  const trigger = page.getByRole('button', { name: 'Open API settings', exact: true });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+  await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
+  await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Checking key…' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await trigger.click();
+  approve();
+  await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
+  await page.clock.runFor(2000);
+  await expect(dialog).toBeVisible();
+});
 
 test('API settings closes only after key approval and preserves the comic setup', async ({ page }) => {
   const mock = await mockBackend(page);
@@ -263,8 +439,7 @@ for (const width of [1440, 402]) {
     expect(typography.help.size).toBeGreaterThanOrEqual(16);
     expect(typography.help.weight).toBe('400');
     expect(typography.input.family).toContain('Open Sans');
-    expect(typography.action.family).toContain('Open Sans');
-    expect(typography.action.weight).toBe('700');
+    expect(typography.action.family).toContain('Bangers');
     expect(typography.hasOverflow).toBe(false);
     await dialog.getByLabel('Google API key', { exact: true }).fill(KEY);
     await dialog.getByRole('button', { name: 'Connect key', exact: true }).click();
@@ -418,23 +593,38 @@ test('failed replacement keeps connection; successful replacement and removal up
   const mock = await mockBackend(page);
   await page.goto('/');
   await connect(page);
+  await freezeClock(page);
   mock.control.rejectReplacement = true;
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('That key was not accepted');
+  await page.clock.runFor(2000);
+  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toBeVisible();
   expect([...mock.sessions.values()]).toEqual([KEY]);
   await page.getByRole('button', { name: 'Keep current key' }).click();
   mock.control.rejectReplacement = false;
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'API settings', exact: true });
+  await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveValue('');
   await page.getByLabel('Google API key', { exact: true }).fill(OTHER_KEY);
   await page.getByRole('button', { name: 'Replace key', exact: true }).click();
+  await expect(dialog.getByLabel('Google API key', { exact: true })).toHaveCount(0);
+  await expect(dialog.getByText('Key connected · checked', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Remove key', exact: true })).toBeDisabled();
+  await page.clock.runFor(1000);
+  await expect(dialog).toBeVisible();
+  await page.clock.runFor(300);
   await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
+  await page.clock.runFor(32);
+  await expect(page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ })).toBeFocused();
   await page.getByRole('contentinfo').getByRole('button', { name: /^API settings/ }).click();
   await expect(page.getByRole('button', { name: 'Remove key', exact: true })).toBeVisible();
   expect([...mock.sessions.values()]).toEqual([OTHER_KEY]);
   await page.getByRole('button', { name: 'Remove key', exact: true }).click();
   await expect(page.getByText('No key connected', { exact: true })).toBeVisible();
+  await page.clock.runFor(2000);
+  await expect(dialog).toBeVisible();
   expect(mock.sessions.size).toBe(0);
 });
 

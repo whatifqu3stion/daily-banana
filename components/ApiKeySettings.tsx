@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import GeminiConnection from './GeminiConnection';
 
 interface ApiKeySettingsProps {
@@ -8,6 +8,7 @@ interface ApiKeySettingsProps {
 
 const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ disabled = false, onClose }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeDialog = useCallback(() => dialogRef.current?.close(), []);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -54,7 +55,7 @@ const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ disabled = false, onClo
         </button>
       </div>
       <div className="px-4 py-5 sm:px-6 sm:py-6">
-        <GeminiConnection disabled={disabled} onConnected={() => dialogRef.current?.close()} />
+        <GeminiConnection disabled={disabled} onConnected={closeDialog} />
       </div>
     </dialog>
   );
