@@ -1,6 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
 import { CredentialSessions, SessionError, SESSION_TTL, TAB_PATTERN, cookieName } from './sessions.mjs';
 import { generationFailure, GenerationResponseError } from './generation-errors.mjs';
+import { NewsService } from './news-service.mjs';
+import { NewsRequestError } from '../shared/news-errors.mjs';
 
 const IMAGE_MODELS = new Set(['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']);
 const RPC_STATUSES = { 3: 'INVALID_ARGUMENT', 5: 'NOT_FOUND', 7: 'PERMISSION_DENIED', 8: 'RESOURCE_EXHAUSTED', 13: 'INTERNAL', 14: 'UNAVAILABLE', 16: 'UNAUTHENTICATED' };
@@ -134,8 +136,9 @@ function imageParams(body) {
   };
 }
 
-export function createGeminiApi({ sessions = new CredentialSessions(), createClient = key => new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 180_000 } }), secureCookies = true, imageTimeoutMs = 180_000 } = {}) {
-  const timer = setInterval(() => sessions.prune(), 60_000);
+export function createGeminiApi({ sessions = new CredentialSessions(), createClient = key => new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 180_000 } }), secureCookies = true, imageTimeoutMs = 180_000, newsTimeoutMs = 20_000, newsMaxEntries = 128 } = {}) {
+  const news = new NewsService({ now: sessions.now, timeoutMs: newsTimeoutMs, maxEntries: newsMaxEntries });
+  const timer = setInterval(() => { sessions.prune(); news.prune(); }, 60_000);
   timer.unref();
   const handler = async (req, res, next) => {
     const path = req.url?.split('?')[0];
@@ -182,17 +185,34 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
           if (controller.signal.aborted) throw new SessionError(408, 'The key check was cancelled. Please try again.');
         });
         setCookie(result.token, Math.ceil(sessions.ttl / 1000));
+        news.prune();
         return send(200, { connected: true, expiresAt: result.expiresAt });
       }
       if (path === '/api/gemini/session' && req.method === 'DELETE') {
         sessions.remove(token, tab);
+        news.prune();
         setCookie('', 0);
         return send(200, { connected: false });
       }
-      if (req.method !== 'POST' || !['/api/gemini/content', '/api/gemini/interactions'].includes(path)) {
+      if (req.method !== 'POST' || !['/api/gemini/content', '/api/gemini/interactions', '/api/gemini/news'].includes(path)) {
         throw new SessionError(404, 'Unknown API request.');
       }
       const body = await readBody(req);
+      if (path === '/api/gemini/news') {
+        if (!body || typeof body !== 'object' || Array.isArray(body) ||
+            Object.keys(body).some(key => key !== 'forceRefresh') ||
+            (body.forceRefresh !== undefined && typeof body.forceRefresh !== 'boolean')) {
+          throw new SessionError(400, 'Invalid news request.');
+        }
+        const session = sessions.get(token, tab);
+        if (sessions.pending.has(tab)) throw new SessionError(409, 'Wait for the Google key check to finish before fetching news.');
+        const result = await news.get(session, { forceRefresh: body.forceRefresh === true, signal: controller.signal },
+          params => sessions.request(token, tab, key => createClient(key).models.generateContent(params)));
+        // Numeric stage timings and fixed cache labels only: no credential,
+        // prompt, provider body or per-user identifier enters diagnostics.
+        res.setHeader('Server-Timing', `news_lookup;dur=${result.lookupMs.toFixed(1)}, news_parse;dur=${result.parseMs.toFixed(1)}, news_cache;desc="${result.cache}"`);
+        return send(200, result.feed);
+      }
       const params = path.endsWith('/content') ? contentParams(body, controller.signal) : imageParams(body);
       const result = await sessions.request(token, tab, async key => {
         secrets.push(key);
@@ -234,10 +254,13 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
     } catch (error) {
       // Never log upstream exceptions, bodies, headers, keys, or session IDs.
       if (error instanceof SessionError) return send(error.status, { error: { code: error.status, message: error.message } });
+      if (path === '/api/gemini/news' && error instanceof NewsRequestError) {
+        return send(502, { error: { code: 502, status: 'INVALID_NEWS_RESPONSE', kind: `NEWS_${error.issue.code.toUpperCase()}`, operation: 'news', message: error.issue.message } });
+      }
       const parsed = providerError(error);
       if (path !== '/api/gemini/connect') {
         const deadlineExpired = imageDeadline?.aborted && !controller.signal.aborted;
-        const failure = generationFailure(deadlineExpired ? imageDeadline.reason : error, deadlineExpired ? {} : parsed, path.endsWith('/interactions') ? 'image' : 'text');
+        const failure = generationFailure(deadlineExpired ? imageDeadline.reason : error, deadlineExpired ? {} : parsed, path.endsWith('/interactions') ? 'image' : path.endsWith('/news') ? 'news' : 'text');
         return send(failure.code, { error: failure });
       }
       const code = Number(parsed?.code || error.status || error.statusCode || 502);
@@ -250,5 +273,5 @@ export function createGeminiApi({ sessions = new CredentialSessions(), createCli
       } });
     }
   };
-  return { handler, sessions, close: () => { clearInterval(timer); sessions.clear(); } };
+  return { handler, sessions, close: () => { clearInterval(timer); news.close(); sessions.clear(); } };
 }

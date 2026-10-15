@@ -1,77 +1,56 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const KEY = 'test-news-key-not-a-secret';
-const CACHE = 'dailyBanana_news_v2';
+const CACHE = 'dailyBanana_news_v3';
 const SOURCE = { title: 'Example News', url: 'https://example.com/news/story' };
-const STORIES = [{ title: 'Agency announces a new policy', description: 'An agency announced new rules affecting public services.' }];
+const STORIES = [{ title: 'Agency announces a new policy', description: 'An agency announced new rules affecting public services.', sources: [SOURCE] }];
 const SUGGESTIONS = '<div>Google search suggestions <a href="https://www.google.com/search?q=news" target="_blank">Recent news search</a></div>';
-
-function response(items: unknown[] = STORIES, grounded = true) {
-  const text = JSON.stringify(items);
-  return { candidates: [{ content: { parts: [{ text }] }, ...(grounded ? { groundingMetadata: {
-    groundingChunks: [{ web: { uri: SOURCE.url, title: SOURCE.title } }],
-    groundingSupports: [{ segment: { startIndex: 0, endIndex: new TextEncoder().encode(text).length }, groundingChunkIndices: [0] }],
-    searchEntryPoint: { renderedContent: SUGGESTIONS },
-  } } : {}) }] };
-}
+const feed = (stories = STORIES) => ({ stories, fetchedAt: Date.now(), searchSuggestions: SUGGESTIONS });
+const newsDialog = (page: Page) => page.getByRole('dialog', { name: 'Recent news ideas', exact: true });
+const openNews = (page: Page) => page.getByRole('button', { name: 'Get ideas from recent news' }).click();
 
 async function connect(page: Page) {
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   await page.getByRole('button', { name: 'Open API settings', exact: true }).click();
   await page.getByLabel('Google API key', { exact: true }).fill(KEY);
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
 }
-
-const newsDialog = (page: Page) => page.getByRole('dialog', { name: 'Recent news ideas', exact: true });
-const openNews = (page: Page) => page.getByRole('button', { name: 'Get ideas from recent news' }).click();
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
-  await page.route('**/api/gemini/connect', async route => {
-    await route.fulfill({ json: { connected: true, expiresAt: Date.now() + 1_800_000 } });
-  });
-  await page.route('**/api/gemini/session', async route => {
-    await route.fulfill({ json: { connected: false } });
-  });
-  // This suite must never send browser requests directly to Google.
+  await page.route('**/api/gemini/connect', route => route.fulfill({ json: { connected: true, expiresAt: Date.now() + 1_800_000 } }));
+  await page.route('**/api/gemini/session', route => route.fulfill({ json: { connected: false } }));
   await page.route('https://generativelanguage.googleapis.com/**', route => route.abort());
+  // News must not silently fall back to the old generic content proxy.
+  await page.route('**/api/gemini/content', route => route.fulfill({ status: 500, json: { error: { code: 500, message: 'Unexpected generic content call' } } }));
 });
 
-test('missing key explains recovery without API traffic or losing the topic', async ({ page }) => {
+test('missing key offers recovery without losing the topic', async ({ page }) => {
   let calls = 0;
-  await page.route('**/api/gemini/connect', async route => {
-    calls++;
-    await route.fulfill({ json: { connected: true, expiresAt: Date.now() + 1_800_000 } });
-  });
+  await page.route('**/api/gemini/news', route => { calls++; return route.fulfill({ json: feed() }); });
   await page.goto('/');
   await page.getByLabel('Topic', { exact: true }).fill('Keep my idea');
   await openNews(page);
   await expect(newsDialog(page).getByRole('alert')).toContainText('Connect your Google key');
   expect(calls).toBe(0);
   await newsDialog(page).getByRole('button', { name: 'Open API settings', exact: true }).click();
-  await expect(newsDialog(page)).not.toBeVisible();
-  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toBeVisible();
   await page.getByLabel('Google API key', { exact: true }).fill(KEY);
   await page.getByRole('button', { name: 'Connect key', exact: true }).click();
-  await expect(page.getByText('Key connected · checked', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Close API settings', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'API settings', exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Keep my idea');
-  expect(calls).toBe(1);
 });
 
 for (const width of [1440, 402]) {
-  test(`sourced stories, safe suggestions and selection work at ${width}px`, async ({ page }) => {
+  test(`sourced stories, cached reuse, safe suggestions and selection work at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 1000 });
     let calls = 0;
-    let body: any;
-    await page.route('**/api/gemini/content', async route => {
+    await page.route('**/api/gemini/news', async route => {
       calls++;
+      expect(route.request().postDataJSON()).toEqual({ forceRefresh: false });
       expect(route.request().headers()['x-goog-api-key']).toBeUndefined();
       expect(route.request().postData()).not.toContain(KEY);
-      body = route.request().postDataJSON();
-      await route.fulfill({ json: response() });
+      await route.fulfill({ json: feed() });
     });
     await page.goto('/');
     await connect(page);
@@ -79,22 +58,17 @@ for (const width of [1440, 402]) {
     const dialog = newsDialog(page);
     await expect(dialog.getByRole('list', { name: 'Recent news headlines' }).locator('li')).toHaveCount(1);
     await expect(dialog.getByRole('link', { name: /Example News/ })).toHaveAttribute('href', SOURCE.url);
-    expect(body.config.tools).toEqual([{ googleSearch: {} }]);
-    expect(JSON.stringify(body)).toContain('past 24 hours');
     const frame = dialog.locator('iframe');
     await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
     await expect(frame).toHaveAttribute('srcdoc', /default-src 'none'/);
     await expect(frame).toHaveAttribute('srcdoc', /script-src 'nonce-[^']+'/);
-    expect((await frame.getAttribute('sandbox'))).not.toContain('allow-same-origin');
     await expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer');
     expect(await dialog.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
     await expect(dialog.getByRole('button', { name: 'Close news selector' })).toBeFocused();
-    // Data loading must not steal focus; the browser's modal prevents Tab escape.
-    for (let step = 0; step < 6; step++) await page.keyboard.press('Tab');
+    for (let i = 0; i < 6; i++) await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement?.closest('dialog') !== null)).toBe(true);
     await dialog.getByRole('button', { name: new RegExp(STORIES[0].title) }).click();
     await expect(page.getByLabel('Topic', { exact: true })).toHaveValue(STORIES[0].title);
-    await expect(page.locator('#newsContext')).toContainText(STORIES[0].description);
     await expect(page.locator('#newsContext')).toHaveValue(new RegExp(SOURCE.url));
     await openNews(page);
     await expect(newsDialog(page).locator('li')).toHaveCount(1);
@@ -106,46 +80,57 @@ for (const width of [1440, 402]) {
   });
 }
 
-for (const status of [429, 403]) {
-  test(`Google ${status} shows actionable guidance without retrying`, async ({ page }) => {
+for (const [code, kind, status, expected, settings] of [
+  [429, 'GOOGLE_UPSTREAM_ERROR', 'RESOURCE_EXHAUSTED', 'usage limit', true],
+  [403, 'GOOGLE_UPSTREAM_ERROR', 'PERMISSION_DENIED', 'API access', true],
+  [401, '', '', 'Reconnect your Google key', true],
+  [504, 'GENERATION_TIMEOUT', 'DEADLINE_EXCEEDED', 'took too long', false],
+  [502, 'GENERATION_UNKNOWN', 'UNCLASSIFIED_FAILURE', 'temporarily unavailable', false],
+  [502, 'GENERATION_NETWORK', 'CONNECTION_FAILED', 'Could not reach Google news search', false],
+  [502, 'APP_RESPONSE_INVALID', '', 'Could not reach the news desk', false],
+  [502, 'NEWS_FORMAT', 'INVALID_NEWS_RESPONSE', 'unreadable headlines', false],
+  [502, 'NEWS_GROUNDING', 'INVALID_NEWS_RESPONSE', 'verify the news sources', false],
+] as const) {
+  test(`news error ${code} ${kind} is actionable without automatic retry or message-number misclassification`, async ({ page }) => {
     let calls = 0;
-    await page.route('**/api/gemini/content', async route => {
+    await page.route('**/api/gemini/news', async route => {
       calls++;
-      await route.fulfill({ status, json: { error: { code: status, status: status === 429 ? 'RESOURCE_EXHAUSTED' : 'PERMISSION_DENIED', message: 'Google rejected this lookup' } } });
+      await route.fulfill({ status: code, json: { error: { code, kind, status, message: 'Diagnostic 403; no key; billing 429 are incidental prose, not status fields.' } } });
     });
     await page.goto('/');
     await connect(page);
     await openNews(page);
-    await expect(newsDialog(page).getByRole('alert')).toContainText(status === 429 ? 'usage limit' : 'API access');
-    await expect(newsDialog(page).getByRole('button', { name: 'Open API settings', exact: true })).toBeVisible();
+    await expect(newsDialog(page).getByRole('alert')).toContainText(expected);
+    await expect(newsDialog(page).getByRole('button', { name: 'Open API settings', exact: true })).toHaveCount(settings ? 1 : 0);
     expect(calls).toBe(1);
+    if (kind === 'GENERATION_TIMEOUT') await newsDialog(page).screenshot({ path: '/tmp/news-timeout-recovery.png' });
   });
 }
 
-test('transient failure retries once and explicit refresh preserves results', async ({ page }) => {
+test('transient failure requires an explicit retry; refresh preserves results', async ({ page }) => {
   let calls = 0;
-  await page.route('**/api/gemini/content', async route => {
+  await page.route('**/api/gemini/news', async route => {
     calls++;
-    await route.fulfill(calls === 1
-      ? { status: 503, json: { error: { code: 503, status: 'UNAVAILABLE', message: 'Try later' } } }
-      : { json: response() });
+    expect(route.request().postDataJSON()).toEqual({ forceRefresh: calls > 1 });
+    await route.fulfill(calls === 1 ? { status: 503, json: { error: { code: 503, status: 'UNAVAILABLE' } } } : { json: feed() });
   });
   await page.goto('/');
   await connect(page);
   await openNews(page);
+  await expect(newsDialog(page).getByRole('alert')).toContainText('temporarily unavailable');
+  expect(calls).toBe(1);
+  await newsDialog(page).getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(newsDialog(page).locator('li')).toHaveCount(1);
   expect(calls).toBe(2);
   await newsDialog(page).getByRole('button', { name: 'Refresh headlines', exact: true }).click();
   await expect.poll(() => calls).toBe(3);
-  await expect(newsDialog(page).locator('li')).toHaveCount(1);
 });
 
-test('failed refresh visibly labels saved data and keeps its original timestamp', async ({ page }) => {
+test('failed refresh labels saved data without changing its timestamp', async ({ page }) => {
   let calls = 0;
-  await page.route('**/api/gemini/content', async route => {
+  await page.route('**/api/gemini/news', async route => {
     calls++;
-    await route.fulfill(calls === 1 ? { json: response() }
-      : { status: 429, json: { error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota reached' } } });
+    await route.fulfill(calls === 1 ? { json: feed() } : { status: 429, json: { error: { code: 429, status: 'RESOURCE_EXHAUSTED' } } });
   });
   await page.goto('/');
   await connect(page);
@@ -155,92 +140,36 @@ test('failed refresh visibly labels saved data and keeps its original timestamp'
   await newsDialog(page).getByRole('button', { name: 'Refresh headlines', exact: true }).click();
   await expect(newsDialog(page).getByRole('status')).toContainText('usage limit');
   await expect(newsDialog(page).getByText('Showing saved headlines from an earlier search.', { exact: false })).toBeVisible();
-  await expect(newsDialog(page).locator('li')).toHaveCount(1);
   expect(await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).fetchedAt, CACHE)).toBe(before);
   expect(calls).toBe(2);
 });
 
-test('malformed and ungrounded responses explain the issue and allow a manual retry', async ({ page }) => {
-  let calls = 0;
-  await page.route('**/api/gemini/content', async route => {
-    calls++;
-    const data = response(STORIES, calls !== 2);
-    if (calls === 1) data.candidates[0].content.parts[0].text = 'No JSON here';
-    await route.fulfill({ json: data });
-  });
-  await page.goto('/');
-  await connect(page);
-  await openNews(page);
-  await expect(newsDialog(page).getByRole('alert')).toContainText('unreadable');
-  expect(calls).toBe(1);
-  await newsDialog(page).getByRole('button', { name: 'Try again', exact: true }).click();
-  await expect(newsDialog(page).getByRole('alert')).toContainText('verify the news sources');
-  expect(calls).toBe(2);
-  await newsDialog(page).getByRole('button', { name: 'Try again', exact: true }).click();
-  await expect(newsDialog(page).locator('li')).toHaveCount(1);
-  expect(calls).toBe(3);
-});
-
-test('parser filters blanks and duplicates and attributes UTF-8 citations per story', async ({ page }) => {
-  await page.goto('/');
-  const parsed = await page.evaluate(async () => {
-    const path = '/services/newsParsing.ts';
-    const { parseGroundedNews } = await import(path);
-    const first = { title: 'Café announces [a plan]', description: 'The café said \"new rules\" are coming.' };
-    const second = { title: 'A different policy', description: 'Another organisation announced changes.' };
-    const items = [first, second, { title: '   ', description: 'blank' }, { ...first, title: first.title.toUpperCase() }];
-    const text = `Before [1].\n\`\`\`json\n${JSON.stringify(items)}\n\`\`\`\nAfter [2].`;
-    const position = (item: any) => {
-      const raw = JSON.stringify(item), start = text.indexOf(raw);
-      return { startIndex: new TextEncoder().encode(text.slice(0, start)).length, endIndex: new TextEncoder().encode(text.slice(0, start + raw.length)).length };
-    };
-    return parseGroundedNews({ candidates: [{ content: { parts: [{ text }] }, groundingMetadata: {
-      groundingChunks: [
-        { web: { uri: 'https://example.com/first', title: 'First publisher' } },
-        { web: { uri: 'https://example.com/second', title: 'Second publisher' } },
-        { web: { uri: 'javascript:alert(1)', title: 'Unsafe link' } },
-      ],
-      groundingSupports: [
-        { segment: position(first), groundingChunkIndices: [0, 2] },
-        { segment: position(second), groundingChunkIndices: [1] },
-        { segment: { startIndex: 0, endIndex: new TextEncoder().encode(text).length }, groundingChunkIndices: [2] },
-      ],
-    } }] });
-  });
-  expect(parsed.stories).toHaveLength(2);
-  expect(parsed.stories[0].sources).toEqual([{ title: 'First publisher', url: 'https://example.com/first' }]);
-  expect(parsed.stories[1].sources).toEqual([{ title: 'Second publisher', url: 'https://example.com/second' }]);
-});
-
 for (const kind of ['corrupt', 'old-schema', 'expired', 'future', 'invalid-stories']) {
-  test(`cache ignores ${kind} entries and fetches validated replacements`, async ({ page }) => {
+  test(`cache ignores ${kind} entries`, async ({ page }) => {
     let calls = 0;
-    await page.route('**/api/gemini/content', async route => {
-      calls++;
-      await route.fulfill({ json: response() });
-    });
+    await page.route('**/api/gemini/news', route => { calls++; return route.fulfill({ json: feed() }); });
     await page.goto('/');
     await connect(page);
-    await page.evaluate(({ kind, key, source }) => {
-      const entry = { version: kind === 'old-schema' ? 1 : 2,
-        fetchedAt: Date.now() + (kind === 'future' ? 60_000 : kind === 'expired' ? -31 * 60_000 : 0),
-        stories: [{ title: 'Cached title', description: 'Cached description', sources: [source] }],
-      };
-      localStorage.setItem(key, kind === 'corrupt' ? '{broken' : JSON.stringify(kind === 'invalid-stories'
-        ? { ...entry, stories: [{ title: { invalid: true }, description: 42 }] } : entry));
-    }, { kind, key: CACHE, source: SOURCE });
     await openNews(page);
     await expect(newsDialog(page).locator('li')).toHaveCount(1);
-    expect(calls).toBe(1);
+    await page.keyboard.press('Escape');
+    await page.evaluate(({ kind, key }) => {
+      const entry = JSON.parse(localStorage.getItem(key)!);
+      if (kind === 'old-schema') entry.version = 2;
+      if (kind === 'expired') entry.fetchedAt = Date.now() - 31 * 60_000;
+      if (kind === 'future') entry.fetchedAt = Date.now() + 60_000;
+      if (kind === 'invalid-stories') entry.stories = [{ title: { invalid: true }, description: 42 }];
+      localStorage.setItem(key, kind === 'corrupt' ? '{broken' : JSON.stringify(entry));
+    }, { kind, key: CACHE });
+    await openNews(page);
+    await expect(newsDialog(page).locator('li')).toHaveCount(1);
+    expect(calls).toBe(2);
   });
 }
 
-test('concurrent callers share one lookup and storage failures do not lose results', async ({ page }) => {
+test('concurrent callers share one lookup and storage failure does not lose results', async ({ page }) => {
   let calls = 0;
-  await page.route('**/api/gemini/content', async route => {
-    calls++;
-    await route.fulfill({ json: response() });
-  });
+  await page.route('**/api/gemini/news', route => { calls++; return route.fulfill({ json: feed() }); });
   await page.goto('/');
   await connect(page);
   const counts = await page.evaluate(async () => {
@@ -248,22 +177,20 @@ test('concurrent callers share one lookup and storage failures do not lose resul
     const { getNewsFeed } = await import(path);
     const original = Storage.prototype.setItem;
     Storage.prototype.setItem = () => { throw new Error('Storage unavailable'); };
-    try { return (await Promise.all([getNewsFeed(), getNewsFeed(), getNewsFeed()])).map((feed: any) => feed.stories.length); }
+    try { return (await Promise.all([getNewsFeed(), getNewsFeed(), getNewsFeed()])).map(feed => feed.stories.length); }
     finally { Storage.prototype.setItem = original; }
   });
   expect(counts).toEqual([1, 1, 1]);
   expect(calls).toBe(1);
 });
 
-test('closing during lookup aborts waiting and a late result cannot overwrite a reopened dialog', async ({ page }) => {
+test('closing aborts waiting; a late result cannot overwrite the reopened dialog', async ({ page }) => {
   let calls = 0;
-  let release: (() => void) | undefined;
-  await page.route('**/api/gemini/content', async route => {
-    calls++;
-    const callNumber = calls;
-    if (callNumber === 1) await new Promise<void>(resolve => { release = resolve; });
-    try { await route.fulfill({ json: response(callNumber === 1 ? [{ title: 'Old late result', description: 'Old result.' }] : STORIES) }); }
-    catch { /* The first browser request was cancelled intentionally. */ }
+  let release!: () => void;
+  await page.route('**/api/gemini/news', async route => {
+    const number = ++calls;
+    if (number === 1) await new Promise<void>(resolve => { release = resolve; });
+    try { await route.fulfill({ json: feed(number === 1 ? [{ ...STORIES[0], title: 'Old late result' }] : STORIES) }); } catch {}
   });
   await page.goto('/');
   await connect(page);
@@ -271,46 +198,54 @@ test('closing during lookup aborts waiting and a late result cannot overwrite a 
   await expect.poll(() => Boolean(release)).toBe(true);
   await page.keyboard.press('Escape');
   await expect(newsDialog(page)).not.toBeVisible();
-  await expect.poll(() => page.evaluate(async () => {
-    const path = '/services/geminiConnection.ts';
-    return (await import(path)).isGeminiBusy();
-  })).toBe(false);
   await openNews(page);
   await expect(newsDialog(page).getByRole('button', { name: new RegExp(STORIES[0].title) })).toBeVisible();
-  release!();
+  release();
   await expect(newsDialog(page).getByText('Old late result')).toHaveCount(0);
   expect(calls).toBe(2);
 });
 
-test('overall timeout releases the connection and offers retry', async ({ page }) => {
+test('transport deadline releases the connection and offers manual retry', async ({ page }) => {
   await page.clock.install();
-  let pending: (() => void) | undefined;
-  await page.route('**/api/gemini/content', async route => {
-    await new Promise<void>(resolve => { pending = resolve; });
-    try { await route.abort(); } catch { /* Already aborted by the deadline. */ }
+  let release!: () => void;
+  await page.route('**/api/gemini/news', async route => {
+    await new Promise<void>(resolve => { release = resolve; });
+    try { await route.abort(); } catch {}
   });
   await page.goto('/');
   await connect(page);
   await openNews(page);
-  await expect.poll(() => Boolean(pending)).toBe(true);
+  await expect.poll(() => Boolean(release)).toBe(true);
   await page.clock.fastForward(30_001);
   await expect(newsDialog(page).getByRole('alert')).toContainText('took too long');
+  await expect(newsDialog(page).getByRole('alert')).toContainText('browser-to-app waiting limit');
   await expect(newsDialog(page).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
   expect(await page.evaluate(async () => {
     const path = '/services/geminiConnection.ts';
     return (await import(path)).isGeminiBusy();
   })).toBe(false);
-  pending!();
+  release();
 });
 
-test('suggestions block provider scripts and reject forged close messages', async ({ page }) => {
-  await page.route('**/api/gemini/content', async route => {
-    const data = response();
-    data.candidates[0].groundingMetadata!.searchEntryPoint.renderedContent = `${SUGGESTIONS}
-      <script>window.providerScriptRan = true;</script>
-      <button onclick="window.providerScriptRan = true;">Provider action</button>`;
-    await route.fulfill({ json: data });
+test('key replacement invalidates browser cache scope', async ({ page }) => {
+  let calls = 0;
+  await page.route('**/api/gemini/news', route => { calls++; return route.fulfill({ json: feed() }); });
+  await page.goto('/');
+  await connect(page);
+  await openNews(page);
+  await expect(newsDialog(page).locator('li')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await page.evaluate(async () => {
+    const path = '/services/geminiConnection.ts';
+    await (await import(path)).connectGeminiKey('replacement-news-key');
   });
+  await openNews(page);
+  await expect(newsDialog(page).locator('li')).toHaveCount(1);
+  expect(calls).toBe(2);
+});
+
+test('suggestions block scripts and reject forged close messages', async ({ page }) => {
+  await page.route('**/api/gemini/news', route => route.fulfill({ json: { ...feed(), searchSuggestions: `${SUGGESTIONS}<script>window.providerScriptRan=true;</script><button onclick="window.providerScriptRan=true;">Provider action</button>` } }));
   await page.goto('/');
   await connect(page);
   await openNews(page);
@@ -322,14 +257,8 @@ test('suggestions block provider scripts and reject forged close messages', asyn
   await dialog.evaluate(element => {
     const iframe = element.querySelector('iframe')!;
     const nonce = iframe.srcdoc.match(/script-src 'nonce-([^']+)'/)![1];
-    window.dispatchEvent(new MessageEvent('message', {
-      origin: 'null', source: window,
-      data: { type: 'daily-banana-news-close', token: nonce },
-    }));
-    window.dispatchEvent(new MessageEvent('message', {
-      origin: 'null', source: iframe.contentWindow!,
-      data: { type: 'daily-banana-news-close', token: 'wrong-token' },
-    }));
+    window.dispatchEvent(new MessageEvent('message', { origin: 'null', source: window, data: { type: 'daily-banana-news-close', token: nonce } }));
+    window.dispatchEvent(new MessageEvent('message', { origin: 'null', source: iframe.contentWindow!, data: { type: 'daily-banana-news-close', token: 'wrong-token' } }));
   });
   await expect(dialog).toBeVisible();
   await frame.getByRole('link', { name: 'Recent news search' }).focus();

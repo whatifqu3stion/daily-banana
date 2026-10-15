@@ -1,4 +1,5 @@
 import type { GenerateContentParameters, GenerateContentResponse, GoogleGenAI } from '@google/genai';
+import type { NewsFeed } from '../types';
 
 // Only a tab ID and connection status remain in browser memory, never a key.
 const tab = crypto.randomUUID();
@@ -27,7 +28,7 @@ function clearConnection() {
 }
 
 async function backend<T>(endpoint: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<T> {
-  const operation = endpoint === 'interactions' ? 'image' : endpoint === 'content' ? 'text' : 'key-check';
+  const operation = endpoint === 'interactions' ? 'image' : endpoint === 'content' ? 'text' : endpoint === 'news' ? 'news' : 'key-check';
   let response: Response;
   try {
     response = await fetch(`/api/gemini/${endpoint}`, {
@@ -118,6 +119,10 @@ async function withConnection<T>(endpoint: string, params: unknown, signal?: Abo
 export function generateContent(params: GenerateContentParameters): Promise<GenerateContentResponse> {
   const { abortSignal, ...config } = params.config || {};
   return withConnection('content', { ...params, config }, abortSignal);
+}
+
+export function collectNews(forceRefresh: boolean, signal: AbortSignal): Promise<NewsFeed> {
+  return withConnection('news', { forceRefresh }, signal);
 }
 
 export type ImageInteractionInput =

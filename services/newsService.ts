@@ -1,33 +1,33 @@
 import type { NewsFeed, NewsStory } from '../types';
-import { generateContent, getConnectionRevision, hasGeminiKey } from './geminiConnection';
-import { describeNewsError, isTransientNewsError, newsError, NewsRequestError } from './newsErrors';
-import { normalizeNewsStories, parseGroundedNews } from './newsParsing';
+import { collectNews, getConnectionRevision, hasGeminiKey, subscribeGeminiConnection } from './geminiConnection';
+import { describeNewsError, newsError, NewsRequestError } from './newsErrors';
+import { normalizeNewsStories } from './newsParsing';
 
-const CACHE_KEY = 'dailyBanana_news_v2';
+const CACHE_KEY = 'dailyBanana_news_v3';
 const FRESH_FOR = 30 * 60 * 1000;
 const MAX_CACHED_AGE = 24 * 60 * 60 * 1000;
+// Transport allowance only: the backend owns a single 20-second Google budget.
 const REQUEST_DEADLINE = 30_000;
-
-interface CachedFeed extends NewsFeed { version: 2 }
 let inflight: { revision: number; controller: AbortController; promise: Promise<NewsFeed> } | null = null;
+let cacheRevision = getConnectionRevision();
+let cacheScope = crypto.randomUUID();
 
 function readCache(maxAge: number): NewsFeed | null {
   try {
-    const cached: CachedFeed = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw || raw.length > 210_000) return null;
+    const cached = JSON.parse(raw);
     const age = Date.now() - cached?.fetchedAt;
-    if (cached?.version !== 2 || !Number.isFinite(cached.fetchedAt) || age < 0 || age > maxAge) return null;
+    if (cached?.version !== 3 || cached.scope !== cacheScope || !Number.isFinite(cached.fetchedAt) || age < 0 || age > maxAge || !Array.isArray(cached.stories)) return null;
     const stories = normalizeNewsStories(cached.stories);
     if (!stories.length || stories.length !== cached.stories.length) return null;
-    return {
-      stories, fetchedAt: cached.fetchedAt,
-      searchSuggestions: typeof cached.searchSuggestions === 'string' && cached.searchSuggestions.length <= 100_000
-        ? cached.searchSuggestions : undefined,
-    };
+    return { stories, fetchedAt: cached.fetchedAt,
+      searchSuggestions: typeof cached.searchSuggestions === 'string' && cached.searchSuggestions.length <= 100_000 ? cached.searchSuggestions : undefined };
   } catch { return null; }
 }
 
 function saveCache(feed: NewsFeed) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...feed, version: 2 })); }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ...feed, version: 3, scope: cacheScope })); }
   catch { /* Storage failure does not prevent using a valid live response. */ }
 }
 
@@ -35,6 +35,15 @@ export function cancelNewsRequest() {
   inflight?.controller.abort();
   inflight = null;
 }
+
+// A replacement/removal/expiry cannot let an old response populate this tab.
+subscribeGeminiConnection(() => {
+  if (cacheRevision !== getConnectionRevision()) {
+    cacheRevision = getConnectionRevision();
+    cacheScope = crypto.randomUUID();
+    cancelNewsRequest();
+  }
+});
 
 export async function getNewsFeed({ forceRefresh = false }: { forceRefresh?: boolean } = {}): Promise<NewsFeed> {
   if (!hasGeminiKey()) throw new NewsRequestError(describeNewsError('Connect your Google API key before fetching headlines.'));
@@ -48,63 +57,28 @@ export async function getNewsFeed({ forceRefresh = false }: { forceRefresh?: boo
   const controller = new AbortController();
   let timedOut = false;
   const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_DEADLINE);
-  const now = new Date();
-  const prompt = `Use Google Search to find up to 10 recent news headlines reported in the past 24 hours.
-Current time: ${now.toISOString()}. The reader's local date is ${now.toLocaleDateString('en-US')}.
-Focus on politics, government, business, science, technology, international affairs and cultural events.
-Avoid sports scores, celebrity gossip and purely local crime. Prefer original reporting and identifiable publishers.
-Only include claims supported by the search results. Do not invent events, statistics, quotes, sources or dates.
-Return fewer than 10 if there are not enough usable, recent, distinct stories.
-Return a JSON array, optionally in a JSON code fence, with these fields per story:
-"title": a concise headline (at most 120 characters);
-"description": 2-3 factual sentences (at most 500 characters), with a specific detail where supported;
-"source_urls": URLs of actual search results supporting this story.
-Do not include any unsourced story. Attribute each story's claims to its sources.`;
-
   const promise = (async (): Promise<NewsFeed> => {
     try {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        if (controller.signal.aborted || revision !== getConnectionRevision()) {
-          throw newsError('cancelled', 'News search closed', 'The news lookup is no longer active.', null);
-        }
-        try {
-          const result = await generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-              tools: [{ googleSearch: {} }],
-              temperature: 0.1,
-              abortSignal: controller.signal,
-              // Explicit limits prevent hidden SDK retries on quota/billing errors.
-              httpOptions: { timeout: 20_000, retryOptions: { attempts: 1 } },
-            },
-          });
-          if (controller.signal.aborted || revision !== getConnectionRevision()) {
-            throw newsError('cancelled', 'News search closed', 'The news lookup is no longer active.', null);
-          }
-          const parsed = parseGroundedNews(result);
-          const feed: NewsFeed = { ...parsed, fetchedAt: Date.now() };
-          saveCache(feed);
-          return feed;
-        } catch (error) {
-          if (controller.signal.aborted || attempt === 1 || !isTransientNewsError(error)) throw error;
-          await new Promise<void>(resolve => {
-            const finish = () => { clearTimeout(timer); controller.signal.removeEventListener('abort', finish); resolve(); };
-            const timer = setTimeout(finish, 600);
-            controller.signal.addEventListener('abort', finish, { once: true });
-          });
-        }
+      const result = await collectNews(forceRefresh, controller.signal);
+      if (controller.signal.aborted || revision !== getConnectionRevision()) throw newsError('cancelled', 'News search closed', 'The news lookup is no longer active.', null);
+      const stories = normalizeNewsStories(result?.stories);
+      if (!stories.length || !Number.isFinite(result?.fetchedAt) || !Array.isArray(result.stories) || stories.length !== result.stories.length) {
+        throw newsError('format', 'The news desk returned unreadable headlines', 'The app returned an unexpected news feed. No headlines were saved.');
       }
-      throw newsError('service', 'News search unavailable', 'Please try again.');
+      const feed: NewsFeed = { stories, fetchedAt: result.fetchedAt,
+        searchSuggestions: typeof result.searchSuggestions === 'string' && result.searchSuggestions.length <= 100_000 ? result.searchSuggestions : undefined };
+      saveCache(feed);
+      return feed;
     } catch (error) {
-      if (controller.signal.aborted && !timedOut) throw newsError('cancelled', 'News search closed', 'The news lookup was closed.', null);
+      // Session expiry notification aborts the waiter as well. Report recovery
+      // rather than silently treating that abort as closing the news dialog.
+      if (!hasGeminiKey()) throw new NewsRequestError(describeNewsError(JSON.stringify({ error: { code: 401 } })));
+      if (revision !== getConnectionRevision() || (controller.signal.aborted && !timedOut)) throw newsError('cancelled', 'News search closed', 'The news lookup was closed.', null);
       const issue = timedOut
-        ? describeNewsError('News request timed out')
+        ? newsError('transport-timeout', 'News search took too long',
+          'The app did not deliver headlines within 30 seconds. This is the browser-to-app waiting limit, separate from the server’s 20-second Google limit. No automatic retry was made; the Google request outcome and usage may be unknown.').issue
         : describeNewsError(error);
-      if (previous && !['key', 'cancelled'].includes(issue.code)) {
-        // A failed refresh must never masquerade as fresh current headlines.
-        return { ...previous, stale: true, warning: issue };
-      }
+      if (previous && !['key', 'cancelled'].includes(issue.code)) return { ...previous, stale: true, warning: issue };
       throw new NewsRequestError(issue);
     } finally {
       clearTimeout(deadline);
@@ -115,7 +89,6 @@ Do not include any unsourced story. Attribute each story's claims to its sources
   return promise;
 }
 
-// Preserve the existing service interface used by other callers.
 export async function getTopStories(): Promise<NewsStory[]> {
   return (await getNewsFeed()).stories;
 }

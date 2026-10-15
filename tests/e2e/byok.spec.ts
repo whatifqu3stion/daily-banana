@@ -94,6 +94,8 @@ async function mockBackend(page: Page) {
       } } });
     } else if (!sessions.has(tab)) {
       await route.fulfill({ status: 401, json: { error: { message: 'API key session expired' } } });
+    } else if (endpoint === 'news') {
+      await route.fulfill({ json: { stories: [{ title: 'News story', description: 'A grounded story.', sources: [{ url: 'https://example.com/story', title: 'Example News' }] }], fetchedAt: Date.now() } });
     } else if (endpoint === 'interactions') {
       await route.fulfill({ json: { status: 'completed', steps: [], output_image: control.mode === 'image' ? { data: IMAGE, mime_type: 'image/png' } : undefined,
         output_text: control.mode === 'refusal' ? 'I cannot generate this image due to content policy.' : '' } });
@@ -349,7 +351,7 @@ test('planning, panels, edits, context and grounded news all use the same-origin
   expect(calls.every(call => !JSON.stringify(call).includes(KEY) && !call.headers['x-goog-api-key'])).toBe(true);
   expect(new Set(mock.calls.map(call => call.headers['x-gemini-tab'])).size).toBe(1);
   expect(calls.filter(call => call.endpoint === 'interactions').every(call => call.body.model === 'gemini-nano-banana-2.1' && call.body.response_format.image_size === '2K')).toBe(true);
-  expect(calls.filter(call => call.endpoint === 'content').some(call => call.body.config?.tools?.[0]?.googleSearch)).toBe(true);
+  expect(calls.some(call => call.endpoint === 'news' && call.body.forceRefresh === false)).toBe(true);
   expect(mock.direct).toHaveLength(0);
 });
 
