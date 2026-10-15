@@ -66,9 +66,20 @@ test('custom selects support arrow keys, Escape, and focus restoration', async (
   await expect(stance).toBeFocused();
 });
 
+for (const width of [1440, 402]) {
+  test(`bottom navigation replaces the masthead reset action at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await startComic(page);
+    await expect(page.getByRole('banner').getByRole('button')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Back to topic and style', exact: true }).click();
+    await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Office automation gone wrong');
+    await expect(page.getByRole('button', { name: 'Generate Comic Plan' })).toBeVisible();
+  });
+}
+
 test('confirmation modal traps focus, closes on Escape, and restores the trigger', async ({ page }) => {
-  await reachReview(page);
-  const trigger = page.getByRole('button', { name: 'New comic' });
+  await reachStrip(page);
+  const trigger = page.getByRole('button', { name: 'Create New', exact: true });
   await trigger.click();
   const dialog = page.getByRole('dialog', { name: 'Start a new comic?' });
   await expect(dialog).toBeVisible();
@@ -93,7 +104,7 @@ test('new-comic actions require confirmation once generation has begun', async (
   await dialog.getByRole('button', { name: 'Keep editing' }).click();
   await expect(page.getByText('Final edition')).toBeVisible();
 
-  await page.getByRole('button', { name: 'New comic' }).click();
+  await page.getByRole('button', { name: 'Create New', exact: true }).click();
   await dialog.getByRole('button', { name: 'Discard and start new' }).click();
   await expect(page.getByRole('button', { name: 'Generate Comic Plan' })).toBeVisible();
 });

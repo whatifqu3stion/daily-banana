@@ -140,17 +140,12 @@ const App: React.FC = () => {
     <div className="min-h-[100dvh] px-3 py-3 sm:px-6 sm:py-6 font-sans">
       <header className={`mx-auto w-full max-w-6xl ${isSetup ? 'mb-10 sm:mb-14' : 'mb-6'}`}>
         {!isSetup && (
-          <div className="compact-masthead grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-y-2 border-black py-2.5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:py-3 lg:gap-5">
+          <div className="compact-masthead grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-y-2 border-black py-2.5 sm:py-3 lg:gap-5">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <img src="/banana-boy-mascot.png" alt="" className="h-9 w-auto flex-shrink-0 sm:h-12 md:h-14 lg:h-16" />
               <span className="whitespace-nowrap font-masthead text-xl leading-none sm:text-2xl md:text-3xl lg:text-4xl">The Daily Banana</span>
             </div>
             <span className="text-right text-xs font-bold font-special-elite uppercase tracking-wide text-gray-900 sm:text-sm md:text-base lg:text-lg">{today}</span>
-            <div className="col-span-2 flex items-center justify-self-end gap-2 sm:col-span-1">
-              <button type="button" onClick={requestNewComic} className="border-2 border-black bg-paper-light px-3 py-2 text-xs font-bold uppercase tracking-wide hover:bg-banana focus:outline-none focus-visible:ring-2 focus-visible:ring-black">
-                New comic
-              </button>
-            </div>
           </div>
         )}
         {isSetup && <div className="text-center">
