@@ -4,3 +4,4 @@
 - [Gemini docs compatibility](gemini-documentation-compatibility.md) — image examples may differ from SDK schemas; verify formats instead of bypassing types.
 - [News freshness](news-freshness-semantics.md) — retrieval timestamps are not verified article publication dates; label cached fallback honestly.
 - [Sandboxed embed keyboard](sandboxed-embed-keyboard.md) — Escape inside opaque frames needs a restricted bridge; parent modal listeners cannot see it.
+- [Comic quality scope](comic-quality-scope.md) — investigate all generation phases and setting variations, not just one story prompt or humor style.
