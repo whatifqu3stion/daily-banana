@@ -262,7 +262,7 @@ export interface NumericFact {
   display: string;
   value: string;
   currency: string;
-  roundingPolicy: 'exact-unless-creator-approves-nearest-unit-within-1pct';
+  roundingPolicy: 'prefer-exact-allow-nearest-unit-within-1pct' | 'exact-unless-creator-approves-nearest-unit-within-1pct';
   provenance: 'supplied-background' | 'supplied-topic';
 }
 

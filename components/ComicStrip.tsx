@@ -13,8 +13,7 @@ import TwitterIcon from './icons/TwitterIcon';
 import Tooltip from './Tooltip';
 import RefreshIcon from './icons/RefreshIcon';
 import StoryCheck from './StoryCheck';
-import NumericConsistencyNotice from './NumericConsistencyNotice';
-import { checkArchiveAmounts, inspectNumericFacts, stripAsNumericPlan } from '../services/numericFacts';
+import { checkArchiveAmounts, stripAsNumericPlan } from '../services/numericFacts';
 
 interface ComicStripProps {
   comicData: ComicStripData;
@@ -43,13 +42,9 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const numericPlan = stripAsNumericPlan(comicData);
-  const numericIssues = inspectNumericFacts(numericPlan);
-  const archiveWarning = comicData.archiveWarning || (comicData.context
-    ? numericIssues.some(issue => issue.blocking)
-      ? 'Archive note hidden while edited panel amounts conflict with supplied evidence. Correct the text to restore the note; no artwork has been changed.'
-      : checkArchiveAmounts(comicData.context, numericPlan)
-    : undefined);
-  const checkedComicData = { ...comicData, archiveWarning };
+  const archiveWarning = comicData.archiveWarning || (comicData.context ? checkArchiveAmounts(comicData.context, numericPlan) : undefined);
+  const concerns = [archiveWarning, ...comicData.panels.map((panel, index) =>
+    panel.continuityWarning ? `Panel ${index + 1}: ${panel.continuityWarning}` : undefined)].filter((item): item is string => Boolean(item));
 
   const handleDownload = async () => {
     if (!comicRef.current || downloadInFlightRef.current) return;
@@ -115,7 +110,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
-       <div ref={comicRef} className="w-full bg-paper-light px-4 py-5 sm:p-6 md:p-8 border-3 border-black shadow-xl rounded-lg">
+       <div ref={comicRef} data-testid="comic-export" className="w-full bg-paper-light px-4 py-5 sm:p-6 md:p-8 border-3 border-black shadow-xl rounded-lg">
          <div className="no-export mb-5 flex flex-col gap-2 border-b-2 border-black pb-4 sm:flex-row sm:items-end sm:justify-between">
            <div>
              <p className="text-xs font-open-sans font-bold uppercase tracking-[0.18em] text-gray-500">Final edition</p>
@@ -144,11 +139,6 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           ))}
         </div>
         </div>
-          <NumericConsistencyNotice comicData={checkedComicData} />
-          {archiveWarning && comicData.contextSources?.length ? <p className="mt-3 break-words font-open-sans text-sm">
-            Later research sources (not confirmation of the supplied figures):{' '}
-            {comicData.contextSources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noopener noreferrer" className="mr-3 underline">{extractDomain(source.url)}</a>)}
-          </p> : null}
           {comicData.context && !archiveWarning && (
            <aside className="mt-7 grid gap-3 border-y border-black/50 py-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-6 md:py-5">
              <div>
@@ -195,9 +185,9 @@ const ComicStrip: React.FC<ComicStripProps> = ({
            Export issue: {downloadError}
         </p>
       )}
-      {comicData.story && <div className="w-full">
-         <StoryCheck plan={numericPlan} />
-      </div>}
+      <div className="no-export w-full">
+         <StoryCheck plan={numericPlan} additionalConcerns={concerns} archiveSources={archiveWarning ? comicData.contextSources : undefined} />
+      </div>
       <div className="w-full flex flex-wrap justify-center items-center gap-4 pt-4">
          <Tooltip text="Start with a new topic and settings">
           <button

@@ -1,7 +1,7 @@
 // components/ReviewPlan.tsx
 // Shown after panel 0 has been generated. Lets the user inspect the comic plan,
 // refine or regenerate the first panel image, then continue generating the rest.
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ComicFormData, ReviewData } from '../types';
 import RefreshIcon from './icons/RefreshIcon';
 import SparklesIcon from './icons/SparklesIcon';
@@ -34,8 +34,6 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
     const [refinementTags, setRefinementTags] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [checkedContinuity, setCheckedContinuity] = useState(false);
-    useEffect(() => { setCheckedContinuity(false); }, [reviewData.generationId]);
     const [setDescOpen, setSetDescOpen] = useState(false);
     const [setDescEditing, setSetDescEditing] = useState(false);
     const [setDescDraft, setSetDescDraft] = useState(reviewData.plan.set_description ?? '');
@@ -120,10 +118,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                     <p className="text-red-800 font-bold">{error}</p>
                 </div>
             )}
-            {reviewData.continuityWarning && <div role="status" className="w-full border-2 border-black bg-banana p-4 font-open-sans text-base leading-6">
-                <p>{reviewData.continuityWarning}</p>
-                <label className="mt-3 flex items-start gap-3 font-bold"><input type="checkbox" checked={checkedContinuity} onChange={event => setCheckedContinuity(event.target.checked)} className="mt-1 h-5 w-5" />I checked the action, text and continuity of this proof.</label>
-            </div>}
+
 
             <div className="w-full grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-8">
                 {/* Left side: Plan details */}
@@ -135,7 +130,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                         </p>
                     </header>
                     <div className="mt-4 space-y-4 overflow-y-auto max-h-[400px] pr-2">
-                        <StoryCheck plan={reviewData.plan} />
+                        <StoryCheck plan={reviewData.plan} additionalConcerns={reviewData.continuityWarning ? [reviewData.continuityWarning] : []} />
                         {reviewData.plan.panels.map((panel, index) => (
                             <div key={panel.slug} className="text-sm border-b border-gray-300 pb-2 last:border-b-0">
                                 <h4 className="font-bold font-special-elite text-gray-700">Panel {index + 1}:</h4>
@@ -271,7 +266,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
                 <Tooltip text="Looks good! Generate the rest of the comic panels." wrapperClassName="generate-button-wrapper">
                     <button
                         onClick={onContinue}
-                        disabled={isLoading || Boolean(reviewData.continuityWarning && !checkedContinuity)}
+                        disabled={isLoading}
                          className="inline-flex items-center justify-center gap-3 px-8 py-2 bg-banana text-black font-bangers text-xl tracking-wider border-2 border-black border-b-4 hover:-translate-y-0.5 active:border-b-2 active:translate-y-0 active:mt-0.5 transition-all"
                     >
                         <SparklesIcon className="w-6 h-6" />

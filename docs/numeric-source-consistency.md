@@ -1,82 +1,57 @@
 # Monetary source consistency
 
-## Why one input did not guarantee one amount
+## Advisory by design
 
-The supplied background, generated planning fields, image prop instructions and optional
-post-art archive note are separate representations. A model can paraphrase a number
-incorrectly while producing a structurally valid plan, and later research can introduce
-another figure. Before this safeguard, the planner's text was not deterministically
-compared to a shared, source-linked monetary record. The original bad model response is
-not available, so this describes the architectural failure path, not a claim about which
-call introduced the historical discrepancy.
+An earlier version required creators to bind source IDs, approve rounding and
+acknowledge continuity changes before continuing. Creator feedback identified this
+as unnecessary friction. The current flow offers optional concerns while leaving
+Choose This Story, Finish, Refine, Regenerate and Download available.
 
-## Primary boundary: before images
+Only unusable drawing data or technical request failures prevent the app from
+performing an operation. Editorial uncertainty never becomes an approval task.
 
-1. The app extracts monetary evidence from both the supplied topic and background,
-   retaining their distinct provenance even when both contain amounts. It retains the original excerpt, contextual subject/claim,
-   source ID, normalized base-unit decimal value, currency and rounding policy.
-   These are **supplied claims**, not independently verified reporting.
-2. The existing single/brainstorm/custom planning request receives this ledger and
-   instructions to check amounts in the same response. `numeric_uses` binds individual
-   dialogue, caption, story, action, set, continuity and prop phrases to source IDs.
-3. `inspectNumericFacts` runs deterministically on the result. A single unambiguous
-   source amount can be bound by the app. Multiple claims always require explicit IDs;
-   equal numbers alone do not establish equal subjects or claims. Repeated identical
-   phrases within one field must be disambiguated before separate claims can be bound.
-4. `assertDrawableStory` blocks the first image and later scheduling/finish boundaries.
-   Each brainstorm alternative is checked separately. A blocked custom concept remains
-   available in the same review UI rather than bypassing the checks.
-5. Image prompts carry the same ledger and bindings. Existing overlay suppression,
-   action ownership and visual-reference behavior remain unchanged.
+## Quiet checks
 
-`$1.21 billion`, `$1,210,000,000` and `one point two one billion dollars` normalize
-to the same USD value. `twelve billion` does not. Different currencies are not converted.
-The parser is deliberately conservative English monetary parsing, not general semantic
-fact checking, financial arithmetic, a currency-conversion service or a full locale parser.
-Non-monetary counts, dates and percentages are outside this pass.
+The app retains supplied monetary excerpts from both the topic and background.
+The existing planning request receives them with instructions to preserve source
+amounts and distinguish real claims from invented details. No extra model call is
+added for review.
 
-## Explicit decisions, never automatic repair
+Deterministic comparisons notice obvious monetary differences. Equivalent formats
+and nearest-unit rounding within 1% stay quiet: $1.21 billion and $1.2 billion do
+not need separate approval. A change to $12 billion remains visible as advice.
+Missing source bindings do not become a form the creator must complete.
 
-- Default policy: exact source amount.
-- Allowed approximation: nearest displayed precision, at most 1% relative difference,
-  and only after an explicit creator approval. Thus $1.21bn → $1.2bn can be approved,
-  but $1bn or $12bn cannot be passed as rounding.
-- Approvals bind the specific phrase, field, source ID and decision type. A changed
-  amount invalidates its approval. Model-provided approvals are never accepted.
-- Distinct fictional amounts in a sourced story require explicit creator confirmation
-  when the planner identifies them as fiction. Unsubstantiated topic-only monetary
-  fiction is labelled as such, not reported as a verified fact.
-- Source binding and text correction are deliberate UI actions. The app does not
-  silently rewrite text, regenerate artwork or add paid critic/OCR/review calls.
-- Approved approximation/fiction decisions remain visible in review and printed output.
+These are conservative English monetary-text comparisons, not external fact checking,
+financial arithmetic, currency conversion, or verification of the painted artwork.
+Matching numbers do not establish matching subjects, claims or source truth.
 
-## Editing, archive and export
+## One optional notice
 
-The final strip retains the evidence, bindings and creator decisions. Numeric edits are
-checked from current text, without changing text, bubble positions or artwork. New conflicts
-stay visible adjacent to the comic and inside the PNG capture; the editable review controls
-are not exported. Regeneration/refinement cannot ignore an existing numeric conflict.
+Useful concerns appear in one compact notice with a collapsed Review details control.
+Repeated amount concerns are grouped across planning fields and identified with
+plain-language panel locations. Source IDs and approval receipts stay out of the UI.
+Clean stories add no review section. Text and artwork remain unchanged until the
+creator chooses to edit them using the existing tools.
 
-The optional archive request receives the selected ledger and actual planned panel/prop
-text, not only a summary. Its text is checked again before attachment. Conflicting
-amounts are withheld, with later-research provenance and source links visible; no later
-research silently replaces the supplied claim. Any unstructured note containing monetary
-claims is conservatively withheld, including an equal amount attached to a different claim.
-Number equality cannot prove subject/claim identity, even with only one supplied figure.
-This pass does not add a claim-linked archive-approval workflow. Non-monetary notes can
-still be shown. Archive failure preserves the finished comic. Manual numeric
-conflicts hide an otherwise retained note until the text is corrected.
+Proof and downstream continuity changes use the same notice. Finish the strip accepts
+the proof directly. There are no required checkboxes or Mark reviewed actions.
 
-**Limit:** matching structured text cannot verify lettering painted into a generated
-image, the truth of supplied background, or all semantic associations. The creator still
-needs to inspect props and source claims. A PNG contains rendered disclosure/warnings,
-not a machine-readable copy of the plan.
+## Archive and export
 
-## Offline verification
+The optional archive lookup remains separate from the original supplied evidence.
+An obvious monetary difference can leave that optional note out with a short explanation;
+the comic remains usable. A matching amount is not presented as independent verification.
+Manual dialogue edits do not hide an otherwise retained nonconflicting archive note.
 
-`npx playwright test -c playwright.story.config.ts` includes normalization, source/claim
-ambiguity, currency disagreement, explicit rounding/fiction, all configured style and
-stance branches plus custom choices, both image routes, archive enabled/disabled,
-first-image blocking, brainstorm alternatives, custom-premise blocking, non-destructive
-archive failures, final metadata, manual geometry preservation and printed warnings.
-Tests intercept or stub Google traffic; no real generation quota is used.
+Concerns are outside the comic capture area and do not appear in downloaded PNGs.
+The ordinary satire footer and any included archive attribution remain part of the comic.
+
+## Verification
+
+Offline tests exercise normal rounding, large differences, grouped notices, continued
+generation with unresolved concerns, first-proof changes, downstream redraw/refinement,
+manual text and geometry preservation, archive failures and successful PNG download.
+Both image models retain their existing reference and request behavior. The production
+Pages bundle is checked with the real SDK and intercepted responses. These checks prove
+application behavior, not live model quality or factual accuracy.

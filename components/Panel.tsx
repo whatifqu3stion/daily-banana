@@ -71,7 +71,7 @@ const Panel: React.FC<PanelProps> = ({
         className="min-h-11 flex-1 min-w-0 text-sm p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none text-black placeholder:text-gray-500"
       />
       {!panelData.failed && (
-        <Tooltip text="Refine image with the details in the field" position="top-left">
+        <Tooltip text="Refine image with the details in the field" position="top">
           <button
             type="button"
             onClick={() => {
@@ -247,12 +247,7 @@ const Panel: React.FC<PanelProps> = ({
        <div className="no-export flex flex-wrap items-center gap-2 border-t-2 border-black bg-black p-2 sm:hidden" data-testid={`panel-mobile-controls-${panelIndex + 1}`}>
          {panelTools}
        </div>
-       {panelData.continuityWarning && <div role="status" className="no-export border-t-2 border-black bg-banana p-3 font-open-sans text-base leading-6">
-         <p>{panelData.continuityWarning}</p>
-         {panelData.action && <p className="mt-2"><strong>Planned action:</strong> {panelData.action.description}</p>}
-         <button type="button" onClick={() => onUpdatePanel(panelIndex, { continuityWarning: undefined })}
-           className="mt-2 min-h-11 border-2 border-black bg-white px-3 py-2 font-bold">Mark panel {panelIndex + 1} reviewed</button>
-       </div>}
+
     </div>
   );
 };

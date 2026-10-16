@@ -87,14 +87,14 @@ test('all register/stance/planning branches preserve the input brief and shared 
   }
 });
 
-test('preflight rejects unsupported sources and effects, respects custom premises, and permits magazine/silent/nonliteral beats', async ({ page }) => {
+test('story concerns preserve source and effect notes without blocking creative choices', async ({ page }) => {
   await page.goto('/');
   const result = await page.evaluate(async ({ raw, form }) => {
     const path = '/services/storyContract.ts';
-    const { attachStoryBrief, inspectStory, assignEffect } = await import(path);
+    const { attachStoryBrief, inspectStory } = await import(path);
     const current = attachStoryBrief(raw, form);
     const original = inspectStory(current);
-    const fixed = assignEffect(current, 1, 0, 'throw');
+    const fixed = structuredClone(current); fixed.panels[2].text_elements = fixed.panels[1].text_elements; fixed.panels[1].text_elements = [];
     const badSource = structuredClone(fixed); badSource.story.source_excerpt = 'Invented allegation absent from the background.';
     const custom = attachStoryBrief(fixed, { ...form, customPremise: 'My exact required premise.' });
     const silent = structuredClone(fixed); silent.panels.forEach(panel => panel.text_elements = []);
@@ -110,7 +110,7 @@ test('preflight rejects unsupported sources and effects, respects custom premise
     return { original: original.map(issue => issue.code), fixed: inspectStory(fixed).filter(issue => issue.blocking), owner: fixed.panels[2].text_elements[0].action_id,
       badSource: inspectStory(badSource).map(issue => issue.code), custom: inspectStory(custom).map(issue => issue.code),
       counts, magazine: inspectStory(magazine).filter(issue => issue.blocking), topicKind: topic.brief.sourceKind,
-      missing: inspectStory(noContract).filter(issue => issue.blocking).map(issue => issue.code) };
+      missing: inspectStory(noContract).map(issue => issue.code) };
   }, { raw: plan, form });
   expect(result.original).toContain('effect-owner');
   expect(result.fixed).toEqual([]);
@@ -123,31 +123,21 @@ test('preflight rejects unsupported sources and effects, respects custom premise
   expect(result.missing).toContain('legacy-story');
 });
 
-test('creator corrects a sound before paid images; final artwork owns that sound and story notes remain available', async ({ page }) => {
+test('sound ownership concerns are optional and preserve the creator’s chosen outline', async ({ page }) => {
   const calls = await backend(page, true);
   await page.getByLabel('Topic', { exact: true }).fill(form.topic);
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   await expect(page.getByRole('heading', { name: 'Choose Your Story' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeDisabled();
-  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(0);
-  await page.getByText('Story intent and actions', { exact: true }).click();
-  await page.getByLabel('Action for “FWOOSH”').selectOption('throw');
   await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeEnabled();
+  const notice = page.getByRole('complementary', { name: 'Story concerns' });
+  await notice.getByText('Review details', { exact: true }).click();
+  await expect(notice).toContainText('FWOOSH');
   await page.getByRole('button', { name: 'Choose This Story' }).click();
   await expect(page.getByRole('heading', { name: 'Review the first panel' })).toBeVisible();
   await page.getByRole('button', { name: 'Finish the strip' }).click();
   await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
-  const p2 = page.locator('[aria-label="Panel 2"]'), p3 = page.locator('[aria-label="Panel 3"]');
-  await expect(p2.getByText('FWOOSH', { exact: true })).toHaveCount(0);
-  await expect(p3.getByText('FWOOSH', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Panel 2', { exact: true }).getByText('FWOOSH', { exact: true })).toBeVisible();
   expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(3);
-  await page.getByText('Story intent and actions', { exact: true }).click();
-  await expect(page.getByText('Topic only. Invented story details are fiction, not verified reporting.', { exact: false })).toBeVisible();
-  await page.screenshot({ path: '/tmp/story-contract-desktop.png', fullPage: true });
-  await page.setViewportSize({ width: 402, height: 1000 });
-  const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().right > window.innerWidth + 1).map(el => `${el.tagName}.${el.className}`).slice(0, 12));
-  expect(overflow).toEqual([]);
-  await page.screenshot({ path: '/tmp/story-contract-mobile.png', fullPage: true });
 });
 
 async function harness(page: Page, { failSecond = false, holdSecond = false, model = 'gemini-nano-banana-2.1', context = false, references = false } = {}) {
@@ -247,7 +237,7 @@ test('background failure remains a failed panel until explicit retry; source and
   expect(await page.evaluate(() => (window as any).imageCalls.length)).toBe(4);
 });
 
-test('review image changes require acknowledgment and final regeneration flags downstream panels without repairing them', async ({ page }) => {
+test('review image changes continue without acknowledgment and group downstream concerns', async ({ page }) => {
   const calls = await backend(page);
   await page.getByLabel('Topic', { exact: true }).fill(form.topic);
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
@@ -255,18 +245,15 @@ test('review image changes require acknowledgment and final regeneration flags d
   await page.getByPlaceholder('Add refinement details...').fill('Change only the sleeve color');
   await page.getByRole('button', { name: 'Refine', exact: true }).click();
   const finish = page.getByRole('button', { name: 'Finish the strip' });
-  await expect(finish).toBeDisabled();
-  await page.getByLabel('I checked the action, text and continuity of this proof.').check();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
   await expect(finish).toBeEnabled();
   await finish.click();
   await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
   const panel = page.getByLabel('Panel 1', { exact: true });
   await panel.focus();
   await panel.getByRole('button', { name: 'Regenerate', exact: true }).first().click();
-  await expect(page.getByRole('button', { name: 'Mark panel 1 reviewed', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Mark panel 2 reviewed', exact: true })).toBeVisible();
-  const sent = calls.filter(call => call.endpoint === 'interactions').length;
-  await page.getByRole('button', { name: 'Mark panel 2 reviewed', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Mark panel 2 reviewed', exact: true })).toHaveCount(0);
-  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(sent);
+  await expect(page.getByRole('button', { name: /Mark panel .* reviewed/ })).toHaveCount(0);
+  const notice = page.getByRole('complementary', { name: 'Story concerns' });
+  await notice.getByText('Review details', { exact: true }).click();
+  await expect(notice).toContainText('An earlier reference image changed');
 });

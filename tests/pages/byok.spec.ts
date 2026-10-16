@@ -275,3 +275,38 @@ test('closing a Pages news lookup stays a cancellation and ignores late results'
   await expect(newsDialog(page).getByRole('alert')).toHaveCount(0);
   expect(searches).toBe(2);
 });
+
+test('Pages editorial concerns allow choosing, proof changes, finishing and export without approval steps', async ({ page }) => {
+  const background = 'Example Bank paid a $1.21 billion fine.';
+  const scripted = structuredClone(plan);
+  scripted.story = { ...scripted.story, source_anchor: background, source_excerpt: background };
+  scripted.panels[0].text_elements = [{ role: 'speech', text: '$12 billion? Again?' }];
+  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { models: [] } });
+    if (route.request().url().includes('generateContent')) return route.fulfill({ json: {
+      candidates: [{ finishReason: 'STOP', content: { role: 'model', parts: [{ text: JSON.stringify(scripted) }] } }],
+    } });
+    return route.fulfill({ json: { id: 'fixture', status: 'completed', steps: [
+      { type: 'model_output', content: [{ type: 'image', data: png, mime_type: 'image/png' }] },
+    ] } });
+  });
+  await page.goto('./');
+  await page.getByLabel('Topic', { exact: true }).fill('Bank fine');
+  await page.getByRole('button', { name: '+ Add background context', exact: true }).click();
+  await page.getByLabel('Background Context', { exact: false }).fill(background);
+  await connect(page);
+  await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+  await expect(page.getByRole('complementary', { name: 'Story concerns' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Choose This Story' }).click();
+  await expect(page.getByRole('heading', { name: 'Review the first panel' })).toBeVisible();
+  await page.getByRole('button', { name: 'Regenerate', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Finish the strip' })).toBeEnabled();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Finish the strip' }).click();
+  await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Story concerns' })).toHaveCount(1);
+  await expect(page.getByTestId('comic-export')).toContainText('$12 billion? Again?');
+  await expect(page.getByTestId('comic-export').getByRole('complementary', { name: 'Story concerns' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeEnabled();
+});

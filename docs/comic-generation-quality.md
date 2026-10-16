@@ -20,12 +20,12 @@ caused the reported FWOOSH error**.
 |---|---|---|
 | Setup/news | User topic, optional supplied background, settings, references | App-authored brief snapshots actual inputs. Supplied context is not independently verified. |
 | Single/brainstorm/custom planning | One existing text request; same schema and system rules, branch-specific brief | Story anchor + exact supplied excerpt, argument, setup/payoff; ordered unique panel/action identities; effect-to-action IDs; unresolved writer notes. Self-review happens within the existing request, not an additional paid critic call. |
-| Sanitization/preflight | Application | Keep contract fields; reject duplicate identities, changed custom premise, missing new contracts, unsupported excerpts and wrong/unbound SFX ownership before paid images. These checks establish structure/presence, not truth, comedy or semantic equivalence. |
-| Selection/layout | User chooses/corrects effect ownership; application selects geometry | Stable panel identities and action bindings survive. Layout does not rewrite the plot. Magazine Gag is one scene; other built-in styles use 2–4 panels. |
+| Sanitization/preflight | Application | Keep contract fields. Reject unusable drawing data and conflicting panel identifiers; expose premise, source, action, sound and amount concerns as optional advice. These checks establish structure/presence, not truth, comedy or semantic equivalence. |
+| Selection/layout | User chooses a story; application selects geometry | Stable panel identities and action bindings survive. Layout does not rewrite the plot. Magazine Gag is one scene; other built-in styles use 2–4 panels. |
 | First proof | Image model gets local action before/after, story intent, source basis, role, stance/register, art style and references | First image plus review version. Image text blacklist remains; props and overlays remain separate. No automatic vision verification. |
 | Background/foreground | Per-review run; stable panel IDs; primary style and previous-image references | A pending background call is joined, not repeated. Failed calls remain failures until explicit Retry. Superseded runs cannot publish late results or start another panel. |
 | Assembly/editor | App maps each panel's own image, contract and overlays | Stable IDs/action bindings remain. SFX composition hints are bounded relative centers, not image measurements. Manual edits remain authoritative. |
-| Image changes | User requests refinement/regeneration | Only requested artwork is regenerated. Mark affected image and downstream reference-dependent panels for review; retain text edits. First-proof/background-direction changes require acknowledgment before continuing. No automatic paid repair. |
+| Image changes | User requests refinement/regeneration | Only requested artwork is regenerated. Mention affected image and downstream continuity in the single optional concern notice; retain text edits. The normal Finish action accepts the proof, with no acknowledgment checkbox or reviewed buttons. No automatic paid repair. |
 | Archive | Optional separate search after images, using title/summary/background | Explanatory context, never retroactive proof that the plan knew those facts. Do not treat fictional names/numbers as established allegations. |
 | Export | Current edited DOM | Same panel-owned overlays and manual changes. Editor checks/warnings are excluded; export does not create new narrative content. |
 
@@ -43,7 +43,7 @@ non-resolution, parody and internally consistent surreal action remain valid.
 | Source and context switches | Provided-context vs topic-only provenance; archive on/off does not change the plan's source basis or invent verification. |
 | 1/2/3/4 panels | One only for magazine gag; 2–4 otherwise. Unique action/panel IDs and source-panel binding. |
 | Review/speculation/finish | Cold, pending join, completed reuse, failed background, replacement proof, background-direction change and superseded result fixtures. |
-| Final edits/failures | Partial failure, explicit regenerate/refine, no unintended repair, retained manual overlay changes, review-warning lifecycle. |
+| Final edits/failures | Partial failure, explicit regenerate/refine, no unintended repair, retained manual overlay changes, advisory concern lifecycle. |
 
 Use exhaustive small contract matrices and risk-based combinations for the
 larger dimensions, not thousands of paid generations.

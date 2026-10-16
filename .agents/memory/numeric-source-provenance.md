@@ -1,35 +1,24 @@
 ---
 name: Monetary source provenance
-description: Why supplied amounts and post-art research must remain distinct, and why amount checks run before artwork.
+description: Keep source context intact while making editorial checks advisory.
 ---
 
-Treat supplied monetary evidence and later archive research as distinct provenance.
-Never silently revise a source amount to fit generated dialogue or a later search result.
+The user explicitly requested a much simpler creative flow on October 16, 2026.
+This supersedes the earlier requirement for per-phrase approvals and pre-art numeric gates.
 
-**Why:** A single input is not a single downstream representation: generated plans,
-painted props and post-art archive research can disagree. A later explanatory note
-cannot prevent money being spent on a numerically inconsistent story.
+Keep supplied topic/background evidence distinct from later archive research. Preserve
+original source amounts in prompts; do not silently rewrite user text or artwork.
+Text comparisons cannot verify source truth, subject identity or painted lettering.
 
-**How to apply:** Put deterministic source-linked checks before images. Preserve
-separate subject/claim identities; identical values alone do not establish identical
-claims. Retain manual edits and expose unresolved warnings rather than silently
-repairing them. Text checks are not verification of painted lettering or source truth.
+All editorial concerns are advisory. Never block selection, finishing, regeneration,
+refinement or export because of an amount, source, premise, effect or continuity concern.
+Routine nearest-unit rounding within 1% needs no approval. Group repeated concerns in
+one optional notice with plain-language locations. Hide the notice when there is nothing
+useful to flag. Do not show source IDs, binding forms, approval controls, acknowledgment
+checkboxes or Mark reviewed buttons. Keep notices outside the exported comic.
 
-Keep topic and background evidence together; neither replaces the other. A matching
-amount in an unstructured research note is not enough to establish a matching claim.
-
-**Why:** A topic may supply a valid amount absent from the background, and an executive
-bonus can equal a bank fine without describing the same event. Number-only matching
-loses both distinctions.
-
-**How to apply:** Retain both input provenances. Without a claim-linked review mechanism,
-withhold monetary archive prose rather than publishing it solely because the value matches.
-
-Approximation is an explicit creator decision, not numerical equality.
-
-**Why:** $1.21 billion → $1.2 billion can be legitimate editorial rounding, whereas
-“twelve billion” is a different amount. Silently accepting either obscures the decision.
-
-**How to apply:** Keep exact values as the default and deliberate, phrase-bound
-approval for permitted rounding. Do not broaden monetary safeguards into paid
-OCR, critic passes or automatic regeneration without the user's approval.
+Technical drawing data still needs validation. Preserve request cancellation, credential
+handling, session locks and paid-call bounds. No additional critic, OCR or repair calls.
+Optional later research with an obvious unmatched amount may be omitted with a concise
+advisory explanation; it must never block or replace the comic. Matching amounts alone
+remain insufficient to claim independent verification or shared subject identity.

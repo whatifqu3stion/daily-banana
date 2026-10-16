@@ -19,7 +19,7 @@ import { toBase64 } from '../utils/fileUtils';
 import { layoutAdapter } from '../utils/layoutAdapter';
 import { PanelRun } from '../shared/panel-run.mjs';
 import { assertDrawableStory, panelStoryContext } from '../services/storyContract';
-import { checkArchiveAmounts, inspectNumericFacts, stripAsNumericPlan } from '../services/numericFacts';
+import { checkArchiveAmounts } from '../services/numericFacts';
 
 const getGeminiService = async () => (await import('../services/geminiService')).geminiService;
 
@@ -519,11 +519,6 @@ export default function useComicGeneration() {
 
   const handleRegeneratePanelImage = useCallback(async (panelIndex: number) => {
     if (!comicStripData || !formDataCache) return;
-    const numericProblems = inspectNumericFacts(stripAsNumericPlan(comicStripData)).filter(issue => issue.blocking);
-    if (numericProblems.length) {
-      handleUpdatePanel(panelIndex, { panelError: `Review source amounts before redrawing. ${numericProblems.map(issue => issue.message).join(' ')}` });
-      return;
-    }
     const epoch = generationEpoch.current;
 
     // Clear any previous per-panel error and start loading.
@@ -578,7 +573,7 @@ export default function useComicGeneration() {
         if (!current || current.generationId !== owner || current.panels[panelIndex]?.id !== panel.id) return current;
         return { ...current, panels: current.panels.map((item, index) => index < panelIndex ? item : {
           ...item, ...(index === panelIndex ? { image: newImage, failed: false, panelError: undefined } : {}),
-          continuityWarning: index === panelIndex ? 'Artwork changed. Check its planned action and text before marking it reviewed.' : 'An earlier reference image changed. Check continuity; this panel was not automatically redrawn.',
+          continuityWarning: index === panelIndex ? 'Artwork changed; the planned text is unchanged.' : 'An earlier reference image changed; later panels have not been redrawn.',
         }) };
       });
     } catch (err: any) {
@@ -600,11 +595,6 @@ export default function useComicGeneration() {
 
   const handleRefinePanelImage = useCallback(async (panelIndex: number, refinementPrompt: string) => {
     if (!comicStripData || !formDataCache) return;
-    const numericProblems = inspectNumericFacts(stripAsNumericPlan(comicStripData)).filter(issue => issue.blocking);
-    if (numericProblems.length) {
-      handleUpdatePanel(panelIndex, { panelError: `Review source amounts before refining. ${numericProblems.map(issue => issue.message).join(' ')}` });
-      return;
-    }
     const epoch = generationEpoch.current;
 
     const panel = comicStripData.panels[panelIndex];
@@ -648,7 +638,7 @@ export default function useComicGeneration() {
         if (!current || current.generationId !== owner || current.panels[panelIndex]?.id !== panel.id) return current;
         return { ...current, panels: current.panels.map((item, index) => index < panelIndex ? item : {
           ...item, ...(index === panelIndex ? { image: newImage, failed: false, panelError: undefined } : {}),
-          continuityWarning: index === panelIndex ? 'Artwork changed. Check its planned action and text before marking it reviewed.' : 'An earlier reference image changed. Check continuity; this panel was not automatically redrawn.',
+          continuityWarning: index === panelIndex ? 'Artwork changed; the planned text is unchanged.' : 'An earlier reference image changed; later panels have not been redrawn.',
         }) };
       });
     } catch (err: any) {
@@ -744,10 +734,6 @@ export default function useComicGeneration() {
     setReviewData(null);
   }, []);
 
-  const onUpdateStory = useCallback((updated: ComicPlan) => {
-    setComicPlans(plans => plans.map(plan => plan.id === updated.id ? updated : plan));
-  }, []);
-
   return {
     appStage,
     formData: formDataCache,
@@ -773,7 +759,6 @@ export default function useComicGeneration() {
     onRegenerateIdeas,
     onUpdateReviewImage,
     onUpdateSetDescription,
-    onUpdateStory,
     onReturnFromSwiper,
     onReturnFromReview,
   };

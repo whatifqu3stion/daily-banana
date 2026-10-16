@@ -49,128 +49,7 @@ test('money normalization handles words, scales, currencies and explicit roundin
   expect(result.malformed).toEqual([undefined, undefined, undefined]);
 });
 
-test('preflight checks every planned channel, retains distinct claims, and requires explicit source/rounding decisions', async ({ page }) => {
-  await page.goto('/');
-  const result = await page.evaluate(async ({ raw, input }) => {
-    const contractPath = '/services/storyContract.ts', factsPath = '/services/numericFacts.ts';
-    const { attachStoryBrief, inspectStory } = await import(contractPath);
-    const { bindNumericUse, approveNumericUse, checkArchiveAmounts, inspectNumericFacts, replaceNumericText, sanitizeNumericUses } = await import(factsPath);
-    const plan = attachStoryBrief(raw, input);
-    const location = 'panel:notice:text:0';
-    const fixed = replaceNumericText(plan, location, 'TWELVE BILLION', 'one point two one billion');
-    const normalized = inspectNumericFacts(fixed);
-    const rounded = replaceNumericText(plan, location, 'TWELVE BILLION', '$1.2 billion');
-    const roundingIssue = inspectNumericFacts(rounded).find(issue => issue.canRound);
-    if (!roundingIssue) throw new Error(`No rounding issue: ${JSON.stringify(inspectNumericFacts(rounded))}`);
-    const approved = approveNumericUse(rounded, roundingIssue, 'rounding');
-    const changed = replaceNumericText(approved, location, '$1.2 billion', '$12 billion');
-    const channels = ['title', 'summary', 'premise', 'set_description', 'visual', 'caption', 'action', 'scene', 'tags'].map(channel => {
-      const item = structuredClone(fixed);
-      if (['title', 'summary', 'premise', 'set_description'].includes(channel)) item[channel] = 'Twelve billion dollars';
-      if (channel === 'visual') item.panels[0].visual_prompt += ' A notice reads $12 billion.';
-      if (channel === 'caption') item.panels[1].text_elements = [{ text: 'Twelve billion.', role: 'caption' }];
-      if (channel === 'action') item.panels[1].action.description += ' Pay $12 billion.';
-      if (channel === 'scene') item.panels[1].scene_state += ' Check for $12 billion.';
-      if (channel === 'tags') item.panels[1].consistency_tags.push('check labelled $12 billion');
-      return inspectNumericFacts(item).some(issue => issue.blocking);
-    });
-    const multi = attachStoryBrief(raw, { ...input, newsContext: `${input.newsContext} Other Bank received a $12 billion fine. Example Bank also paid a €2 million fee.` });
-    let boundMulti = multi;
-    // With multiple claims, equal values alone must not silently choose a subject.
-    for (const issue of inspectNumericFacts(multi)) {
-      const id = issue.location === location ? multi.numericFacts[1].id : multi.numericFacts[0].id;
-      boundMulti = bindNumericUse(boundMulti, issue.location, issue.quote, id);
-    }
-    const validMulti = inspectNumericFacts(boundMulti).filter(issue => issue.blocking);
-    const same = attachStoryBrief(raw, { ...input, newsContext: 'Alpha Bank paid $12 billion. Beta Bank paid $12 billion.' });
-    same.panels[0].text_elements[0].text = '$12 billion';
-    const ambiguous = inspectNumericFacts(same);
-    const bound = bindNumericUse(same, location, '$12 billion', same.numericFacts[1].id);
-    const currency = replaceNumericText(plan, location, 'TWELVE BILLION', '€1.21 billion');
-    currency.numericUses = [{ location, quote: '€1.21 billion', fact_id: currency.numericFacts[0].id, intent: 'source', approximation: 'exact' }];
-    const missing = attachStoryBrief(raw, { ...input, newsContext: 'A compliance failure occurred. No amount was supplied.' });
-    const topic = attachStoryBrief(raw, { ...input, newsContext: undefined });
-    topic.story.source_anchor = 'Fictional banking.';
-    const fiction = structuredClone(plan);
-    fiction.numericUses = [{ location, quote: 'TWELVE BILLION', fact_id: '', intent: 'fiction', approximation: 'exact' }];
-    const fictionIssue = inspectNumericFacts(fiction).find(issue => issue.canFiction);
-    if (!fictionIssue) throw new Error(`No fiction issue: ${JSON.stringify(inspectNumericFacts(fiction))}`);
-    const fictionApproved = approveNumericUse(fiction, fictionIssue, 'fiction');
-    const repeated = structuredClone(bound);
-    repeated.panels[0].text_elements[0].text = '$12 billion for Alpha; $12 billion for Beta.';
-    const bareRounded = replaceNumericText(plan, location, 'TWELVE BILLION', 'one point two billion');
-    const bareApproval = approveNumericUse(bareRounded, inspectNumericFacts(bareRounded).find(issue => issue.canRound), 'rounding');
-    return {
-      mismatch: inspectNumericFacts(plan), normalized, channels,
-      rounded: inspectNumericFacts(rounded).map(issue => issue.code), approved: inspectNumericFacts(approved),
-      changed: inspectNumericFacts(changed).map(issue => issue.code),
-      multi: validMulti, facts: multi.numericFacts.map(fact => ({ value: fact.value, currency: fact.currency, subject: fact.subject })),
-      ambiguous: ambiguous.map(issue => issue.code), bound: inspectNumericFacts(bound).filter(issue => issue.location === location),
-      currency: inspectNumericFacts(currency).map(issue => issue.code),
-      missing: inspectNumericFacts(missing).map(issue => issue.code),
-      topic: inspectStory(topic).filter(issue => issue.code.startsWith('amount-')),
-      fiction: inspectNumericFacts(fiction).map(issue => issue.code), fictionApproved: inspectNumericFacts(fictionApproved),
-      repeated: inspectNumericFacts(repeated).map(issue => issue.code),
-      archiveExact: checkArchiveAmounts('The fine was $1,210,000,000.', fixed),
-      archiveRounded: checkArchiveAmounts('The fine was $1.2 billion.', bareApproval),
-      archiveConflict: checkArchiveAmounts('The fine was $12 billion.', fixed),
-      archiveWrongClaim: checkArchiveAmounts('The executive received a $1.21 billion bonus.', fixed),
-      archiveMultiple: checkArchiveAmounts('The fine was $12 billion.', boundMulti),
-      sanitized: sanitizeNumericUses([{ location, quote: '$12 billion', intent: 'source', approved: true }]),
-    };
-  }, { raw: rawPlan, input: form });
-  expect(result.mismatch).toEqual([expect.objectContaining({ code: 'amount-mismatch', quote: 'TWELVE BILLION', blocking: true })]);
-  expect(result.normalized).toEqual([]);
-  expect(result.channels).toEqual(Array(9).fill(true));
-  expect(result.rounded).toContain('amount-rounding');
-  expect(result.approved).toEqual([]);
-  expect(result.changed).toContain('amount-mismatch');
-  expect(result.multi).toEqual([]);
-  expect(result.facts.map(fact => fact.currency)).toEqual(['USD', 'USD', 'EUR']);
-  expect(result.ambiguous).toContain('amount-ambiguous');
-  expect(result.bound).toEqual([]);
-  expect(result.currency).toContain('amount-currency');
-  expect(result.missing).toContain('amount-ambiguous');
-  expect(result.topic.every(issue => !issue.blocking)).toBe(true);
-  expect(result.fiction).toContain('amount-fiction');
-  expect(result.fictionApproved).toEqual([]);
-  expect(result.repeated).toContain('amount-repeated-ambiguous');
-  expect(result.archiveExact).toContain('same subject or claim');
-  expect(result.archiveRounded).toContain('same subject or claim');
-  expect(result.archiveConflict).toContain('distinct provenance');
-  expect(result.archiveWrongClaim).toContain('same subject or claim');
-  expect(result.archiveMultiple).toContain('multiple monetary subjects');
-  expect(result.sanitized[0]).not.toHaveProperty('approved');
-});
-
-test('topic and background amounts retain separate bindable provenance when both inputs are supplied', async ({ page }) => {
-  await page.goto('/');
-  const result = await page.evaluate(async ({ raw, input }) => {
-    const contractPath = '/services/storyContract.ts', factsPath = '/services/numericFacts.ts';
-    const { attachStoryBrief } = await import(contractPath);
-    const { bindNumericUse, inspectNumericFacts } = await import(factsPath);
-    raw.panels[0].text_elements[0].text = '$2 million? Again?';
-    let plan = attachStoryBrief(raw, { ...input, topic: 'Other Bank paid a $2 million settlement.' });
-    const facts = plan.numericFacts;
-    const topic = facts.find(fact => fact.provenance === 'supplied-topic');
-    const background = facts.find(fact => fact.provenance === 'supplied-background');
-    const initialIssues = inspectNumericFacts(plan);
-    plan = bindNumericUse(plan, 'panel:notice:text:0', '$2 million', topic.id);
-    plan = bindNumericUse(plan, 'story:source_anchor', '$1.21 billion', background.id);
-    return { facts, initialIssues, after: inspectNumericFacts(plan), uses: plan.numericUses };
-  }, { raw: rawPlan, input: form });
-  expect(result.facts).toEqual([
-    expect.objectContaining({ provenance: 'supplied-topic', value: '2000000', evidence: 'Other Bank paid a $2 million settlement.' }),
-    expect.objectContaining({ provenance: 'supplied-background', value: '1210000000', evidence: BACKGROUND }),
-  ]);
-  expect(result.facts[0].id).not.toBe(result.facts[1].id);
-  expect(result.initialIssues.some(issue => issue.quote === '$2 million')).toBe(true);
-  expect(result.initialIssues.some(issue => issue.code === 'amount-mismatch')).toBe(false);
-  expect(result.after).toEqual([]);
-  expect(result.uses.find(use => use.quote === '$2 million')?.fact_id).toBe(result.facts[0].id);
-});
-
-async function backend(page: Page, { mixed = false, archive = '', valid = false, failArchive = false } = {}) {
+async function backend(page: Page, { mixed = false, archive = '', valid = false, failArchive = false, dialogue = '' } = {}) {
   const calls: { endpoint: string; body: any }[] = [];
   await page.route('**/api/gemini/**', async route => {
     const endpoint = new URL(route.request().url()).pathname.split('/').at(-1)!;
@@ -184,6 +63,7 @@ async function backend(page: Page, { mixed = false, archive = '', valid = false,
         return route.fulfill({ json: { text: archive, candidates: [{ groundingMetadata: { groundingChunks: [{ web: { uri: 'https://example.com/later', title: 'Later research' } }] } }] } });
       }
       const bad = structuredClone(rawPlan), good = structuredClone(rawPlan);
+      if (dialogue) bad.panels[0].text_elements[0].text = dialogue;
       good.title = 'A Valid Alternative';
       good.panels[0].text_elements[0].text = '$1,210,000,000? Again?';
       const plans = mixed ? [bad, good, good] : [valid ? good : bad];
@@ -209,60 +89,6 @@ async function setup(page: Page, brainstorm = false, context = false) {
   await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
   await expect(page.getByRole('heading', { name: 'Choose Your Story' })).toBeVisible();
 }
-
-for (const width of [1440, 402]) {
-  test(`bad source amount blocks first artwork until deliberately corrected at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 });
-    const calls = await backend(page);
-    await setup(page);
-    await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeDisabled();
-    const review = page.getByRole('region', { name: 'Numeric source review', exact: true });
-    await expect(review.getByRole('alert')).toContainText('TWELVE BILLION');
-    await expect(review.getByRole('alert')).toContainText('$1.21 billion');
-    expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(0);
-    expect(calls.filter(call => call.endpoint === 'content')).toHaveLength(1);
-    await review.getByLabel('Replacement for TWELVE BILLION', { exact: true }).fill('$1.21 billion');
-    await review.getByRole('button', { name: 'Apply text correction', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Choose This Story' }).click();
-    await expect(page.getByRole('heading', { name: 'Review the first panel' })).toBeVisible();
-    await page.getByRole('button', { name: 'Finish the strip' }).click();
-    await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
-    expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(2);
-    expect(calls.filter(call => call.endpoint === 'content')).toHaveLength(1); // Archive disabled.
-    for (const call of calls.filter(call => call.endpoint === 'interactions')) {
-      const prompt = JSON.stringify(call.body);
-      expect(prompt).toContain('MONETARY SOURCE CONTRACT');
-      expect(prompt).toContain('1210000000');
-      expect(prompt).not.toContain('TWELVE BILLION');
-    }
-    const panel = page.getByLabel('Panel 1', { exact: true });
-    await expect(panel.getByText('$1.21 billion? AGAIN?', { exact: true })).toBeVisible();
-    await page.getByText('Supplied monetary evidence (1)', { exact: true }).last().click();
-    await expect(page.getByText('Subject').last()).toBeVisible();
-    const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')]
-      .filter(element => getComputedStyle(element).visibility !== 'hidden' && element.getBoundingClientRect().right > window.innerWidth + 1)
-      .map(element => `${element.tagName}.${element.className}`).slice(0, 10));
-    expect(overflow).toEqual([]);
-    await page.screenshot({ path: `/tmp/numeric-consistency-${width}.png`, fullPage: true });
-  });
-}
-
-test('brainstorm keeps valid alternatives usable and custom premise cannot bypass preflight', async ({ page }) => {
-  const calls = await backend(page, { mixed: true });
-  await setup(page, true);
-  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeDisabled();
-  await page.getByRole('tab', { name: 'Story 2', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeEnabled();
-  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(0);
-  await page.getByRole('tab', { name: 'Write my own', exact: true }).click();
-  await page.getByLabel('Your story premise', { exact: true }).fill(PREMISE);
-  await page.getByRole('button', { name: 'Generate from My Idea', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Numeric source review', exact: true }).getByRole('alert')).toContainText('TWELVE BILLION');
-  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeDisabled();
-  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(0);
-  expect(calls.filter(call => call.endpoint === 'content')).toHaveLength(2);
-});
 
 test('existing planning request includes fact ids and same-response checks for every settings branch', async ({ page }) => {
   const calls = await backend(page, { valid: true });
@@ -298,120 +124,147 @@ test('existing planning request includes fact ids and same-response checks for e
   expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(0);
 });
 
-for (const failArchive of [false, true]) {
-  test(`conflicting or failed later research preserves the comic and withholds the note (failure=${failArchive})`, async ({ page }) => {
-    const calls = await backend(page, { valid: true, archive: 'Later research reports a $12 billion fine.', failArchive });
-    await setup(page, false, true);
-    await page.getByRole('button', { name: 'Choose This Story' }).click();
-    await page.getByRole('button', { name: 'Finish the strip' }).click();
-    await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
-    await expect(page.getByRole('alert', { name: 'Numeric consistency and archive notice' })).toBeVisible();
-    if (!failArchive) {
-      await expect(page.getByRole('alert', { name: 'Numeric consistency and archive notice' })).toContainText('later research uses');
-      await expect(page.getByRole('link', { name: 'example.com', exact: true })).toBeVisible();
-    }
-    await expect(page.locator('aside').getByText('Later research reports a $12 billion fine.', { exact: true })).toHaveCount(0);
-    await expect(page.getByLabel('Panel 1', { exact: true }).getByText('$1,210,000,000? Again?', { exact: true })).toBeVisible();
-    expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(2);
-    expect(calls.filter(call => call.endpoint === 'content')).toHaveLength(2);
-    const archiveRequest = calls.filter(call => call.endpoint === 'content').at(-1)!;
-    expect(JSON.stringify(archiveRequest.body.contents)).toContain('ACTUAL PLANNED PANEL TEXT');
-    expect(JSON.stringify(archiveRequest.body.contents)).toContain('1210000000');
-  });
-}
 
-test('a researched bonus with the same amount as a supplied fine is withheld, not attached as factual context', async ({ page }) => {
-  const unrelated = 'The executive received a $1.21 billion bonus.';
-  const calls = await backend(page, { valid: true, archive: unrelated });
-  await setup(page, false, true);
-  await page.getByRole('button', { name: 'Choose This Story' }).click();
-  await page.getByRole('button', { name: 'Finish the strip' }).click();
-  await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
-  await expect(page.getByRole('alert', { name: 'Numeric consistency and archive notice' })).toContainText('matching monetary values do not establish the same subject or claim');
-  await expect(page.getByText(unrelated, { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'example.com', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Panel 1', { exact: true }).getByText('$1,210,000,000? Again?', { exact: true })).toBeVisible();
-  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(2);
-  expect(calls.filter(call => call.endpoint === 'content')).toHaveLength(2);
-});
-
-test('hook refuses invalid plans before images, carries evidence to final data and preserves manual edits and geometry', async ({ page }) => {
+test('amount checks are advisory, preserve evidence, accept ordinary rounding and ignore fictional claims', async ({ page }) => {
   await page.goto('/');
-  await page.evaluate(async ({ raw, input, image }) => {
-    const reactPath = '/node_modules/.vite/deps/react.js', clientPath = '/node_modules/.vite/deps/react-dom_client.js';
-    const hookPath = '/hooks/useComicGeneration.ts', servicePath = '/services/geminiService.ts', contractPath = '/services/storyContract.ts';
-    const reactModule = await import(reactPath), client = await import(clientPath);
-    const React = reactModule.default || reactModule;
-    const createRoot = client.createRoot || client.default.createRoot;
-    const { default: useGeneration } = await import(hookPath);
-    const { geminiService } = await import(servicePath);
-    const { attachStoryBrief } = await import(contractPath);
-    const w = window as any;
-    w.images = [];
-    geminiService.generateSingleComicPlan = async data => attachStoryBrief(raw, data);
-    geminiService.generatePanelImageWithReferences = async (...args) => { w.images.push(args); return image; };
-    const host = document.createElement('div'); document.body.append(host);
-    createRoot(host).render(React.createElement(() => { w.numericHook = useGeneration(); return null; }));
-    w.numericInput = input;
-  }, { raw: rawPlan, input: form, image: IMAGE });
-  await expect.poll(() => page.evaluate(() => Boolean((window as any).numericHook))).toBe(true);
-  await page.evaluate(async () => { const w = window as any; await w.numericHook.handleFormSubmit(w.numericInput); });
-  await page.evaluate(async () => { const w = window as any; await w.numericHook.handleSelectStory(w.numericHook.comicPlans[0]); });
-  expect(await page.evaluate(() => (window as any).images.length)).toBe(0);
-  expect(await page.evaluate(() => (window as any).numericHook.appStage)).toBe('story-swipe');
-  await page.evaluate(async () => {
-    const w = window as any;
-    const path = '/services/numericFacts.ts';
-    const { replaceNumericText } = await import(path);
-    const fixed = replaceNumericText(w.numericHook.comicPlans[0], 'panel:notice:text:0', 'TWELVE BILLION', '$1.21 billion');
-    w.approvedFacts = JSON.stringify(fixed.numericFacts);
-    await w.numericHook.handleSelectStory(fixed);
-  });
-  await expect.poll(() => page.evaluate(() => (window as any).numericHook.appStage)).toBe('review');
-  await page.evaluate(async () => { await (window as any).numericHook.handleContinueGeneration(); });
-  await expect.poll(() => page.evaluate(() => (window as any).numericHook.appStage)).toBe('strip');
-  await page.evaluate(() => {
-    const w = window as any, panel = w.numericHook.comicStripData.panels[0];
-    w.originalImage = panel.image;
-    w.numericHook.handleUpdatePanel(0, { text_elements: panel.text_elements.map(element => ({
-      ...element, text: '$12 billion? Again?', position: { x: '33%', y: '19%' }, size: { width: '40%', height: '28%' },
-    })) });
-  });
-  const edited = await page.evaluate(async () => {
-    const w = window as any, data = w.numericHook.comicStripData;
-    const path = '/services/numericFacts.ts';
-    const { inspectNumericFacts, stripAsNumericPlan } = await import(path);
-    return { issues: inspectNumericFacts(stripAsNumericPlan(data)), data, factsUnchanged: w.approvedFacts === JSON.stringify(data.numericFacts),
-      imageUnchanged: w.originalImage === data.panels[0].image, imageCalls: w.images.length };
-  });
-  expect(edited.factsUnchanged).toBe(true);
-  expect(edited.imageUnchanged).toBe(true);
-  expect(edited.imageCalls).toBe(2);
-  expect(edited.data.numericUses?.length).toBeGreaterThan(0);
-  expect(edited.issues).toEqual([expect.objectContaining({ blocking: true, code: 'amount-mismatch' })]);
-  expect(edited.data.panels[0].text_elements[0]).toMatchObject({ text: '$12 billion? Again?', position: { x: '33%', y: '19%' }, size: { width: '40%', height: '28%' } });
-  await page.evaluate(async () => { await (window as any).numericHook.handleRegeneratePanelImage(0); });
-  expect(await page.evaluate(() => (window as any).images.length)).toBe(2);
+  const result = await page.evaluate(async ({ raw, input }) => {
+    const contractPath = '/services/storyContract.ts', factsPath = '/services/numericFacts.ts';
+    const { attachStoryBrief, assertDrawableStory, inspectStory } = await import(contractPath);
+    const { inspectNumericFacts, checkArchiveAmounts } = await import(factsPath);
+    const initial = attachStoryBrief(raw, input);
+    assertDrawableStory(initial);
+    const variants = ['$1,210,000,000', '$1.2 billion', 'one point two one billion dollars', '$12 billion', '€1.21 billion'].map(text => {
+      const plan = structuredClone(initial); plan.panels[0].text_elements[0].text = text;
+      return inspectNumericFacts(plan);
+    });
+    const fiction = structuredClone(initial);
+    fiction.numericUses = [{ location: 'panel:notice:text:0', quote: 'TWELVE BILLION', intent: 'fiction', fact_id: '', approximation: 'exact' }];
+    const multiple = attachStoryBrief(raw, { ...input, topic: 'Other Bank paid $12 billion.' });
+    const malformed = { ...initial, panels: [] };
+    let technicalError = false; try { assertDrawableStory(malformed); } catch { technicalError = true; }
+    return { variants, original: inspectNumericFacts(initial), fiction: inspectNumericFacts(fiction),
+      evidence: initial.numericFacts, multipleEvidence: multiple.numericFacts,
+      multipleBlocking: inspectStory(multiple).filter(issue => issue.blocking), technicalError,
+      exactArchive: checkArchiveAmounts('The fine was $1.21 billion.', initial),
+      conflictingArchive: checkArchiveAmounts('The fine was $12 billion.', initial) };
+  }, { raw: rawPlan, input: form });
+  expect(result.variants.slice(0, 3)).toEqual([[], [], []]);
+  expect(result.variants[3]).toEqual([expect.objectContaining({ code: 'amount-mismatch', blocking: false })]);
+  expect(result.variants[4]).toEqual([expect.objectContaining({ blocking: false })]);
+  expect(result.original.every(issue => !issue.blocking)).toBe(true);
+  expect(result.fiction).toEqual([]);
+  expect(result.multipleBlocking).toEqual([]);
+  expect(result.multipleEvidence).toHaveLength(2);
+  expect(result.evidence[0]).toMatchObject({ display: '$1.21 billion', value: '1210000000', provenance: 'supplied-background' });
+  expect(result.technicalError).toBe(true);
+  expect(result.exactArchive).toBeUndefined();
+  expect(result.conflictingArchive).toContain('left out');
 });
 
-test('numeric manual-edit warnings stay in the printed capture and optional archive checks never hide finished artwork', async ({ page }) => {
-  const archiveText = 'The supplied report describes a penalty for compliance failures.';
-  const calls = await backend(page, { valid: true, archive: archiveText });
+for (const width of [1440, 402]) test(`amount concerns allow the full flow with no acknowledgments at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 });
+  const calls = await backend(page);
+  await setup(page);
+  const notice = page.getByRole('complementary', { name: 'Story concerns', exact: true });
+  await expect(notice).toContainText('Some amounts may need a look.');
+  await expect(notice.locator('details')).not.toHaveAttribute('open');
+  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Bind source|Approve approximate|Confirm this claim/ })).toHaveCount(0);
+  await notice.getByText('Review details', { exact: true }).click();
+  await expect(notice).toContainText('TWELVE BILLION');
+  await expect(notice).toContainText('$1.21 billion');
+  await expect(notice).not.toContainText('panel:notice:text:0');
+  await notice.getByText('Review details', { exact: true }).click();
+  await page.getByRole('button', { name: 'Choose This Story' }).click();
+  await expect(page.getByRole('heading', { name: 'Review the first panel' })).toBeVisible();
+  await page.getByRole('button', { name: 'Regenerate', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Finish the strip' })).toBeEnabled();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Finish the strip' }).click();
+  await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Story concerns', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /Mark panel .* reviewed/ })).toHaveCount(0);
+  await expect(page.getByLabel('Panel 1', { exact: true }).getByText('TWELVE BILLION? AGAIN?', { exact: true })).toBeVisible();
+  const finalNotice = page.getByRole('complementary', { name: 'Story concerns', exact: true });
+  expect(await finalNotice.evaluate(element => element.closest('[data-testid="comic-export"]') === null)).toBe(true);
+  await page.screenshot({ path: `/tmp/banana-advisory-${width}.png`, fullPage: true });
+  const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(element => {
+    const box = element.getBoundingClientRect(); return box.width > 0 && box.right > innerWidth + 1 && getComputedStyle(element).visibility !== 'hidden';
+  }).map(element => ({ tag: element.tagName, cls: element.className, right: element.getBoundingClientRect().right })).slice(0, 12));
+  expect(overflow).toEqual([]);
+  const before = calls.filter(call => call.endpoint === 'interactions').length;
+  await finalNotice.getByText('Review details', { exact: true }).click();
+  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(before);
+  await page.screenshot({ path: `/tmp/banana-advisory-${width}.png`, fullPage: true });
+});
+
+test('ordinary rounding and clean stories add no review UI', async ({ page }) => {
+  await backend(page, { dialogue: '$1.2 billion? Again?' });
+  await setup(page);
+  await expect(page.getByRole('complementary', { name: 'Story concerns', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Choose This Story' })).toBeEnabled();
+});
+
+test('repeated amount concerns are grouped across planning fields', async ({ page }) => {
+  await backend(page);
+  await setup(page);
+  await page.evaluate(async ({ raw, input }) => {
+    const contractPath = '/services/storyContract.ts';
+    const { attachStoryBrief } = await import(contractPath);
+    raw.panels[0].visual_prompt += ' A notice says TWELVE BILLION.';
+    raw.panels[0].scene_state += ' TWELVE BILLION appears on the notice.';
+    const plan = attachStoryBrief(raw, input);
+    const reactPath = '/node_modules/.vite/deps/react.js', clientPath = '/node_modules/.vite/deps/react-dom_client.js', checkPath = '/components/StoryCheck.tsx';
+    const react = await import(reactPath), client = await import(clientPath), component = await import(checkPath);
+    const host = document.createElement('div'); host.id = 'grouping-check'; document.body.append(host);
+    const React = react.default || react;
+    (client.createRoot || client.default.createRoot)(host).render(React.createElement(component.default, { plan }));
+  }, { raw: rawPlan, input: form });
+  const grouped = page.locator('#grouping-check');
+  await grouped.getByText('Review details', { exact: true }).click();
+  await expect(grouped.locator('li')).toHaveCount(1);
+  await expect(grouped).toContainText('Panel 1');
+});
+
+for (const failArchive of [false, true]) test(`optional archive concerns stay outside the artwork and never stop finishing (${failArchive})`, async ({ page }) => {
+  await backend(page, { archive: 'Later research reports a $12 billion fine.', failArchive });
   await setup(page, false, true);
   await page.getByRole('button', { name: 'Choose This Story' }).click();
   await page.getByRole('button', { name: 'Finish the strip' }).click();
   await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
-  await expect(page.getByText(archiveText, { exact: true })).toBeVisible();
-  const editor = page.getByLabel('Panel 1', { exact: true }).locator('[contenteditable=true]').first();
-  await editor.fill('$12 billion? Again?');
-  await editor.blur();
-  const notice = page.getByRole('alert', { name: 'Numeric consistency and archive notice' });
-  await expect(notice).toContainText('planned “$12 billion” conflicts');
-  await expect(notice).toContainText('Archive note hidden');
+  const notice = page.getByRole('complementary', { name: 'Story concerns', exact: true });
+  await notice.getByText('Review details', { exact: true }).click();
+  await expect(notice).toContainText(failArchive ? 'could not be completed' : 'left out');
+  if (!failArchive) await expect(notice.getByRole('link', { name: 'Later research' })).toHaveAttribute('href', 'https://example.com/later');
+  await expect(page.getByTestId('comic-export').getByText('Later research reports a $12 billion fine.', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeEnabled();
+});
+
+test('edited amount conflicts preserve geometry, allow redraw and refinement, and export without review notes', async ({ page }) => {
+  const calls = await backend(page, { valid: true });
+  await setup(page);
+  await page.getByRole('button', { name: 'Choose This Story' }).click();
+  await page.getByRole('button', { name: 'Finish the strip' }).click();
+  await expect(page.getByText('Final edition', { exact: true })).toBeVisible();
+  const panel = page.getByLabel('Panel 1', { exact: true });
+  const editor = panel.locator('[contenteditable=true]').first();
+  await editor.fill('$12 billion? Again?'); await editor.blur();
+  const before = await editor.evaluate(element => ({ left: element.parentElement!.style.left, top: element.parentElement!.style.top }));
+  const notice = page.getByRole('complementary', { name: 'Story concerns', exact: true });
+  await expect(notice).toBeVisible();
+  await panel.focus(); await panel.getByRole('button', { name: 'Regenerate', exact: true }).first().click();
+  await expect.poll(() => calls.filter(call => call.endpoint === 'interactions').length).toBe(3);
+  await panel.locator('input').first().fill('Change only the sleeve color');
+  await panel.getByRole('button', { name: 'Refine', exact: true }).first().click();
+  await expect.poll(() => calls.filter(call => call.endpoint === 'interactions').length).toBe(4);
   await expect(editor).toHaveText('$12 billion? Again?');
-  await expect(page.getByText(archiveText, { exact: true })).toHaveCount(0);
-  expect(await notice.evaluate(element => !element.closest('.no-export') && Boolean(element.closest('.bg-paper-light.border-3')))).toBe(true);
-  expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(2);
-  expect(calls.filter(call => call.endpoint === 'content')).toHaveLength(2);
-  await page.screenshot({ path: '/tmp/numeric-manual-edit-export-warning.png', fullPage: true });
+  expect(await editor.evaluate(element => ({ left: element.parentElement!.style.left, top: element.parentElement!.style.top }))).toEqual(before);
+  await expect(page.getByTestId('comic-export').getByRole('complementary', { name: 'Story concerns' })).toHaveCount(0);
+  await expect(page.getByTestId('comic-export')).not.toContainText('approved by creator');
+  await page.route('https://fonts.googleapis.com/**', route => route.fulfill({ body: '', contentType: 'text/css' }));
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
+  const download = await downloading;
+  expect(await download.failure()).toBeNull();
+  expect(download.suggestedFilename()).toMatch(/\.png$/);
 });

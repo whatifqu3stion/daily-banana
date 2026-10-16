@@ -42,7 +42,6 @@ const App: React.FC = () => {
     onRegenerateIdeas,
     onUpdateReviewImage,
     onUpdateSetDescription,
-    onUpdateStory,
     onReturnFromSwiper,
     onReturnFromReview,
   } = useComicGeneration();
@@ -95,7 +94,6 @@ const App: React.FC = () => {
           <StorySwiper
             storyPlans={comicPlans}
             onSelectStory={handleSelectStory}
-            onUpdateStory={onUpdateStory}
             onRegenerate={formData?.brainstormMode ? onRegenerateIdeas : onRegenerateConcept}
             onReturnToForm={onReturnFromSwiper}
             onCustomPremise={handleCustomPremise}

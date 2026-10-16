@@ -12,7 +12,6 @@ import { inspectStory } from '../services/storyContract';
 interface StorySwiperProps {
     storyPlans: ComicPlan[];
     onSelectStory: (plan: ComicPlan) => void;
-    onUpdateStory?: (plan: ComicPlan) => void;
     onRegenerate: () => void;
     onReturnToForm: () => void;
     onCustomPremise: (premise: string) => void;
@@ -37,7 +36,6 @@ const COMEDIC_ROLE_LABELS: Record<string, string> = {
 const StorySwiper: React.FC<StorySwiperProps> = ({
     storyPlans,
     onSelectStory,
-    onUpdateStory,
     onRegenerate,
     onReturnToForm,
     onCustomPremise,
@@ -251,7 +249,7 @@ const StorySwiper: React.FC<StorySwiperProps> = ({
                             ))}
                                 </div>
                             </div>
-                            <StoryCheck plan={currentPlan} onChange={onUpdateStory} />
+                            <StoryCheck plan={currentPlan} />
                         </div>
                     </>
                 ) : null}
