@@ -120,7 +120,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
            </div>
            <span className="text-xs font-special-elite text-gray-600">{comicData.panels.length} {comicData.panels.length === 1 ? 'panel' : 'panels'}</span>
          </div>
-         <h2 className="mx-auto mb-6 max-w-[18ch] text-balance text-center font-bangers text-4xl tracking-wider text-black md:mb-8 md:text-5xl">
+         <h2 className="mb-5 w-full break-words text-center font-bangers text-3xl tracking-wide text-black sm:text-4xl md:mb-6 md:text-[2.75rem]">
           {comicData.title}
         </h2>
          <p className="text-center text-sm font-open-sans text-gray-600 mb-4 no-export">
