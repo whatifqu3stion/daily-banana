@@ -311,5 +311,11 @@ test('Pages editorial concerns allow choosing, proof changes, finishing and expo
   await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeEnabled();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.mouse.move(0, 0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.getByTestId('panel-mobile-controls-1')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    if (document.documentElement.scrollWidth <= innerWidth) return null;
+    return { viewport: innerWidth, contentWidth: document.documentElement.scrollWidth,
+      overflow: [...document.querySelectorAll('body *')].filter(element => element.getBoundingClientRect().right > innerWidth + 1)
+        .map(element => ({ tag: element.tagName, className: element.className, visibility: getComputedStyle(element).visibility })).slice(0, 8) };
+  })).toBeNull();
 });
