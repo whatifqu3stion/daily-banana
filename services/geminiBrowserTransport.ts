@@ -1,7 +1,7 @@
 import type { GoogleGenAI, GenerateContentParameters } from '@google/genai';
 import { generationFailure, GenerationResponseError } from '../shared/generation-errors.mjs';
-import { newsParams } from '../shared/news-request.mjs';
-import { NewsRequestError } from '../shared/news-errors.mjs';
+import { newsParams, NEWS_TIMEOUT_MS } from '../shared/news-request.mjs';
+import { newsError, NewsRequestError } from '../shared/news-errors.mjs';
 import { parseGroundedNews } from '../shared/news-parsing.mjs';
 
 // Pages has no app server. Visitors supply their own key at runtime; never
@@ -61,11 +61,23 @@ export async function browserGeminiRequest<T>(endpoint: string, body: any, signa
         httpOptions: { timeout: 180_000, retryOptions: { attempts: 1 } } } }) as T;
     }
     if (endpoint === 'news') {
-      const deadline = AbortSignal.timeout(20_000);
+      const deadline = AbortSignal.timeout(NEWS_TIMEOUT_MS);
       const combined = signal ? AbortSignal.any([signal, deadline]) : deadline;
-      const result = await current.models.generateContent(newsParams(Date.now(), combined, 20_000) as GenerateContentParameters);
-      combined.throwIfAborted();
-      return { ...parseGroundedNews(result), fetchedAt: Date.now() } as T;
+      try {
+        const result = await current.models.generateContent(newsParams(Date.now(), combined, NEWS_TIMEOUT_MS) as GenerateContentParameters);
+        combined.throwIfAborted();
+        return { ...parseGroundedNews(result), fetchedAt: Date.now() } as T;
+      } catch (error) {
+        // The SDK replaces the deadline signal's TimeoutError with AbortError.
+        // Its own HTTP timer can also win the race. Only the caller's signal
+        // means the creator closed the lookup; an internal abort is a timeout.
+        const failure = generationFailure(error, providerDetail(error), 'news');
+        if (!signal?.aborted && (deadline.aborted || failure.kind === 'GENERATION_CANCELLED')) {
+          throw newsError('timeout', 'News search took too long',
+            `The news search reached the app's ${NEWS_TIMEOUT_MS / 1000}-second waiting limit. No automatic retry was made. Try again, or continue with your own topic. A request already sent to Google may still incur usage charges.`);
+        }
+        throw error;
+      }
     }
     if (endpoint === 'interactions') {
       const result = await current.interactions.create({ ...body, store: false, stream: false },

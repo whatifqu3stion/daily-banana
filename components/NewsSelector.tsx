@@ -197,7 +197,7 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
           {isInitialLoading && (
             <div role="status" aria-live="polite" className="space-y-3 py-2">
               <p className="mb-4 text-center font-open-sans text-sm text-stone-700">
-                Searching coverage from the past 24 hours…
+                Finding stories and preparing sourced snippets… This can take up to a minute.
               </p>
               <div className="border-2 border-stone-400 bg-white/70 p-4">
                 <div className="h-5 w-3/4 animate-pulse bg-stone-300" />

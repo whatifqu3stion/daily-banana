@@ -61,7 +61,10 @@ test('news endpoint owns the request, returns a compact sourced feed and reports
   assert.equal(calls[0].model, 'gemini-2.5-flash');
   assert.match(calls[0].contents, /past 24 hours/);
   assert.deepEqual(calls[0].config.tools, [{ googleSearch: {} }]);
-  assert.deepEqual(calls[0].config.httpOptions, { timeout: 20_000, retryOptions: { attempts: 1 } });
+  assert.match(calls[0].contents, /U\.S.-focused and international/);
+  assert.match(calls[0].contents, /1-2 factual sentences/);
+  assert.deepEqual(calls[0].config.thinkingConfig, { thinkingBudget: 1024 });
+  assert.deepEqual(calls[0].config.httpOptions, { timeout: 60_000, retryOptions: { attempts: 1 } });
   const originalBytes = Buffer.byteLength(JSON.stringify(upstream()));
   const normalizedBytes = Buffer.byteLength(JSON.stringify(result.body));
   assert.ok(normalizedBytes < 1000 && normalizedBytes < originalBytes / 10);

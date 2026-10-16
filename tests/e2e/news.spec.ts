@@ -244,7 +244,7 @@ test('transport deadline releases the connection and offers manual retry', async
   await connect(page);
   await openNews(page);
   await expect.poll(() => Boolean(release)).toBe(true);
-  await page.clock.fastForward(30_001);
+  await page.clock.fastForward(75_001);
   await expect(newsDialog(page).getByRole('alert')).toContainText('took too long');
   await expect(newsDialog(page).getByRole('alert')).toContainText('browser-to-app waiting limit');
   await expect(newsDialog(page).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();

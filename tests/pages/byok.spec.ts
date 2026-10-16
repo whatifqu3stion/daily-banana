@@ -137,6 +137,8 @@ test('Pages headlines retain sources, reuse the cache and populate the brief', a
     searches++;
     const body = route.request().postDataJSON();
     expect(body.tools).toEqual([{ googleSearch: {} }]);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 1024 });
+    expect((await route.request().allHeaders())['x-server-timeout']).toBe('60');
     return route.fulfill({ json: { candidates: [{ content: { parts: [{ text: JSON.stringify([
       { title: 'Agency announces a new policy', description: 'An agency announced new rules affecting public services.', source_urls: ['https://example.com/news/story'] },
     ]) }] }, groundingMetadata: { groundingChunks: [{ web: { uri: 'https://example.com/news/story', title: 'Example News' } }] } }] } });
@@ -146,10 +148,130 @@ test('Pages headlines retain sources, reuse the cache and populate the brief', a
   await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
   const dialog = page.getByRole('dialog', { name: 'Recent news ideas', exact: true });
   await expect(dialog.getByRole('link', { name: /Example News/ })).toHaveAttribute('href', 'https://example.com/news/story');
+  const timing = await page.evaluate(() => {
+    const entry = performance.getEntriesByName('daily-banana:news-lookup')[0] as PerformanceMeasure;
+    return { duration: entry.duration, detail: entry.detail };
+  });
+  expect(timing.duration).toBeGreaterThanOrEqual(0);
+  expect(timing.detail).toEqual({ outcome: 'success', transport: 'browser' });
   await dialog.getByRole('button', { name: /Agency announces a new policy/ }).click();
   await expect(page.getByLabel('Topic', { exact: true })).toHaveValue('Agency announces a new policy');
   await expect(page.locator('#newsContext')).toHaveValue(/https:\/\/example.com\/news\/story/);
   await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
   await expect(dialog.getByRole('list', { name: 'Recent news headlines' }).locator('li')).toHaveCount(1);
   expect(searches).toBe(1);
+});
+
+const newsReply = () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify([
+  { title: 'A sourced news fixture', description: 'A short factual snippet.', source_urls: ['https://example.com/news/recovery'] },
+]) }] }, groundingMetadata: { groundingChunks: [{ web: { uri: 'https://example.com/news/recovery', title: 'Example News' } }] } }] });
+const newsDialog = (page: Page) => page.getByRole('dialog', { name: 'Recent news ideas', exact: true });
+
+test('Pages news can finish after the former 20-second cutoff', async ({ page }) => {
+  await page.clock.install();
+  let release!: () => void;
+  let searches = 0;
+  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { models: [] } });
+    searches++;
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ json: newsReply() });
+  });
+  await page.goto('./');
+  await connect(page);
+  await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await page.clock.fastForward(25_000);
+  await expect(newsDialog(page).getByRole('status')).toContainText('This can take up to a minute');
+  await expect(newsDialog(page).getByRole('alert')).toHaveCount(0);
+  release();
+  await expect(newsDialog(page).getByRole('link', { name: /Example News/ })).toBeVisible();
+  expect(searches).toBe(1);
+});
+
+for (const deadlineSource of ['app', 'sdk']) test(`Pages ${deadlineSource} deadline shows recovery and retries only on an explicit click`, async ({ page }) => {
+  await page.setViewportSize({ width: deadlineSource === 'sdk' ? 390 : 1280, height: 960 });
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.clock.install();
+  let release!: () => void;
+  let searches = 0;
+  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { models: [] } });
+    searches++;
+    if (searches === 1) {
+      await new Promise<void>(resolve => { release = resolve; });
+      await route.abort().catch(() => {});
+    } else await route.fulfill({ json: newsReply() });
+  });
+  await page.goto('./');
+  await connect(page);
+  if (deadlineSource === 'sdk') {
+    // Hold the app's deadline to exercise the SDK's own HTTP timer winning.
+    // The SDK still receives its real timeout option and caller signal.
+    await page.evaluate(() => { AbortSignal.timeout = () => new AbortController().signal; });
+  }
+  await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  // Both abort paths use the installed SDK; virtual time avoids a paid call
+  // and a minute-long test while preserving the timeout versus close behavior.
+  await page.clock.fastForward(60_001);
+  const dialog = newsDialog(page);
+  await expect(dialog.getByRole('alert')).toContainText('News search took too long');
+  await expect(dialog.getByRole('alert')).toContainText("app's 60-second waiting limit");
+  await expect(dialog.getByRole('button', { name: 'Try again', exact: true })).toBeEnabled();
+  expect(searches).toBe(1);
+  expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await capture(page, `news-${deadlineSource}-timeout-recovery`);
+  release();
+  await dialog.getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(dialog.getByRole('link', { name: /Example News/ })).toBeVisible();
+  expect(searches).toBe(2);
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('Pages preserves a Google-reported deadline and offers manual retry without hidden calls', async ({ page }) => {
+  let searches = 0;
+  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { models: [] } });
+    searches++;
+    return searches === 1
+      ? route.fulfill({ status: 504, json: { error: { code: 504, status: 'DEADLINE_EXCEEDED', message: 'Fixture provider deadline' } } })
+      : route.fulfill({ json: newsReply() });
+  });
+  await page.goto('./');
+  await connect(page);
+  await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
+  await expect(newsDialog(page).getByRole('alert')).toContainText('News search took too long');
+  await expect(newsDialog(page).getByRole('alert')).not.toContainText("app's 60-second waiting limit");
+  expect(searches).toBe(1);
+  await newsDialog(page).getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(newsDialog(page).getByRole('link', { name: /Example News/ })).toBeVisible();
+  expect(searches).toBe(2);
+});
+
+test('closing a Pages news lookup stays a cancellation and ignores late results', async ({ page }) => {
+  let release!: () => void;
+  let searches = 0;
+  await page.route('https://generativelanguage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { models: [] } });
+    searches++;
+    if (searches === 1) {
+      await new Promise<void>(resolve => { release = resolve; });
+      await route.fulfill({ json: newsReply() }).catch(() => {});
+    } else await route.fulfill({ json: newsReply() });
+  });
+  await page.goto('./');
+  await connect(page);
+  await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
+  await expect.poll(() => Boolean(release)).toBe(true);
+  await newsDialog(page).getByRole('button', { name: 'Close news selector' }).click();
+  await expect(newsDialog(page)).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => (performance.getEntriesByName('daily-banana:news-lookup')[0] as PerformanceMeasure)?.detail?.outcome)).toBe('cancelled');
+  release();
+  await page.getByRole('button', { name: 'Get ideas from recent news' }).click();
+  await expect(newsDialog(page).getByRole('link', { name: /Example News/ })).toBeVisible();
+  await expect(newsDialog(page).getByRole('alert')).toHaveCount(0);
+  expect(searches).toBe(2);
 });

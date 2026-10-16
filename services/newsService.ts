@@ -2,12 +2,11 @@ import type { NewsFeed, NewsStory } from '../types';
 import { IS_BROWSER_BYOK, collectNews, getConnectionRevision, hasGeminiKey, subscribeGeminiConnection } from './geminiConnection';
 import { describeNewsError, newsError, NewsRequestError } from './newsErrors';
 import { normalizeNewsStories } from './newsParsing';
+import { NEWS_TIMEOUT_MS, NEWS_REQUEST_DEADLINE_MS } from '../shared/news-request.mjs';
 
 const CACHE_KEY = 'dailyBanana_news_v3';
 const FRESH_FOR = 30 * 60 * 1000;
 const MAX_CACHED_AGE = 24 * 60 * 60 * 1000;
-// Transport allowance only: the backend owns a single 20-second Google budget.
-const REQUEST_DEADLINE = 30_000;
 let inflight: { revision: number; controller: AbortController; promise: Promise<NewsFeed> } | null = null;
 let cacheRevision = getConnectionRevision();
 let cacheScope = crypto.randomUUID();
@@ -55,8 +54,10 @@ export async function getNewsFeed({ forceRefresh = false }: { forceRefresh?: boo
   }
   const previous = readCache(MAX_CACHED_AGE);
   const controller = new AbortController();
+  const started = performance.now();
+  let outcome = 'error';
   let timedOut = false;
-  const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_DEADLINE);
+  const deadline = setTimeout(() => { timedOut = true; controller.abort(); }, NEWS_REQUEST_DEADLINE_MS);
   const promise = (async (): Promise<NewsFeed> => {
     try {
       const result = await collectNews(forceRefresh, controller.signal);
@@ -68,21 +69,36 @@ export async function getNewsFeed({ forceRefresh = false }: { forceRefresh?: boo
       const feed: NewsFeed = { stories, fetchedAt: result.fetchedAt,
         searchSuggestions: typeof result.searchSuggestions === 'string' && result.searchSuggestions.length <= 100_000 ? result.searchSuggestions : undefined };
       saveCache(feed);
+      outcome = 'success';
       return feed;
     } catch (error) {
       // Session expiry notification aborts the waiter as well. Report recovery
       // rather than silently treating that abort as closing the news dialog.
-      if (!hasGeminiKey()) throw new NewsRequestError(describeNewsError(JSON.stringify({ error: { code: 401 } })));
-      if (revision !== getConnectionRevision() || (controller.signal.aborted && !timedOut)) throw newsError('cancelled', 'News search closed', 'The news lookup was closed.', null);
+      if (!hasGeminiKey()) {
+        outcome = 'key';
+        throw new NewsRequestError(describeNewsError(JSON.stringify({ error: { code: 401 } })));
+      }
+      if (revision !== getConnectionRevision() || (controller.signal.aborted && !timedOut)) {
+        outcome = 'cancelled';
+        throw newsError('cancelled', 'News search closed', 'The news lookup was closed.', null);
+      }
       const issue = timedOut
         ? newsError('transport-timeout', 'News search took too long',
-          IS_BROWSER_BYOK ? 'Google did not return headlines within the waiting limit. No automatic retry was made; the Google request outcome and usage may be unknown.' : 'The app did not deliver headlines within 30 seconds. This is the browser-to-app waiting limit, separate from the server’s 20-second Google limit. No automatic retry was made; the Google request outcome and usage may be unknown.').issue
+          IS_BROWSER_BYOK ? `Google did not return headlines within the app's ${NEWS_REQUEST_DEADLINE_MS / 1000}-second overall waiting limit. No automatic retry was made; the Google request outcome and usage may be unknown.` : `The app did not deliver headlines within ${NEWS_REQUEST_DEADLINE_MS / 1000} seconds. This is the browser-to-app waiting limit, separate from the server’s ${NEWS_TIMEOUT_MS / 1000}-second Google limit. No automatic retry was made; the Google request outcome and usage may be unknown.`).issue
         : describeNewsError(error);
+      outcome = issue.code;
       if (previous && !['key', 'cancelled'].includes(issue.code)) return { ...previous, stale: true, warning: issue };
       throw new NewsRequestError(issue);
     } finally {
       clearTimeout(deadline);
       if (inflight?.controller === controller) inflight = null;
+      // Keep only the last lookup's duration and category. No credentials,
+      // provider messages, story text or source URLs enter diagnostics.
+      try {
+        performance.clearMeasures('daily-banana:news-lookup');
+        performance.measure('daily-banana:news-lookup', { start: started,
+          detail: { outcome, transport: IS_BROWSER_BYOK ? 'browser' : 'server' } });
+      } catch { /* Optional diagnostics must never prevent news or recovery. */ }
     }
   })();
   inflight = { revision, controller, promise };

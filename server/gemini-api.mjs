@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { CredentialSessions, SessionError, SESSION_TTL, TAB_PATTERN, cookieName } from './sessions.mjs';
 import { generationFailure, GenerationResponseError } from './generation-errors.mjs';
-import { NewsService } from './news-service.mjs';
+import { NewsService, NEWS_TIMEOUT_MS } from './news-service.mjs';
 import { NewsRequestError } from '../shared/news-errors.mjs';
 
 const IMAGE_MODELS = new Set(['gemini-nano-banana-2.1', 'gemini-2.5-flash-image']);
@@ -136,7 +136,7 @@ function imageParams(body) {
   };
 }
 
-export function createGeminiApi({ sessions = new CredentialSessions(), createClient = key => new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 180_000 } }), secureCookies = true, imageTimeoutMs = 180_000, newsTimeoutMs = 20_000, newsMaxEntries = 128 } = {}) {
+export function createGeminiApi({ sessions = new CredentialSessions(), createClient = key => new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 180_000 } }), secureCookies = true, imageTimeoutMs = 180_000, newsTimeoutMs = NEWS_TIMEOUT_MS, newsMaxEntries = 128 } = {}) {
   const news = new NewsService({ now: sessions.now, timeoutMs: newsTimeoutMs, maxEntries: newsMaxEntries });
   const timer = setInterval(() => { sessions.prune(); news.prune(); }, 60_000);
   timer.unref();

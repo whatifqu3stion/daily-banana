@@ -116,6 +116,8 @@ React, TypeScript, Vite, Tailwind CSS, the Google GenAI SDK, and html-to-image f
 | [geminiConnection.ts](services/geminiConnection.ts) | Connection state and the choice of browser or backend transport |
 | [Pages workflow](.github/workflows/pages.yml) | Build, offline checks, and deployment |
 
+**A bounded news lookup.** Recent-news suggestions use Gemini 2.5 Flash with Google Search and a 1,024-token thinking budget. The request aims for an even U.S./international mix with short snippets, and the app keeps stories only when it can attach sources from Google's grounding metadata. Both transports allow 60 seconds for Google and 75 seconds overall. These are initial waiting limits to validate against live usage, not measured response-time guarantees. Timeouts offer a manual retry rather than automatically making another potentially billable request. The browser retains the latest lookup's duration and outcome in the `daily-banana:news-lookup` Performance entry, without keys or story content.
+
 ### Two ways to run it
 
 **GitHub Pages:** a static BYOK build. Requests go directly from the visitor's browser to Google. A key is entered at runtime, retained in tab memory for up to 30 minutes, and cleared on refresh, close, or removal. It is not embedded in the build or saved to browser storage. Browser scripts and extensions may access it while in use. Billing, model access, and quotas belong to the visitor's Google project.

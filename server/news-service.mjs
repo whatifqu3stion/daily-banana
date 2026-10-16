@@ -1,10 +1,10 @@
 import { parseGroundedNews } from '../shared/news-parsing.mjs';
 import { SessionError } from './sessions.mjs';
 
-export const NEWS_TIMEOUT_MS = 20_000;
+export { NEWS_TIMEOUT_MS } from '../shared/news-request.mjs';
 const FRESH_FOR = 30 * 60 * 1000;
 
-import { newsParams } from '../shared/news-request.mjs';
+import { newsParams, NEWS_TIMEOUT_MS } from '../shared/news-request.mjs';
 
 // Session-object keys are never shared between users, tabs, or key rotations.
 // Bounds cap memory and concurrent upstream work without a database/service.
