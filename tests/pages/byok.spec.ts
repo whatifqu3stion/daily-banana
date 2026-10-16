@@ -309,4 +309,7 @@ test('Pages editorial concerns allow choosing, proof changes, finishing and expo
   await expect(page.getByTestId('comic-export')).toContainText('$12 billion? Again?');
   await expect(page.getByTestId('comic-export').getByRole('complementary', { name: 'Story concerns' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeEnabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.mouse.move(0, 0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

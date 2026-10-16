@@ -192,6 +192,8 @@ for (const width of [1440, 402]) test(`amount concerns allow the full flow with 
     const box = element.getBoundingClientRect(); return box.width > 0 && box.right > innerWidth + 1 && getComputedStyle(element).visibility !== 'hidden';
   }).map(element => ({ tag: element.tagName, cls: element.className, right: element.getBoundingClientRect().right })).slice(0, 12));
   expect(overflow).toEqual([]);
+  await page.mouse.move(0, 0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const before = calls.filter(call => call.endpoint === 'interactions').length;
   await finalNotice.getByText('Review details', { exact: true }).click();
   expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(before);

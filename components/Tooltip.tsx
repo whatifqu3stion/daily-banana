@@ -29,7 +29,7 @@ const Tooltip: React.FC<TooltipProps> = ({ text, children, wrapperClassName, pos
   return (
     <div className={`relative flex items-center group/tooltip w-fit ${wrapperClassName || ''}`}>
       {children}
-      <div role="tooltip" className={`absolute w-max max-w-xs px-3 py-1.5 bg-black text-white text-sm rounded-md shadow-lg pointer-events-none z-30 ${positionClasses[position]} invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all duration-200 scale-95 group-hover/tooltip:scale-100`}>
+      <div role="tooltip" className={`absolute hidden group-hover/tooltip:block w-max max-w-xs px-3 py-1.5 bg-black text-white text-sm rounded-md shadow-lg pointer-events-none z-30 ${positionClasses[position]} invisible group-hover/tooltip:visible opacity-0 group-hover/tooltip:opacity-100 transition-all duration-200 scale-95 group-hover/tooltip:scale-100`}>
         {text}
         <div className={`absolute top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-black ${arrowClasses[position]}`}></div>
       </div>
