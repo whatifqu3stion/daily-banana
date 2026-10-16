@@ -1,7 +1,10 @@
+import { browserGeminiRequest, clearBrowserGemini } from './geminiBrowserTransport';
+export const IS_BROWSER_BYOK = import.meta.env.VITE_GEMINI_TRANSPORT === 'browser';
 import type { GenerateContentParameters, GenerateContentResponse, GoogleGenAI } from '@google/genai';
 import type { NewsFeed } from '../types';
 
-// Only a tab ID and connection status remain in browser memory, never a key.
+// The default transport keeps credentials on the server. The explicit Pages
+// mode holds a visitor-supplied key only in the browser transport module.
 const tab = crypto.randomUUID();
 let connected = false;
 let expiresAt = 0;
@@ -20,6 +23,7 @@ export const isGeminiBusy = () => activeRequests > 0;
 export const getConnectionRevision = () => revision;
 
 function clearConnection() {
+  if (IS_BROWSER_BYOK) clearBrowserGemini();
   connected = false;
   expiresAt = 0;
   clearTimeout(expiryTimer);
@@ -28,6 +32,7 @@ function clearConnection() {
 }
 
 async function backend<T>(endpoint: string, body?: unknown, method = 'POST', signal?: AbortSignal): Promise<T> {
+  if (IS_BROWSER_BYOK) return browserGeminiRequest<T>(endpoint, body, signal);
   const operation = endpoint === 'interactions' ? 'image' : endpoint === 'content' ? 'text' : endpoint === 'news' ? 'news' : 'key-check';
   let response: Response;
   try {
@@ -145,10 +150,11 @@ export function createImageInteraction(params: ImageInteractionParameters): Prom
   return withConnection('interactions', params);
 }
 
-// Best-effort immediate revocation on refresh/close; the hard server TTL is
-// authoritative when the browser cannot deliver this request.
+// Clear the Pages key on page hide, or revoke the backend session best-effort.
+// Backend sessions also have a hard server TTL.
 window.addEventListener('pagehide', () => {
   if (connected) {
+    if (IS_BROWSER_BYOK) { clearConnection(); return; }
     void fetch('/api/gemini/session', {
       method: 'DELETE', credentials: 'same-origin', keepalive: true,
       headers: { 'X-Gemini-Tab': tab },

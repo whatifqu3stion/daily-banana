@@ -142,7 +142,7 @@ const App: React.FC = () => {
         {!isSetup && (
           <div className="compact-masthead grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-y-2 border-black py-2.5 sm:py-3 lg:gap-5">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <img src="/banana-boy-mascot.png" alt="" className="h-9 w-auto flex-shrink-0 sm:h-12 md:h-14 lg:h-16" />
+              <img src={`${import.meta.env.BASE_URL}banana-boy-mascot.png`} alt="" className="h-9 w-auto flex-shrink-0 sm:h-12 md:h-14 lg:h-16" />
               <span className="whitespace-nowrap font-masthead text-xl leading-none sm:text-2xl md:text-3xl lg:text-4xl">The Daily Banana</span>
             </div>
             <span className="text-right text-xs font-bold font-special-elite uppercase tracking-wide text-gray-900 sm:text-sm md:text-base lg:text-lg">{today}</span>
@@ -152,7 +152,7 @@ const App: React.FC = () => {
         <div className="w-full max-w-6xl mx-auto h-1 bg-black mb-2"></div>
         <div className="flex justify-center max-w-6xl mx-auto">
           <div className="inline-flex flex-col md:flex-row items-center gap-1 md:gap-2">
-          <img src="/banana-boy-mascot.png" alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
+          <img src={`${import.meta.env.BASE_URL}banana-boy-mascot.png`} alt="Banana Boy mascot" className="h-20 sm:h-28 md:h-36 lg:h-44 w-auto flex-shrink-0" />
           <div className="text-center min-w-0">
             <p className="text-xs sm:text-lg md:text-2xl font-special-elite text-gray-800 tracking-wide md:tracking-extrawidest">
               {today}

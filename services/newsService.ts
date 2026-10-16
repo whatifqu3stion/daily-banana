@@ -1,5 +1,5 @@
 import type { NewsFeed, NewsStory } from '../types';
-import { collectNews, getConnectionRevision, hasGeminiKey, subscribeGeminiConnection } from './geminiConnection';
+import { IS_BROWSER_BYOK, collectNews, getConnectionRevision, hasGeminiKey, subscribeGeminiConnection } from './geminiConnection';
 import { describeNewsError, newsError, NewsRequestError } from './newsErrors';
 import { normalizeNewsStories } from './newsParsing';
 
@@ -76,7 +76,7 @@ export async function getNewsFeed({ forceRefresh = false }: { forceRefresh?: boo
       if (revision !== getConnectionRevision() || (controller.signal.aborted && !timedOut)) throw newsError('cancelled', 'News search closed', 'The news lookup was closed.', null);
       const issue = timedOut
         ? newsError('transport-timeout', 'News search took too long',
-          'The app did not deliver headlines within 30 seconds. This is the browser-to-app waiting limit, separate from the server’s 20-second Google limit. No automatic retry was made; the Google request outcome and usage may be unknown.').issue
+          IS_BROWSER_BYOK ? 'Google did not return headlines within the waiting limit. No automatic retry was made; the Google request outcome and usage may be unknown.' : 'The app did not deliver headlines within 30 seconds. This is the browser-to-app waiting limit, separate from the server’s 20-second Google limit. No automatic retry was made; the Google request outcome and usage may be unknown.').issue
         : describeNewsError(error);
       if (previous && !['key', 'cancelled'].includes(issue.code)) return { ...previous, stale: true, warning: issue };
       throw new NewsRequestError(issue);

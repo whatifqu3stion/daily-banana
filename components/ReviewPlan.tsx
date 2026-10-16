@@ -112,7 +112,7 @@ const ReviewPlan: React.FC<ReviewPlanProps> = ({
         <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-8">
             <div className="text-center">
                 <h2 className="text-2xl font-bold font-special-elite text-black">Review the first panel</h2>
-                <p className="mt-2 text-base font-open-sans text-black">Give the opening beat a close read. When it feels right, we’ll finish the rest of the strip.</p>
+                <p className="mt-2 text-base font-open-sans text-black">Give the opening beat a close read. Later panels may generate in the background while you review. Refining or regenerating uses additional API requests.</p>
             </div>
 
             {error && (

@@ -10,7 +10,9 @@
     "preview": "npm run start",
     "test:server": "node --test tests/server/*.test.mjs",
     "test:google-live": "playwright test -c playwright.google-live.config.ts",
-    "test:e2e": "playwright install chromium && playwright test"
+    "test:e2e": "playwright install chromium && playwright test",
+    "build:pages": "vite build --mode pages",
+    "test:pages": "playwright test -c playwright.pages.config.ts"
   },
   "dependencies": {
     "@google/genai": "latest",

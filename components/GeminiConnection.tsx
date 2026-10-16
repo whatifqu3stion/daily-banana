@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
+  IS_BROWSER_BYOK,
   connectGeminiKey,
   disconnectGeminiKey,
   hasGeminiKey,
@@ -32,6 +33,8 @@ function readableConnectionError(error: unknown): string {
     KEY_METADATA_UNAVAILABLE: 'Google’s model-list check is unavailable. Check Gemini API access or try again; this is not proof that the key is invalid.',
     KEY_PERMISSION: 'Google denied Gemini API access. Check your Google project permissions and the key’s API restrictions.',
   };
+  if (IS_BROWSER_BYOK && failure.kind === 'KEY_WEBSITE_RESTRICTED') return 'Google blocked this website. Check that your key allows https://whatifqu3stion.github.io/* and the Gemini API.';
+  if (IS_BROWSER_BYOK && failure.kind === 'KEY_CHECK_NETWORK') return 'Your browser could not reach Google. Check your connection or browser extensions and try again; this does not mean the key is invalid.';
   if (failure.kind && Object.prototype.hasOwnProperty.call(keyFailures, failure.kind)) return keyFailures[failure.kind];
   if (/enter a valid google gemini api key/.test(normalized)) return 'Paste the complete Google Gemini API key, without spaces or extra text.';
 
@@ -125,6 +128,9 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
       aria-label="Google key connection"
       className="mx-auto w-full"
     >
+      {IS_BROWSER_BYOK && <p className="mb-4 font-open-sans text-base leading-6 text-gray-800">
+        Use your own Gemini API key. Requests go directly to Google and are billed to your Google project. This tab forgets your key when you refresh.
+      </p>}
       <div className={connected ? 'mb-4' : undefined} role="status" aria-live="polite" aria-atomic="true">
         {connected && (
         <span
@@ -230,7 +236,9 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
         </button>
         <div id="key-privacy" hidden={!showInformation} className="pt-3">
         <p className="font-open-sans text-base font-normal leading-6 text-black">
-          Your key stays in server memory for up to 30 minutes—never saved or logged. Reconnect after refreshing. Requests go through this server to Google and are billed to your Google project.
+          {IS_BROWSER_BYOK
+            ? 'This Pages edition sends requests directly from your browser to Google. Your key stays in this tab’s memory for up to 30 minutes and is cleared on refresh, close, or removal. It is not saved in browser storage or sent to an app server. Requests are billed to your Google project. As with any browser app, page scripts and browser extensions may access a key while it is in use.'
+            : 'Your key stays in server memory for up to 30 minutes. Reconnect after refreshing. Requests go through this server to Google and are billed to your Google project.'}
         </p>
         <p className="mt-2 font-open-sans text-base font-normal leading-6 text-gray-800">
           <a
@@ -253,7 +261,7 @@ const GeminiConnection: React.FC<GeminiConnectionProps> = ({ disabled = false, o
           {' '}and project quotas before generating.
         </p>
         <div className="mt-4 space-y-1 border-t border-dotted border-black pt-3 font-open-sans text-base leading-6 text-black">
-          <p><span className="font-special-elite font-bold">Default image model:</span> Nano Banana 2.1, the latest stable model.</p>
+          <p><span className="font-special-elite font-bold">Default image model:</span> Nano Banana 2.1. Model availability depends on your Google project.</p>
           <p><span className="font-special-elite font-bold">Alternative:</span> Nano Banana 2.5. Both require paid API image access; availability and quotas depend on your Google project.</p>
         </div>
         </div>
