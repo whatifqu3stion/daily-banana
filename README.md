@@ -21,17 +21,35 @@ Started as a hackathon project from a Google AI Studio export, it has grown thro
 
 Automated browser checks exercise the workflow through the real Google SDK with simulated responses. They catch application failures before deployment without paid AI calls; live comedy and visual quality still need human evaluation.
 
-## A finished edition
+## Finished editions
 
-**Mutual Admiration Society** — a full-page example supplied by the creator, with a wide opening scene, two supporting panels, and a note from the archives.
+Three creator-supplied exports exploring different visual directions. Each preview is a small crop; click the image or its title to open the complete, original PNG.
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png">
-    <img src="docs/portfolio/mutual-admiration-society.png" width="620" alt="Mutual Admiration Society: two executives toast their growth figures in a three-panel comic, followed by an archive note">
+    <img src="docs/portfolio/mutual-admiration-preview.jpg" width="360" alt="Cropped opening panel of Mutual Admiration Society, showing two executives toasting in an office">
   </a>
 </p>
 
-[Open the original at full size — 1303 × 2047 PNG](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png). [Example notes](docs/portfolio/README.md#creator-supplied-full-page-example).
+**[Mutual Admiration Society](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png)** — a color comic built around two executives celebrating their growth figures. The full page includes the three-panel sequence and its archive note.
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/data-deluge-fusion-edition.png">
+    <img src="docs/portfolio/data-deluge-fusion-preview.jpg" width="360" alt="Cropped final panel of Data Deluge: Fusion Edition, with scientists overwhelmed by paperwork and an Efficiency caption">
+  </a>
+</p>
+
+**[Data Deluge: Fusion Edition](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/data-deluge-fusion-edition.png)** — a Frank Miller–inspired black-and-white direction: stark shadows and dense linework, with yellow sound effects in the full strip. The lab's promised efficiency becomes a mountain of paperwork.
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/the-vc-jenga-tower.png">
+    <img src="docs/portfolio/vc-jenga-tower-preview.jpg" width="360" alt="Cropped final panel of The VC Jenga Tower, showing an anxious executive holding a VC Funding block beside a leaning tower of AI products">
+  </a>
+</p>
+
+**[The VC Jenga Tower](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/the-vc-jenga-tower.png)** — a Studio Ghibli–inspired manga/anime direction: warm color, expressive faces, and detailed office backgrounds. A stack of AI products turns financial dependence into a precarious physical tower.
+
+These are supplied finished outputs, separate from the staged UI walkthrough below. [Example and capture notes](docs/portfolio/README.md#creator-supplied-full-page-example).
 
 ## From idea to edition
 
@@ -117,6 +135,8 @@ The workflow breaks those decisions into four stages: **file the idea → choose
 | Key setup outside the workspace | A missing key opens a contextual route into settings. Credential management stays separate from story decisions. BYOK makes the demo shareable, but adds friction for first-time visitors. |
 
 ## The tricky parts have been useful
+
+**Funny isn’t a formula.** A clear setup, a payoff, and polished artwork can still leave a comic flat. Timing, surprise, specificity, and personal taste need human judgment. The app can help organize a story and make it easier to revise, but the real test is whether the joke lands with another reader. That remains a question for the planned user trials.
 
 **Continuity is more than matching a character.** Later images reference the first panel and nearby artwork, alongside recurring character tags and a shared set description. Edits flag downstream continuity for human review. These are consistency aids; they do not guarantee that a pose, prop, or action is correct.
 

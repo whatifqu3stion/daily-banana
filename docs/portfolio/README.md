@@ -46,3 +46,15 @@ The earlier UI captures also used intercepted responses. The repository's separa
 `mutual-admiration-society.png` is the creator-supplied full-page export, retained byte for byte at its original 1303 × 2047 resolution. It is separate from the constructed desktop walkthrough above. No claims are made here about the generation settings, editing history, or factual accuracy of its archive text.
 
 The saved image also records a real rough edge: inline `[cite: amount-…]` markers leaked into the archive explanation. The app now keeps internal monetary IDs out of the archive prompt and removes model citation markers from the prose before display and PNG export; source links remain separate. That code fix does not alter lettering already baked into this original PNG.
+
+### Additional creator-supplied exports
+
+The creator supplied two more finished app exports on October 16, 2026, describing their directions as Frank Miller–inspired black and white and Studio Ghibli–inspired manga. The captions use those creator-provided descriptions; the files are AI-generated comic outputs, not works by those artists or studios. Their raw plans, generation settings and editing histories were not supplied. The factual claims in their archive notes have not been independently verified for this README.
+
+| Original file | Original size | Preview crop (left, top, right, bottom) |
+| --- | --- | --- |
+| `data-deluge-fusion-edition.png` | 1435 × 2048 | `(50, 820, 1385, 1574)`, the final wide panel |
+| `the-vc-jenga-tower.png` | 1360 × 2048 | `(48, 797, 1312, 1480)`, the final wide panel |
+| `mutual-admiration-society.png` | 1303 × 2047 | `(45, 208, 1259, 888)`, the opening wide panel |
+
+All three original PNGs remain byte for byte unchanged. The preview JPEGs are mechanical crops resized to 720 pixels wide and displayed at 360 pixels in the README. No artwork or lettering was generated, replaced, retouched or rearranged for these previews. Clicking a preview or its caption title opens the original full-page PNG, including the panels, archive note and footer omitted from the crop.
