@@ -228,6 +228,54 @@ test('repeated amount concerns are grouped across planning fields', async ({ pag
   await expect(grouped).toContainText('Panel 1');
 });
 
+test('archive cleanup removes citation debris without changing prose or source amounts', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const path = '/utils/archiveText.ts';
+    const { cleanArchiveText } = await import(path);
+    return [
+      'Revenue reached $426 billion [cite: amount-z7lu7, amount-19q7g09, 1, 8], or 82.7% [cite: 4, 11, 12, 13].',
+      'Growth [1, 2] slowed [citation: 3] amid uncertainty citeturn0search0.',
+      'Supplied estimates [2026] put revenue at $1.21 billion (70%–80%). [Preliminary estimate] remains a qualification.',
+      '[cite: amount-123, 1]',
+    ].map(cleanArchiveText);
+  });
+  expect(result).toEqual([
+    'Revenue reached $426 billion, or 82.7%.',
+    'Growth slowed amid uncertainty.',
+    'Supplied estimates [2026] put revenue at $1.21 billion (70%–80%). [Preliminary estimate] remains a qualification.',
+    '',
+  ]);
+});
+
+for (const width of [1280, 390]) test(`archive prose and export stay clean with source links preserved (${width})`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 960 });
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const calls = await backend(page, { valid: true, archive: 'Supplied background reports a $1.21 billion fine [cite: amount-z7lu7, 1, 8]. Later reporting discusses the context [2].' });
+  await setup(page, false, true);
+  await page.getByRole('button', { name: 'Choose This Story' }).click();
+  await page.getByRole('button', { name: 'Finish the strip' }).click();
+  const comic = page.getByTestId('comic-export');
+  await expect(comic.getByRole('heading', { name: 'A Note from the Archives' })).toBeVisible();
+  await expect(comic).toContainText('Supplied background reports a $1.21 billion fine. Later reporting discusses the context.');
+  await expect(comic).not.toContainText(/\[cite:|amount-z7lu7|\[2\]/);
+  await expect(comic.getByRole('link', { name: 'example.com' })).toHaveAttribute('href', 'https://example.com/later');
+  const archives = calls.filter(call => call.endpoint === 'content' && JSON.stringify(call.body.contents).includes('Context Explanation'));
+  expect(archives).toHaveLength(1);
+  expect(archives[0].body.contents).not.toMatch(/amount-|fact_id|MONETARY BINDINGS/);
+  expect(archives[0].body.contents).toContain('Return only plain prose');
+  expect(archives[0].body.contents).toContain(BACKGROUND);
+  await page.route('https://fonts.googleapis.com/**', route => route.fulfill({ body: '', contentType: 'text/css' }));
+  await comic.screenshot({ path: `/tmp/banana-archive-clean-${width}.png` });
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download', exact: true }).click();
+  const download = await downloading;
+  expect(await download.failure()).toBeNull();
+  await download.saveAs(`/tmp/banana-archive-export-${width}.png`);
+  expect(errors).toEqual([]);
+});
+
 for (const failArchive of [false, true]) test(`optional archive concerns stay outside the artwork and never stop finishing (${failArchive})`, async ({ page }) => {
   await backend(page, { archive: 'Later research reports a $12 billion fine.', failArchive });
   await setup(page, false, true);

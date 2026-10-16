@@ -6,6 +6,7 @@ import { Type } from "@google/genai";
 import { generatePanelInteraction } from './geminiImageInteractions';
 import { ComicFormData, ComicPlan, ProcessedReferenceImage, PlanPanel, ExplainerSource, AspectRatio, PanelContext } from '../types';
 import { extractDomain } from '../utils/urlUtils';
+import { cleanArchiveText } from '../utils/archiveText';
 import { ILLUSTRATION_STYLE_OPTIONS } from '../constants';
 
 import { generateContent } from './geminiConnection';
@@ -740,12 +741,12 @@ const generateContextExplainer = async (
         : '';
     const contents = `
 The following is a fictional satirical comic strip. Write a 1–2 sentence context note. When background is supplied, use that subject and distinguish supplied claims from facts supported by Google Search. Without background, search for related context, but do NOT infer that invented comic names, numbers, quotes or allegations really occurred. Say when no matching event can be established. Do not retrofit a different news event to justify the comic. This note is researched AFTER the artwork and is not proof of what the story planner knew. Tone: dry, neutral and informational.
+Return only plain prose, with no heading, Markdown, inline citations, source numbers, URLs or internal identifiers. The app displays source links separately from Google Search grounding metadata.
 
 **Comic Title:** "${title}"
 **Comic Summary:** "${summary}"${contextSection}
-${selectedPlan ? `SUPPLIED MONETARY EVIDENCE (distinct provenance from this later research): ${JSON.stringify(factsForPlan(selectedPlan))}
-ACTUAL PLANNED PANEL TEXT AND PROP INSTRUCTIONS: ${JSON.stringify(numericLocations(selectedPlan))}
-MONETARY BINDINGS: ${JSON.stringify(selectedPlan.numericUses || [])}
+${selectedPlan ? `SUPPLIED MONETARY EVIDENCE (distinct provenance from this later research): ${JSON.stringify(factsForPlan(selectedPlan).map(({ evidence, provenance }) => ({ excerpt: evidence, provenance })))}
+ACTUAL PLANNED PANEL TEXT AND PROP INSTRUCTIONS: ${JSON.stringify(numericLocations(selectedPlan).map(({ text }) => text).filter(Boolean))}
 Do not treat fictional dialogue as evidence. Do not silently replace a supplied amount with a different researched figure. Distinguish a conflicting research amount, its subject/claim and provenance. Avoid unrelated amounts; totals, components and other subjects are separate claims.` : ''}
 
 **Context Explanation:**
@@ -761,7 +762,8 @@ Do not treat fictional dialogue as evidence. Do not silently replace a supplied 
             },
         });
 
-        const text = result.text?.trim() || 'Could not generate context at this time.';
+        const text = cleanArchiveText(result.text || '');
+        if (!text) return { text: '', sources: [] };
 
         // Extract cited sources from grounding metadata
         const chunks: any[] = (result as any).candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];

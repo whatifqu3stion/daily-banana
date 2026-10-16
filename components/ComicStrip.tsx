@@ -6,6 +6,7 @@ import React, { useRef, useState } from 'react';
 import { ComicStripData, PanelData } from '../types';
 import { embedGoogleFonts } from '../utils/fontUtils';
 import { extractDomain } from '../utils/urlUtils';
+import { cleanArchiveText } from '../utils/archiveText';
 import Panel from './Panel';
 import NewComicIcon from './icons/NewComicIcon';
 import DownloadIcon from './icons/DownloadIcon';
@@ -42,7 +43,8 @@ const ComicStrip: React.FC<ComicStripProps> = ({
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const numericPlan = stripAsNumericPlan(comicData);
-  const archiveWarning = comicData.archiveWarning || (comicData.context ? checkArchiveAmounts(comicData.context, numericPlan) : undefined);
+  const archiveText = cleanArchiveText(comicData.context || '');
+  const archiveWarning = comicData.archiveWarning || (archiveText ? checkArchiveAmounts(archiveText, numericPlan) : undefined);
   const concerns = [archiveWarning, ...comicData.panels.map((panel, index) =>
     panel.continuityWarning ? `Panel ${index + 1}: ${panel.continuityWarning}` : undefined)].filter((item): item is string => Boolean(item));
 
@@ -139,7 +141,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
           ))}
         </div>
         </div>
-          {comicData.context && !archiveWarning && (
+          {archiveText && !archiveWarning && (
            <aside className="mt-7 grid gap-3 border-y border-black/50 py-4 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-6 md:py-5">
              <div>
                <h4 className="font-special-elite text-lg font-bold leading-tight text-black">A Note from the Archives</h4>
@@ -165,7 +167,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
               </p>
             )}
              </div>
-             <p className="max-w-[72ch] font-lora text-base leading-7 text-gray-800">{comicData.context}</p>
+             <p className="max-w-[72ch] font-lora text-base leading-7 text-gray-800">{archiveText}</p>
            </aside>
         )}
          <footer className="-mx-4 mt-6 border-t-2 border-black px-4 pt-5 font-special-elite sm:-mx-6 sm:px-6 md:-mx-8 md:px-8">

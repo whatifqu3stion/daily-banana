@@ -40,3 +40,9 @@ The declared Google fonts were supplied locally to the capture browser because e
 - `example-comic.jpg`: a resized copy of the full saved prototype comic cited above.
 
 The earlier UI captures also used intercepted responses. The repository's separate live tests remain opt-in. The original publishing-pass UI captures can be reproduced by building with `npm run build:pages`, setting `PORTFOLIO_SCREENSHOTS`, and running `npm run test:pages`; they do not reproduce the newer executive walkthrough.
+
+## Creator-supplied full-page example
+
+`mutual-admiration-society.png` is the creator-supplied full-page export, retained byte for byte at its original 1303 × 2047 resolution. It is separate from the constructed desktop walkthrough above. No claims are made here about the generation settings, editing history, or factual accuracy of its archive text.
+
+The saved image also records a real rough edge: inline `[cite: amount-…]` markers leaked into the archive explanation. The app now keeps internal monetary IDs out of the archive prompt and removes model citation markers from the prose before display and PNG export; source links remain separate. That code fix does not alter lettering already baked into this original PNG.

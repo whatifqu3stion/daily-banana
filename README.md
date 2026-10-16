@@ -10,6 +10,18 @@ The Daily Banana is a creative AI prototype: start with a topic or a sourced hea
 
 Started as a hackathon project from a Google AI Studio export, it has grown through AI-assisted development and iteration on the workflow, visual direction, prompts, and error handling. It remains a prototype with open questions about usability and output quality.
 
+## A finished edition
+
+**Mutual Admiration Society** — a full-page example supplied by the creator, with a wide opening scene, two supporting panels, and a note from the archives.
+
+<p align="center">
+  <a href="https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png">
+    <img src="docs/portfolio/mutual-admiration-society.png" width="620" alt="Mutual Admiration Society: two executives toast their growth figures in a three-panel comic, followed by an archive note">
+  </a>
+</p>
+
+[Open the original at full size — 1303 × 2047 PNG](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png). [Example notes](docs/portfolio/README.md#creator-supplied-full-page-example).
+
 ## From idea to edition
 
 Follow one fictional comic, **The Cost of Doing Business**, through the desktop workflow. These are captures of the real interface using a scripted plan and saved prototype artwork; no new AI generation was run for this walkthrough. [Capture notes](docs/portfolio/README.md).
