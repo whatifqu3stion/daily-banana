@@ -10,30 +10,73 @@ The Daily Banana is a creative AI prototype: start with a topic or a sourced hea
 
 Started as a hackathon project from a Google AI Studio export, it has grown through AI-assisted development and iteration on the workflow, visual direction, prompts, and error handling. It remains a prototype with open questions about usability and output quality.
 
-## A look around the newsroom
+## From idea to edition
+
+Follow one fictional comic, **The Cost of Doing Business**, through the desktop workflow. These are captures of the real interface using a scripted plan and saved prototype artwork; no new AI generation was run for this walkthrough. [Capture notes](docs/portfolio/README.md).
+
+### 1. File the idea
 
 <p align="center">
-  <img src="docs/portfolio/01-setup.jpg" width="760" alt="Desktop setup screen with newspaper masthead, topic, stance, comedic angle, and collapsed optional details">
-  <br><sub><b>File the idea.</b> Topic, stance, and comedic angle come first. Illustration styles, references, and other controls sit behind optional details.</sub>
+  <img src="docs/portfolio/walkthrough-01-setup.jpg" width="780" alt="Desktop setup with a fictional executive topic, Critical stance, Satirical angle, collapsed optional details, and Generate Comic Plan">
 </p>
+
+**Start with the editorial brief.** Enter a topic or use recent news, then choose a stance and comedic angle. The main screen keeps those decisions prominent; illustration style, image references, model selection, and finishing options are available under Optional details. Generate Comic Plan moves the creator into story selection.
+
+**Closer look: give the artwork a visual starting point.**
 
 <p align="center">
-  <img src="docs/portfolio/03-story-choice.jpg" width="680" alt="Story selection showing the core joke, panel outline, and choices to accept, generate another idea, or write an angle">
-  <br><sub><b>Find the angle.</b> Read the joke and panel outline before committing to artwork. Keep the idea, ask for another, or write your own angle.</sub>
+  <img src="docs/portfolio/detail-reference.jpg" width="620" alt="Reference image close-up showing an uploaded executive illustration and a note to preserve silver hair, navy suit, and the office palette">
 </p>
 
-<table>
-  <tr>
-    <td align="center" width="32%"><img src="docs/portfolio/02-setup-mobile.jpg" width="220" alt="Mobile setup with stacked inputs and a large yellow generate button"></td>
-    <td align="center" width="68%"><img src="docs/portfolio/example-comic.jpg" width="440" alt="Saved three-panel prototype comic titled The Cost of Doing Business"></td>
-  </tr>
-  <tr>
-    <td><b>A smaller newsroom.</b> Inputs stack on phones, with large controls and the same visual identity.</td>
-    <td><b>An earlier edition.</b> A saved generated comic from the repository. Its text, artwork, and factual claims still need editorial review.</td>
-  </tr>
-</table>
+An uploaded reference can guide a character, object, or style. The accompanying note specifies what should carry over: here, the executive's silver hair, navy suit, and office palette. That makes the reference's intended role explicit, while leaving its interpretation to the model.
 
-The interface captures use a scripted story to show the real UI without paid generation. The saved comic is a separate, earlier output. [Capture notes and provenance](docs/portfolio/README.md).
+### 2. Choose the angle
+
+<p align="center">
+  <img src="docs/portfolio/walkthrough-02-story.jpg" width="780" alt="Desktop story-selection page for The Cost of Doing Business, with its premise, three-panel outline, generated-story and write-my-own tabs, and choose-story action">
+</p>
+
+**Judge the idea before the artwork.** Read the core joke and panel outline, then choose the story, request a new idea, or return to the brief. This checkpoint exposes how the model interpreted the topic, giving the creator a chance to redirect the story before image requests begin.
+
+<details>
+  <summary><b>Closer look: write an original angle</b></summary>
+  <p align="center">
+    <img src="docs/portfolio/detail-custom-angle.jpg" width="620" alt="Write Your Own Angle tab with a creator-authored premise about hiring an assistant to empty the fines bin">
+  </p>
+  <p>The Write my own tab makes room for a specific premise. A creator can describe the joke they want, then ask the planner to build around it. This keeps authorship available alongside the generated suggestion. The alternative shown here is entered but not submitted.</p>
+</details>
+
+### 3. Proof the first panel
+
+<p align="center">
+  <img src="docs/portfolio/walkthrough-03-proof.jpg" width="780" alt="Desktop proof-review page with the story plan beside the first executive illustration, a refinement field, Refine and Regenerate buttons, and Finish the strip">
+</p>
+
+**Compare intention with the image.** Inspect the opening scene alongside the plan, add a focused instruction, and use Refine for an edit or Regenerate for another attempt. Finish the strip moves into the full editor. Later panels can already generate in the background during review, so changing direction can spend credits on work the creator chooses not to keep.
+
+### 4. Shape the finished strip
+
+<p align="center">
+  <img src="docs/portfolio/walkthrough-04-editor.jpg" width="780" alt="Desktop final editor showing the same three-panel executive story, editable dialogue, source and story checks, and actions for a new comic, a new story, download, and sharing">
+</p>
+
+**Read it as a complete comic.** Check the sequence, dialogue, and visual continuity together. Text and its placement remain editable; focusing or hovering a panel reveals its image tools. The creator can refine a weak panel while preserving the rest, then download a clean PNG with the editor controls omitted.
+
+**Closer look: revise the wording while keeping the artwork.**
+
+<p align="center">
+  <img src="docs/portfolio/detail-panel-edit.jpg" width="440" alt="Close-up of the second panel after its editable dialogue changes to Already budgeted, with local image-refinement controls visible">
+</p>
+
+The dialogue changes from **“Routine expenses.”** to **“Already budgeted.”** through a real text edit, with the same artwork retained. Text and placement changes are local; Refine and Regenerate request new artwork and use API credits. Lettering already painted inside an image remains part of that image. [View the exported walkthrough comic](docs/portfolio/walkthrough-export.jpg).
+
+<details>
+  <summary><b>A smaller newsroom: the mobile layout</b></summary>
+  <p align="center">
+    <img src="docs/portfolio/02-setup-mobile.jpg" width="240" alt="Earlier mobile setup capture showing stacked inputs and a large generate button">
+  </p>
+  <p>Inputs stack on phones, with large controls and the same visual identity. This earlier capture uses a separate office-automation example; the walkthrough above follows the desktop journey.</p>
+</details>
 
 ## What I wanted the experience to do
 
