@@ -84,6 +84,48 @@ const TEMPLATES: Record<string, TemplateSlot[]> = {
         { gridCols: 2, aspectRatio: '1:1' },
         { gridCols: 4, aspectRatio: '1:1' },
     ],
+
+    // ── 5 panels: one wide beat and two complete paired rows ──────────────
+    'cinematic-open-5': [
+        { gridCols: 6, aspectRatio: '16:9' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+    ],
+    'wide-punchline-5': [
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 6, aspectRatio: '16:9' },
+    ],
+
+    // ── 6 panels: balanced rows, with space for a featured story beat ──────
+    'six-equal': [
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+    ],
+    'cinematic-open-6': [
+        { gridCols: 6, aspectRatio: '16:9' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+    ],
+    'wide-punchline-6': [
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 2, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 3, aspectRatio: '1:1' },
+        { gridCols: 6, aspectRatio: '16:9' },
+    ],
 };
 
 const isLarge     = (p: PlanPanel) => p.size === 'large';
@@ -117,6 +159,16 @@ function pickTemplateName(panels: PlanPanel[]): string {
             if (isEstablish(p0) && isLarge(p0))      return 'cinematic-open-4';
             if (isPunchline(pLast) && isLarge(pLast)) return 'wide-punchline-4';
             return 'quad-equal';
+
+        case 5:
+            if (isEstablish(p0) && isLarge(p0)) return 'cinematic-open-5';
+            if (isPunchline(pLast) && isLarge(pLast)) return 'wide-punchline-5';
+            return 'cinematic-open-5';
+
+        case 6:
+            if (isEstablish(p0) && isLarge(p0)) return 'cinematic-open-6';
+            if (isPunchline(pLast) && isLarge(pLast)) return 'wide-punchline-6';
+            return 'six-equal';
 
         default:
             // Fallback for unexpected panel counts: distribute into equal columns

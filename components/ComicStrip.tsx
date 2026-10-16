@@ -118,7 +118,7 @@ const ComicStrip: React.FC<ComicStripProps> = ({
              <p className="text-xs font-open-sans font-bold uppercase tracking-[0.18em] text-gray-500">Final edition</p>
              <p className="mt-1 text-sm font-open-sans text-gray-700">Click text to edit. Focus a panel to reveal its image tools.</p>
            </div>
-           <span className="text-xs font-special-elite text-gray-600">{comicData.panels.length} panels</span>
+           <span className="text-xs font-special-elite text-gray-600">{comicData.panels.length} {comicData.panels.length === 1 ? 'panel' : 'panels'}</span>
          </div>
          <h2 className="mx-auto mb-6 max-w-[18ch] text-balance text-center font-bangers text-4xl tracking-wider text-black md:mb-8 md:text-5xl">
           {comicData.title}

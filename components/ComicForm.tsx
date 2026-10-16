@@ -566,8 +566,9 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
           <div className="flex flex-col sm:flex-row gap-3">
             {IMAGE_MODEL_OPTIONS.map((opt) => {
               const selected = formData.imageModel === opt.value;
-              const minCost = (opt.pricePerImage * 2).toFixed(2);
-              const maxCost = (opt.pricePerImage * 4).toFixed(2);
+              const singleScene = formData.illustrationStyle === 'magazine-gag';
+              const minCost = opt.pricePerImage.toFixed(2);
+              const maxCost = (opt.pricePerImage * 6).toFixed(2);
               return (
                 <button
                   key={opt.value}
@@ -585,14 +586,15 @@ const ComicForm: React.FC<ComicFormProps> = ({ onSubmit, isLoading, hasApiKey, o
                   </div>
                   <div className={`w-px self-stretch ${selected ? 'bg-stone-600' : 'bg-stone-300'}`} />
                   <div className="flex flex-col items-center justify-center gap-0.5 px-3 py-2 min-w-[72px]">
-                    <span className={`font-bangers text-base tracking-wide leading-none ${selected ? 'text-yellow-300' : 'text-black'}`}>${minCost}–${maxCost}</span>
-                    <span className={`text-xs font-open-sans text-center leading-tight ${selected ? 'text-stone-200' : 'text-gray-700'}`}>2–4 panels est.</span>
+                    <span className={`font-bangers text-base tracking-wide leading-none ${selected ? 'text-yellow-300' : 'text-black'}`}>{singleScene ? `$${minCost}` : `$${minCost}–$${maxCost}`}</span>
+                    <span className={`text-xs font-open-sans text-center leading-tight ${selected ? 'text-stone-200' : 'text-gray-700'}`}>{singleScene ? '1 panel est.' : '1–6 panels est.'}</span>
                   </div>
                 </button>
               );
             })}
           </div>
           <p className="text-xs font-open-sans leading-5 text-gray-700 mt-2">
+            {formData.illustrationStyle === 'magazine-gag' ? 'Magazine Gag uses one complete scene. ' : 'The story sets the length: usually 2–4 panels, with room for 1–6 when the joke needs it. '}
             Image-output estimates at the selected resolution, checked October 7, 2026. Planning, reference images, edits, retries, and search can cost extra. Google bills your API project; these are not total comic prices. <a href="https://ai.google.dev/gemini-api/docs/pricing" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Check current pricing.</a>
           </p>
         </div>

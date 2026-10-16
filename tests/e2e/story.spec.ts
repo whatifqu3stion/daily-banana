@@ -20,7 +20,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('https://generativelanguage.googleapis.com/**', route => route.abort());
 });
 
-async function backend(page: Page, badEffect = false) {
+async function backend(page: Page, badEffect = false, count = 3) {
   const calls: { endpoint: string; body: any }[] = [];
   await page.route('**/api/gemini/**', async route => {
     const endpoint = route.request().url().split('/').pop()!;
@@ -33,6 +33,15 @@ async function backend(page: Page, badEffect = false) {
       if (!badEffect) {
         value.panels[2].text_elements = value.panels[1].text_elements;
         value.panels[1].text_elements = [];
+      }
+      if (count !== 3) {
+        value.panels = Array.from({ length: count }, (_, index) => ({
+          ...structuredClone(plan.panels[0]), slug: `beat-${index}`, text_elements: [],
+          size: (count === 5 && index === 0) || (count === 6 && index === count - 1) ? 'large' : 'medium',
+          comedic_role: index === 0 ? 'establish' : index === count - 1 ? 'punchline' : 'escalate',
+          action: { ...plan.panels[0].action, id: `action-${index}` },
+        }));
+        value.story.source_panel_slug = value.panels[0].slug;
       }
       const contents = JSON.stringify(body.contents);
       if (!contents.includes(BACKGROUND)) value.story.source_excerpt = '';
@@ -84,6 +93,9 @@ test('all register/stance/planning branches preserve the input brief and shared 
     expect(call.body.config.responseSchema).toBeDefined();
     expect(call.body.config.systemInstruction).toContain('Action and sound ownership');
     expect(call.body.config.systemInstruction).toContain('Do not explain the punchline, but DO establish the situation');
+    expect(call.body.config.systemInstruction).toContain('Let the story choose 1–6 panels, usually 2–4');
+    const schema = call.body.config.responseSchema;
+    expect((schema.items || schema).properties.panels).toMatchObject({ minItems: '1', maxItems: '6' });
   }
 });
 
@@ -98,11 +110,11 @@ test('story concerns preserve source and effect notes without blocking creative 
     const badSource = structuredClone(fixed); badSource.story.source_excerpt = 'Invented allegation absent from the background.';
     const custom = attachStoryBrief(fixed, { ...form, customPremise: 'My exact required premise.' });
     const silent = structuredClone(fixed); silent.panels.forEach(panel => panel.text_elements = []);
-    const counts = [2, 3, 4].map(count => {
+    const counts = [1, 2, 3, 4, 5, 6].map(count => {
       const item = structuredClone(silent);
       item.panels = Array.from({ length: count }, (_, i) => ({ ...silent.panels[0], slug: `panel-${i}`, action: { ...silent.panels[0].action, id: `action-${i}`, description: 'Impossible paperwork expands through a wall.' } }));
       item.story.source_panel_slug = 'panel-0';
-      return inspectStory(item).filter(issue => issue.blocking).length;
+      return inspectStory(item).filter(issue => issue.blocking || issue.code === 'panel-count').length;
     });
     const magazine = structuredClone(silent); magazine.brief.illustrationStyle = 'magazine-gag'; magazine.panels = [magazine.panels[0]];
     const topic = attachStoryBrief(silent, { ...form, newsContext: undefined, includeContext: true });
@@ -117,11 +129,65 @@ test('story concerns preserve source and effect notes without blocking creative 
   expect(result.owner).toBe('throw');
   expect(result.badSource).toContain('source-excerpt');
   expect(result.custom).toContain('premise-drift');
-  expect(result.counts).toEqual([0, 0, 0]);
+  expect(result.counts).toEqual([0, 0, 0, 0, 0, 0]);
   expect(result.magazine).toEqual([]);
   expect(result.topicKind).toBe('topic-only');
   expect(result.missing).toContain('legacy-story');
 });
+
+test('layouts preserve every story beat in complete rows for 1–6 panels', async ({ page }) => {
+  await page.goto('/');
+  const layouts = await page.evaluate(async raw => {
+    const path = '/utils/layoutAdapter.ts';
+    const { layoutAdapter } = await import(path);
+    return [1, 2, 3, 4, 5, 6].flatMap(count => ['none', 'first', 'last'].map(feature => {
+      const panels = Array.from({ length: count }, (_, i) => ({ ...raw.panels[0],
+        slug: `beat-${i}`, size: (feature === 'first' && i === 0) || (feature === 'last' && i === count - 1) ? 'large' : 'medium',
+        comedic_role: i === 0 ? 'establish' : i === count - 1 ? 'punchline' : 'escalate',
+      }));
+      return { count, feature, slots: layoutAdapter(panels) };
+    }));
+  }, plan);
+  for (const { count, slots } of layouts) {
+    expect(slots).toHaveLength(count);
+    let row = 0;
+    for (const slot of slots) {
+      row += slot.gridCols;
+      expect(row).toBeLessThanOrEqual(6);
+      if (row === 6) row = 0;
+    }
+    expect(row).toBe(0);
+  }
+});
+
+for (const [count, width] of [[1, 1280], [5, 1280], [6, 1280], [6, 390]]) {
+  test(`story-selected ${count} panels reach the editor without padding or truncation (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 960 });
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    const calls = await backend(page, false, count);
+    await page.getByLabel('Topic', { exact: true }).fill(form.topic);
+    await page.getByText('Optional details', { exact: true }).click();
+    await expect(page.getByText('1–6 panels est.', { exact: true }).first()).toBeVisible();
+    await page.getByRole('button', { name: 'Generate Comic Plan' }).click();
+    await page.getByRole('button', { name: 'Choose This Story' }).click();
+    await page.getByRole('button', { name: 'Finish the strip' }).click();
+    const comic = page.getByTestId('comic-export');
+    await expect(comic.getByText(`${count} ${count === 1 ? 'panel' : 'panels'}`, { exact: true })).toBeVisible();
+    for (let i = 1; i <= count; i++) await expect(comic.getByLabel(`Panel ${i}`, { exact: true })).toBeVisible();
+    expect(calls.filter(call => call.endpoint === 'interactions')).toHaveLength(count);
+    const rows = await comic.locator('[aria-label^="Panel "]').evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, right: rect.right, width: rect.width, height: rect.height };
+    }));
+    expect(rows).toHaveLength(count);
+    expect(rows.every(row => row.width > 100 && row.height > 100 && row.x >= 0 && row.right <= width)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await comic.screenshot({ path: `/tmp/banana-panels-${count}-${width}.png` });
+    await expect(comic.getByText(/Vite Error|Unhandled Runtime Error/)).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
 
 test('sound ownership concerns are optional and preserve the creator’s chosen outline', async ({ page }) => {
   const calls = await backend(page, true);

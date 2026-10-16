@@ -32,7 +32,7 @@ Follow one fictional comic, **The Cost of Doing Business**, through the desktop 
   <img src="docs/portfolio/walkthrough-01-setup.jpg" width="780" alt="Desktop setup with a fictional executive topic, Critical stance, Satirical angle, collapsed optional details, and Generate Comic Plan">
 </p>
 
-**Start with the editorial brief.** Enter a topic or use recent news, then choose a stance and comedic angle. The main screen keeps those decisions prominent; illustration style, image references, model selection, and finishing options are available under Optional details. Generate Comic Plan moves the creator into story selection.
+**Start with the editorial brief.** Enter a topic or use recent news, then choose a stance and comedic angle. The main screen keeps those decisions prominent; illustration style, image references, model selection, and finishing options are available under Optional details. Generate Comic Plan moves the creator into story selection. The story chooses its length: usually 2–4 panels, with room for 1–6 when the joke earns it; Magazine Gag stays a single scene.
 
 **Closer look: give the artwork a visual starting point.**
 

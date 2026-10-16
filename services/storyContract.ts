@@ -52,7 +52,7 @@ export function inspectStory(plan: ComicPlan): StoryIssue[] {
   if (issues.length) return issues;
   const count = plan.panels.length;
   const magazine = plan.brief?.illustrationStyle === 'magazine-gag';
-  if (count < (magazine ? 1 : 2) || count > (magazine ? 1 : 4)) add('panel-count', magazine ? 'This style normally uses one complete visual gag.' : 'This style normally uses 2–4 panels.');
+  if (count > (magazine ? 1 : 6)) add('panel-count', magazine ? 'This style normally uses one complete visual gag.' : 'This story is longer than the usual 1–6 panels.');
   if (new Set(plan.panels.map(panel => panel.slug)).size !== count) add('panel-identity', 'Two panels share an identifier. Generate a new idea.', true);
   const actions = plan.panels.flatMap(panel => panel.action ? [panel.action.id] : []);
   if (new Set(actions).size !== actions.length) add('action-identity', 'Some planned actions share a label; their continuity may need a look.');

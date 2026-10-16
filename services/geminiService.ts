@@ -58,7 +58,9 @@ const comicPlanSchema = {
         },
         panels: {
             type: Type.ARRAY,
-            description: 'Use exactly ONE panel for Magazine Gag Cartoon. Otherwise 2–4 panels: 2 for a sharp single-beat gag, 3 for setup/development/payoff, 4 only when the story earns it. Match the selected register rather than forcing escalation.',
+            minItems: '1',
+            maxItems: '6',
+            description: 'Let the story choose 1–6 panels, usually 2–4. Use the fewest panels that make the situation and payoff clear; one complete visual gag is valid in any style. Five or six require distinct necessary beats, not padding. Magazine Gag Cartoon uses exactly one complete scene.',
             items: {
                 type: Type.OBJECT,
                 properties: {
@@ -172,7 +174,9 @@ The image model will receive this description verbatim for every panel — it is
 ---
 
 ## STEP 3 — BUILD THE STRUCTURAL ARC
-Choose the panel count that serves the selected register. These arcs are useful defaults, NOT rules that override deadpan, parody, absurdism, a custom register, or a deliberate quiet non-resolution:
+Let the story choose 1–6 panels, usually 2–4. First identify the necessary visual beats, then choose the shortest complete telling. Merge repeated setup or explanation. Give a reaction, pause, reveal or change of scene its own panel only when separating it improves timing or comprehension. Never split one beat simply to fill a template, and never crowd distinct necessary beats together just to hit three panels. These arcs are useful defaults, NOT rules that override deadpan, parody, absurdism, a custom register, or a deliberate quiet non-resolution:
+
+**1 panel:** One complete visual situation with its own payoff. Valid in any illustration style; Magazine Gag Cartoon specifically requires this single-scene format.
 
 **3 panels (classic):**
 - Panel 1 "establish": Introduce the absurd situation and key character(s) in one clear image.
@@ -186,6 +190,8 @@ Choose the panel count that serves the selected register. These arcs are useful 
 - Panel 4 "punchline": Hard landing. Should recontextualise everything before it.
 
 **2 panels:** Brutal economy. Setup + punchline only. Works best for visual sight gags.
+
+**5–6 panels:** Use only when each extra frame earns its place through a necessary action, reaction, pause or reveal. Cut any frame whose removal leaves the joke equally clear and well-timed. More panels are not a quality target.
 
 ---
 
@@ -226,7 +232,7 @@ The image must carry at least 50% of the joke. Before writing dialogue, ask: "Co
 2. **The ending must express the intended point.** A quiet, dry or bleak non-resolution is valid when the selected register calls for it. Make the causal point legible; do not force a loud twist or triumphant resolution.
 3. **Consistency tags must be specific.** "Tall woman in a yellow hazmat suit, silver helmet, red safety boots" — not "scientist".
 4. **visual_prompt — prop text yes, overlay text never.** Speech bubbles, thought clouds, SFX, and captions belong ONLY in text_elements — never mention them in visual_prompt. However, in-world written props (signs, screens, posters, protest banners, newspapers, whiteboards, name badges) MUST be described with their exact content — the image model renders prop text accurately when given specific wording. BAD: "a protest sign". GOOD: "a hand-lettered cardboard sign reading 'HANDS OFF OUR DATA' in thick black marker". **EXCEPTION — if a text string already appears in text_elements (as a caption, speech bubble, or SFX), do NOT describe that same string on a prop in visual_prompt.** The overlay system will display that text on screen; the image should show the prop as a generic/blank object. BAD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a sign reading 'AI TOOK MY JOB'". GOOD: panel has caption "AI TOOK MY JOB" AND visual_prompt says "holding a protest sign".
-5. **Panel count: 2–4, except the Magazine Gag Cartoon illustration style requires exactly ONE complete scene.** Do not pad with unnecessary panels.
+5. **Panel count follows the story: 1–6, usually 2–4.** Choose the fewest frames that preserve setup, timing and payoff. Five or six must earn their extra beats. The Magazine Gag Cartoon illustration style requires exactly ONE complete scene. Do not pad with unnecessary panels.
 6. **Output valid JSON only.** No markdown, no preamble, no explanation outside the schema.
 7. **Source specificity beats generic substitution.** Use a distinctive name, amount, quote or situation actually present in the supplied background. Preserve one recognizable anchor in a panel and copy its supporting excerpt into the story contract. Never invent a quote or claim that supplied allegations were independently verified. Separate fictional actions and motives from the source detail.
 8. **Keep the minimum context needed to understand the satire.** Cut redundant facts, not the anchor that makes this story recognizable. The archive note must not carry missing setup. Make the joke sharper without turning a specific event into a generic gag.
