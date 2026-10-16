@@ -168,13 +168,13 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
           aria-busy={isLoading}
         >
           {!(error?.action === 'settings' && !hasStories) && <div className="mb-4 flex flex-col gap-3 border-b border-stone-400/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className={fetchedAtLabel ? undefined : 'w-full'}>
               {fetchedAtLabel ? (
                 <p className="font-open-sans text-xs text-stone-600">
                   Headlines fetched <time dateTime={new Date(feed!.fetchedAt).toISOString()}>{fetchedAtLabel}</time>
                 </p>
               ) : (
-                <p className="font-open-sans text-xs text-stone-600">
+                <p className="text-center font-open-sans text-xs text-stone-600">
                   Searching coverage from the past 24 hours. Publication dates are not independently verified.
                 </p>
               )}
