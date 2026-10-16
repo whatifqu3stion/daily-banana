@@ -167,15 +167,11 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-6"
           aria-busy={isLoading}
         >
-          {!(error?.action === 'settings' && !hasStories) && <div className="mb-4 flex flex-col gap-3 border-b border-stone-400/70 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className={fetchedAtLabel ? undefined : 'w-full'}>
-              {fetchedAtLabel ? (
+          {hasStories && <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              {fetchedAtLabel && (
                 <p className="font-open-sans text-xs text-stone-600">
                   Headlines fetched <time dateTime={new Date(feed!.fetchedAt).toISOString()}>{fetchedAtLabel}</time>
-                </p>
-              ) : (
-                <p className="text-center font-open-sans text-xs text-stone-600">
-                  Searching coverage from the past 24 hours. Publication dates are not independently verified.
                 </p>
               )}
               {isLoading && feed && (
@@ -209,9 +205,6 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
                 <div className="mt-3 h-3 w-full animate-pulse bg-stone-200" />
                 <div className="mt-2 h-3 w-3/4 animate-pulse bg-stone-200" />
               </div>
-              <p className="pt-2 text-center font-open-sans text-xs text-stone-600">
-                Closing this window will not undo any Google billing already incurred.
-              </p>
             </div>
           )}
 
@@ -320,6 +313,12 @@ const NewsSelector: React.FC<NewsSelectorProps> = ({
                 Suggestions are provided by Google and displayed in an isolated, read-only frame.
               </p>
             </section>
+          )}
+          {!(error?.action === 'settings' && !hasStories) && (
+            <footer className="mt-5 space-y-2 text-center font-open-sans text-xs leading-relaxed text-stone-600">
+              <p>Searching coverage from the past 24 hours. Publication dates are not independently verified.</p>
+              {isInitialLoading && <p>Closing this window will not undo any Google billing already incurred.</p>}
+            </footer>
           )}
         </div>
       </dialog>
