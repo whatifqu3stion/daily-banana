@@ -8,7 +8,18 @@
 
 The Daily Banana is a creative AI prototype: start with a topic or a sourced headline, find the angle, review the opening panel, and shape the finished strip. The interesting design challenge is giving someone enough control to make the comic feel like their own, while keeping the process approachable.
 
-Started as a hackathon project from a Google AI Studio export, it has grown through AI-assisted development and iteration on the workflow, visual direction, prompts, and error handling. It remains a prototype with open questions about usability and output quality.
+Started as a hackathon project from a Google AI Studio export, it has grown through AI-assisted development and iteration on the workflow, visual direction, prompts, and error handling. The project has received **award recognition**. It remains a prototype with open questions about usability and output quality.
+
+## Technical highlights
+
+- **A story becomes a production plan.** The AI returns an outline with actions, dialogue, setup, and payoff. The app turns it into 1–6 individually generated panels, choosing layouts that give key story beats room.
+- **Visual context travels between panels.** Image requests combine uploaded references with previous artwork, using the opening panel as a style anchor. Shared character and scene descriptions help limit visual drift.
+- **Words remain editable.** Dialogue and captions sit over the artwork as separate elements. Rewriting text or moving bubbles requires no new image request, and image refinement preserves those edits.
+- **Background work preserves progress.** Later panels can generate during first-panel review. Finishing reuses work already underway; old responses cannot overwrite a newer direction. Individual panels can recover from failure without rebuilding the strip.
+- **Research keeps its source links.** News suggestions include Google Search sources. The original brief stays separate from the optional research note added after drawing, preserving what informed each stage.
+- **The public demo runs on static hosting.** GitHub Pages serves the app while visitors use their own Gemini key and billing. Keys stay temporarily in tab memory. A separate Node-hosted mode supports server sessions.
+
+Automated browser checks exercise the workflow through the real Google SDK with simulated responses. They catch application failures before deployment without paid AI calls; live comedy and visual quality still need human evaluation.
 
 ## A finished edition
 
@@ -117,7 +128,10 @@ The workflow breaks those decisions into four stages: **file the idea → choose
 
 ## Under the press
 
-React, TypeScript, Vite, Tailwind CSS, the Google GenAI SDK, and html-to-image for PNG export.
+React and TypeScript manage the interface and workflow; Vite and Tailwind CSS handle the build and styling. The Google GenAI SDK connects the AI services, and html-to-image creates the downloadable PNG.
+
+<details>
+  <summary><b>Code map and news-request details</b></summary>
 
 | Part | Responsibility |
 | --- | --- |
@@ -129,6 +143,8 @@ React, TypeScript, Vite, Tailwind CSS, the Google GenAI SDK, and html-to-image f
 | [Pages workflow](.github/workflows/pages.yml) | Build, offline checks, and deployment |
 
 **A bounded news lookup.** Recent-news suggestions use Gemini 2.5 Flash with Google Search and a 1,024-token thinking budget. The request aims for an even U.S./international mix with short snippets, and the app keeps stories only when it can attach sources from Google's grounding metadata. Both transports allow 60 seconds for Google and 75 seconds overall. These are initial waiting limits to validate against live usage, not measured response-time guarantees. Timeouts offer a manual retry rather than automatically making another potentially billable request. The browser retains the latest lookup's duration and outcome in the `daily-banana:news-lookup` Performance entry, without keys or story content.
+
+</details>
 
 ### Two ways to run it
 
