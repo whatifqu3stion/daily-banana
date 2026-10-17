@@ -41,7 +41,7 @@ Two creator-supplied exports exploring different visual directions. Each preview
 
 **[The VC Jenga Tower](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/the-vc-jenga-tower.png)** — a Studio Ghibli–inspired manga/anime direction: warm color, expressive faces, and detailed office backgrounds. A stack of AI products turns financial dependence into a precarious physical tower.
 
-These are supplied finished outputs, separate from the staged UI walkthrough below. [Example and capture notes](docs/portfolio/README.md#creator-supplied-full-page-example).
+These are supplied finished outputs, separate from the staged UI walkthrough below. [Example and capture notes](docs/portfolio/README.md#creator-supplied-full-page-examples).
 
 ## From idea to edition
 
