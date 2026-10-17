@@ -23,15 +23,7 @@ Automated browser checks exercise the workflow through the real Google SDK with 
 
 ## Finished editions
 
-Three creator-supplied exports exploring different visual directions. Each preview is a small crop; click the image or its title to open the complete, original PNG.
-
-<p align="center">
-  <a href="https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png">
-    <img src="docs/portfolio/mutual-admiration-preview.jpg" width="360" alt="Cropped opening panel of Mutual Admiration Society, showing two executives toasting in an office">
-  </a>
-</p>
-
-**[Mutual Admiration Society](https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/mutual-admiration-society.png)** — a color comic built around two executives celebrating their growth figures. The full page includes the three-panel sequence and its archive note.
+Two creator-supplied exports exploring different visual directions. Each preview is a small crop; click the image or its title to open the complete, original PNG.
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/whatifqu3stion/daily-banana/main/docs/portfolio/data-deluge-fusion-edition.png">
