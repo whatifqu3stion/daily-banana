@@ -15,7 +15,7 @@
     "test:pages": "playwright test -c playwright.pages.config.ts"
   },
   "dependencies": {
-    "@google/genai": "latest",
+    "@google/genai": "2.31.0",
     "@playwright/test": "^1.63.0",
     "autoprefixer": "^10.4.21",
     "html-to-image": "^1.11.11",
@@ -29,5 +29,8 @@
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1 <27"
   }
 }
