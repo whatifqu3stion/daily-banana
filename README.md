@@ -8,43 +8,93 @@
 
 Making an AI image is one thing. Making a comic with a point, a joke, and characters who still look like themselves in the next panel is another. I wanted to explore that gap, while giving people room to make the result their own.
 
-The Daily Banana starts with a topic or sourced headline and takes it through a story outline, an opening-panel review, and an editable strip. It began as a hackathon project from a Google AI Studio export, received award recognition, and has grown through AI-assisted development. It remains a prototype, not a guarantee of good comedy.
+The Daily Banana starts with a topic or sourced headline and takes it through a story outline, an opening-panel review, and an editable strip. It began as a hackathon project from a Google AI Studio export, received award recognition, and has grown through AI-assisted development. It is still a prototype, with plenty to learn about what makes a generated comic worth sharing.
 
 **Bring your own Gemini API key.** Requests use your Google project's access, quota, and billing.
 
 ## A couple of editions
 
 <p align="center">
-  <a href="docs/portfolio/data-deluge-fusion-edition.png"><img src="docs/portfolio/data-deluge-fusion-preview.jpg" width="340" alt="Data Deluge: scientists overwhelmed by paperwork"></a>
-  <a href="docs/portfolio/the-vc-jenga-tower.png"><img src="docs/portfolio/vc-jenga-tower-preview.jpg" width="340" alt="The VC Jenga Tower: an executive beside a precarious stack of AI products"></a>
+  <a href="docs/portfolio/data-deluge-fusion-edition.png"><img src="docs/portfolio/data-deluge-fusion-preview.jpg" width="360" alt="Data Deluge: scientists overwhelmed by paperwork"></a>
 </p>
 
-**Data Deluge: Fusion Edition** turns promised efficiency into a mountain of paperwork. **The VC Jenga Tower** takes financial dependence rather literally. Select either crop to see the full comic. These are finished exports, separate from the staged interface example below.
+**[Data Deluge: Fusion Edition](docs/portfolio/data-deluge-fusion-edition.png)** turns promised efficiency into a mountain of paperwork, using stark black-and-white artwork and yellow sound effects.
+
+<p align="center">
+  <a href="docs/portfolio/the-vc-jenga-tower.png"><img src="docs/portfolio/vc-jenga-tower-preview.jpg" width="360" alt="The VC Jenga Tower: an executive beside a precarious stack of AI products"></a>
+</p>
+
+**[The VC Jenga Tower](docs/portfolio/the-vc-jenga-tower.png)** takes financial dependence rather literally, with warm color and expressive characters. Select either preview to see the full comic. These are finished exports, separate from the staged interface example below.
 
 ## From idea to comic
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/portfolio/walkthrough-01-setup.jpg" width="400" alt="Topic, stance, and humor controls with optional details collapsed"><br><strong>1. Set the brief.</strong> Start with the topic and angle. References, models, and illustration settings stay available without crowding the first step.</td>
-    <td width="50%"><img src="docs/portfolio/walkthrough-02-story.jpg" width="400" alt="Story selection with a premise, panel outline, and write-your-own option"><br><strong>2. Choose the story.</strong> Read the joke before paying to illustrate it. Accept the outline, request another, or supply your own angle.</td>
-  </tr>
-  <tr>
-    <td><img src="docs/portfolio/walkthrough-03-proof.jpg" width="400" alt="Opening-panel review beside its story plan"><br><strong>3. Review the opening panel.</strong> Compare the image with the plan, then refine or regenerate it.</td>
-    <td><img src="docs/portfolio/walkthrough-04-editor.jpg" width="400" alt="Finished comic editor with editable dialogue and export controls"><br><strong>4. Edit the strip.</strong> Change the words, move bubbles, revise individual images, and export a PNG.</td>
-  </tr>
-</table>
+These captures follow one fictional comic through the real interface, using a scripted story and saved artwork. No new generation was run for the walkthrough. [Examples and capture notes](docs/portfolio/README.md).
 
-*The actual interface with a scripted story and saved artwork; no new generation was run for these captures. [Examples and capture notes](docs/portfolio/README.md).*
+### 1. Set the brief
 
-## Decisions and things I've learned
+<p align="center">
+  <img src="docs/portfolio/walkthrough-01-setup.jpg" width="780" alt="Topic, stance, and humor controls with optional details collapsed">
+</p>
 
-**The interface should invite an idea, not an afternoon of configuration.** The newspaper identity gives the app some character: paper tones, halftone texture, a masthead, and banana-yellow actions. Essential story choices come first. Optional references include a note about what to preserve, so an image can guide a character, object, or style rather than serve as unexplained decoration.
+Start with the topic and angle. References, models, and illustration settings stay available without crowding the first step. The newspaper identity gives the process some character: paper tones, halftone texture, a masthead, and banana-yellow actions.
 
-**A small edit should stay small.** Dialogue and captions are separate from the artwork. Rewriting a line or moving a bubble needs no image request, and one weak panel can be revised without rebuilding the strip. Lettering already painted into an image is still part of that image.
+<p align="center">
+  <img src="docs/portfolio/detail-reference.jpg" width="620" alt="Uploaded character reference with a note specifying silver hair, navy suit, and office palette">
+</p>
 
-**More checks can make a worse experience.** An early source-number review interrupted comic-making with approvals. That became one optional notice, keeping concerns inspectable without blocking editing or export. It compares text; it is not independent fact-checking. [Quality notes](docs/comic-generation-quality.md) · [Source-number checks](docs/numeric-source-consistency.md).
+*A reference needs a purpose. The accompanying note says what should carry over: a character, an object, or a visual direction.*
 
-**Funny isn't a formula.** Structure and visual consistency help, but neither guarantees that a joke lands. I want to watch new users make a strip, improve one weak panel, and share it with someone who hasn't heard the explanation. That research is still ahead.
+### 2. Choose the story
+
+<p align="center">
+  <img src="docs/portfolio/walkthrough-02-story.jpg" width="780" alt="Story selection with a premise, panel outline, and write-your-own option">
+</p>
+
+Read the joke before paying to illustrate it. Accept the outline, request another, or supply your own angle. This gives the creator a chance to catch a bad interpretation while it is still just a plan.
+
+<details>
+  <summary><b>Writing an original angle</b></summary>
+  <p align="center">
+    <img src="docs/portfolio/detail-custom-angle.jpg" width="620" alt="Write Your Own Angle tab with a creator-authored premise">
+  </p>
+  <p>The planner can work around a premise the creator supplies. The example here is entered but not submitted.</p>
+</details>
+
+### 3. Review the opening panel
+
+<p align="center">
+  <img src="docs/portfolio/walkthrough-03-proof.jpg" width="780" alt="Opening-panel review beside its story plan, with refinement and regeneration controls">
+</p>
+
+Compare the image with the plan, then refine or regenerate it. Later panels can already be generating to reduce waiting. That is a real tradeoff: changing direction may discard work that has used API credits.
+
+### 4. Edit the strip
+
+<p align="center">
+  <img src="docs/portfolio/walkthrough-04-editor.jpg" width="780" alt="Finished comic editor with editable dialogue and export controls">
+</p>
+
+Change the words, move bubbles, revise individual images, and export a PNG. A small correction should not mean starting again.
+
+<p align="center">
+  <img src="docs/portfolio/detail-panel-edit.jpg" width="440" alt="Panel close-up with dialogue changed to Already budgeted and the original artwork retained">
+</p>
+
+*“Routine expenses” becomes “Already budgeted” without another image request. Text and placement edits are local; image refinement and regeneration use credits. Lettering painted into an image remains part of that image. [Exported walkthrough comic](docs/portfolio/walkthrough-export.jpg).*
+
+<details>
+  <summary><b>The mobile layout</b></summary>
+  <p align="center">
+    <img src="docs/portfolio/02-setup-mobile.jpg" width="240" alt="Earlier mobile setup capture with stacked inputs and a large generate button">
+  </p>
+  <p>The inputs stack on a phone. This earlier capture uses a separate office-automation example.</p>
+</details>
+
+## Things I've learned along the way
+
+An early source-number review interrupted comic-making with approvals. That became one optional notice, keeping concerns inspectable without blocking editing or export. Adding more checks had made the process harder to enjoy. The current checks compare text; they are not independent fact-checking. [Quality notes](docs/comic-generation-quality.md) · [Source-number checks](docs/numeric-source-consistency.md).
+
+Visual continuity is another ongoing problem. Reference images, recurring character descriptions, and previous panels help, but a consistent-looking character can still perform the wrong action. A neat outline and polished artwork can also produce a thoroughly unfunny comic. Human judgment is still doing important work here.
 
 ## How the app is put together
 
@@ -52,9 +102,9 @@ React and TypeScript handle the interface; Vite and Tailwind CSS handle the buil
 
 The [generation hook](hooks/useComicGeneration.ts) coordinates a multi-step job rather than one request. A structured story plan becomes individual panels. References and previous artwork carry context forward; dialogue remains a separate editable layer. Shared in-flight work, per-panel recovery, and stale-response protection keep a failed or outdated request from undoing useful progress.
 
-There is a cost tradeoff: later panels can generate while you review the first. That reduces waiting, but changing direction may discard billable work. News suggestions retain source links, and later research stays separate from the original brief so it is clear what informed each stage.
+The [generation service](services/geminiService.ts) handles plans and image direction. News suggestions retain source links, and later research stays separate from the original brief so it is clear what informed each stage. News timeouts offer a manual retry rather than silently starting another potentially billable request.
 
-The public GitHub Pages build calls Google directly. A supplied key stays in tab memory for up to 30 minutes and clears on refresh, close, or removal; page scripts and extensions may access it during use. The Node-hosted version instead uses temporary server sessions. Neither requires a publisher-funded fallback key. [Deployment and key handling](docs/deployment.md).
+The [connection layer](services/geminiConnection.ts) supports two ways to host the app. GitHub Pages calls Google directly; a supplied key stays in tab memory for up to 30 minutes and clears on refresh, close, or removal. Page scripts and extensions may access it during use. The Node-hosted version instead uses temporary server sessions. Neither requires a publisher-funded fallback key. [Deployment and key handling](docs/deployment.md).
 
 ## Install and run The Daily Banana
 
@@ -85,4 +135,8 @@ You need Git, npm, and a Node.js version allowed by the [`engines` field](packag
 
 For static hosting, use `npm run build:pages`. For the Node-hosted production version, use `npm run build` followed by `npm start`. See the [deployment guide](docs/deployment.md) for configuration and validation commands.
 
-Automated server and browser checks cover the workflow, key handling, asset paths, and news selection using simulated provider responses. They check application behavior, not whether live output is funny or worth sharing. Usability and output-quality results have not yet been measured.
+## What I'd test next
+
+Can a new creator connect a key, make a strip, and improve one weak panel without help? Does another reader get the joke without an explanation? I want to observe where people hesitate, what they choose to revise, and how much time and API usage it takes to make something they would share.
+
+Automated server and browser checks cover the workflow, key handling, asset paths, and news selection using simulated provider responses. They check application behavior, not live output quality. Usability and comedy still need that human test.
